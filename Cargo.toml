@@ -2,8 +2,9 @@
 name = "astrolabe"
 version = "0.0.1"
 edition = "2021"
-description = "Date and time library for Rust"
+description = "Date and time library for Rust. Aims to be feature rich and easy-to-use."
 homepage = "https://github.com/giyomoon/astrolabe"
+documentation = "https://docs.rs/astrolabe/"
 repository = "https://github.com/giyomoon/astrolabe"
 readme = "README.md"
 authors = ["GiyoMoon"]
