@@ -10,13 +10,12 @@ pub fn format_part(chars: &str, duration: Duration) -> Result<String, DateTimeEr
                 let last_two = &year[year.len() - 2..];
                 last_two.to_string()
             }
-            _ => format!(
-                "{:0width$}",
+            _ => zero_padded(
                 get_date_val(duration.as_secs(), DateValue::Year),
-                width = chars.len()
+                chars.len(),
             ),
         },
-        'M' => format_month(chars.len(), duration.as_secs()),
+        'M' => format_month(chars.len(), duration.as_secs())?,
         'd' => format_days(chars.len(), duration.as_secs()),
         'h' => {
             let hour = if get_time_val(duration.as_secs(), TimeValue::Hour) % 12 == 0 {
@@ -24,19 +23,15 @@ pub fn format_part(chars: &str, duration: Duration) -> Result<String, DateTimeEr
             } else {
                 get_time_val(duration.as_secs(), TimeValue::Hour) % 12
             };
-            format!("{:0width$}", hour, width = get_length(chars.len(), 2, 2))
+            zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'H' => {
-            format!(
-                "{:0width$}",
-                get_time_val(duration.as_secs(), TimeValue::Hour),
-                width = get_length(chars.len(), 2, 2)
-            )
-        }
-        'K' => format!(
-            "{:0width$}",
+        'H' => zero_padded(
+            get_time_val(duration.as_secs(), TimeValue::Hour),
+            get_length(chars.len(), 2, 2),
+        ),
+        'K' => zero_padded(
             get_time_val(duration.as_secs(), TimeValue::Hour) % 12,
-            width = get_length(chars.len(), 2, 2)
+            get_length(chars.len(), 2, 2),
         ),
         'k' => {
             let hour = if get_time_val(duration.as_secs(), TimeValue::Hour) == 0 {
@@ -44,20 +39,22 @@ pub fn format_part(chars: &str, duration: Duration) -> Result<String, DateTimeEr
             } else {
                 get_time_val(duration.as_secs(), TimeValue::Hour)
             };
-            format!("{:0width$}", hour, width = get_length(chars.len(), 2, 2))
+            zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'm' => format!(
-            "{:0width$}",
-            get_time_val(duration.as_secs(), TimeValue::Minute),
-            width = get_length(chars.len(), 2, 2)
+        'm' => zero_padded(
+            get_time_val(duration.as_secs(), TimeValue::Min),
+            get_length(chars.len(), 2, 2),
         ),
-        's' => format!(
-            "{:0width$}",
-            get_time_val(duration.as_secs(), TimeValue::Second),
-            width = get_length(chars.len(), 2, 2)
+        's' => zero_padded(
+            get_time_val(duration.as_secs(), TimeValue::Sec),
+            get_length(chars.len(), 2, 2),
         ),
         _ => chars.to_string(),
     })
+}
+
+pub fn zero_padded(number: i64, length: usize) -> String {
+    format!("{:0width$}", number, width = length)
 }
 
 fn get_length(length: usize, default: usize, max: usize) -> usize {
@@ -68,7 +65,7 @@ fn get_length(length: usize, default: usize, max: usize) -> usize {
     }
 }
 
-fn format_month(length: usize, secs_since_epoch: u64) -> String {
+fn format_month(length: usize, secs_since_epoch: u64) -> Result<String, DateTimeError> {
     let month = get_date_val(secs_since_epoch, DateValue::Month);
     const MONTH_ABBREVIATED: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -89,53 +86,39 @@ fn format_month(length: usize, secs_since_epoch: u64) -> String {
     ];
     const MONTH_NARROW: [&str; 12] = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
-    match length {
-        1 | 2 => format!("{:0width$}", month, width = length),
+    Ok(match length {
+        1 | 2 => zero_padded(month, length),
         3 => MONTH_ABBREVIATED
             .into_iter()
             .nth((month - 1) as usize)
-            .unwrap()
+            .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
         4 => MONTH_WIDE
             .into_iter()
             .nth((month - 1) as usize)
-            .unwrap()
+            .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
         5 => MONTH_NARROW
             .into_iter()
             .nth((month - 1) as usize)
-            .unwrap()
+            .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
         _ => MONTH_WIDE
             .into_iter()
             .nth((month - 1) as usize)
-            .unwrap()
+            .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
-    }
+    })
 }
 
 fn format_days(length: usize, secs_since_epoch: u64) -> String {
     let days = get_date_val(secs_since_epoch, DateValue::Day);
 
-    format!("{:0width$}", days, width = get_length(length, 2, 2))
-}
-
-#[derive(PartialEq)]
-enum DateValue {
-    Year,
-    Month,
-    Day,
-}
-
-#[derive(PartialEq)]
-enum TimeValue {
-    Hour,
-    Minute,
-    Second,
+    zero_padded(days, get_length(length, 2, 2))
 }
 
 // Most of the logic is taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c (MIT license)
-fn get_date_val(secs_since_epoch: u64, value: DateValue) -> i64 {
+pub fn date_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
     // 2000-03-01
     const LEAPOCH: i64 = 11017;
     const DAYS_PER_400Y: i64 = 365 * 400 + 97;
@@ -144,7 +127,7 @@ fn get_date_val(secs_since_epoch: u64, value: DateValue) -> i64 {
     const SECS_PER_DAY: u64 = 60 * 60 * 24;
     const MONTH_DAYS: [i64; 12] = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29];
 
-    let days = (secs_since_epoch / SECS_PER_DAY) as i64 - LEAPOCH;
+    let days = (timestamp / SECS_PER_DAY) as i64 - LEAPOCH;
 
     let mut qc_cycles = days / DAYS_PER_400Y;
     let mut remdays = days % DAYS_PER_400Y;
@@ -190,26 +173,46 @@ fn get_date_val(secs_since_epoch: u64, value: DateValue) -> i64 {
     } else {
         mon + 2
     };
-
-    match value {
-        DateValue::Year => year,
-        DateValue::Month => mon,
-        DateValue::Day => mday,
-    }
+    (year, mon, mday)
 }
 
-fn get_time_val(secs_since_epoch: u64, value: TimeValue) -> i64 {
+pub fn time_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
     const SECS_PER_MINUTE: u64 = 60;
     const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
     const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
-    let remaining_secs = secs_since_epoch % SECS_PER_DAY;
+    let remaining_secs = timestamp % SECS_PER_DAY;
     let hour = remaining_secs / 3600;
-    let minute = remaining_secs / 60 % 60;
-    let seconds = remaining_secs % 60;
+    let min = remaining_secs / 60 % 60;
+    let sec = remaining_secs % 60;
+    (hour as i64, min as i64, sec as i64)
+}
 
+#[derive(PartialEq)]
+enum DateValue {
+    Year,
+    Month,
+    Day,
+}
+
+#[derive(PartialEq)]
+enum TimeValue {
+    Hour,
+    Min,
+    Sec,
+}
+
+fn get_date_val(timestamp: u64, value: DateValue) -> i64 {
     match value {
-        TimeValue::Hour => hour as i64,
-        TimeValue::Minute => minute as i64,
-        TimeValue::Second => seconds as i64,
+        DateValue::Year => date_from_timestamp(timestamp).0,
+        DateValue::Month => date_from_timestamp(timestamp).1,
+        DateValue::Day => date_from_timestamp(timestamp).2,
+    }
+}
+
+fn get_time_val(timestamp: u64, value: TimeValue) -> i64 {
+    match value {
+        TimeValue::Hour => time_from_timestamp(timestamp).0,
+        TimeValue::Min => time_from_timestamp(timestamp).1,
+        TimeValue::Sec => time_from_timestamp(timestamp).2,
     }
 }

@@ -199,4 +199,31 @@ mod tests {
             date_time.format("yyyy-MM-ddTHH:mm:ss+00:00").unwrap()
         );
     }
+
+    #[test]
+    fn format_escape() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!(
+            "yyyMMHH19700100yyyMMHH",
+            date_time.format("'yyyMMHH'yyyMMHH'yyyMMHH").unwrap()
+        );
+        assert_eq!(
+            "yyyMMHH19700100yyyMMHH",
+            date_time.format("'yyyMMHH'yyyMMHH'yyyMMHH'").unwrap()
+        );
+        assert_eq!(
+            "yyyMMHH19700100yyyMMHH00",
+            date_time.format("'yyyMMHH'yyyMMHH'yyyMMHH'HH").unwrap()
+        );
+        assert_eq!("yyyMMHH'HH", date_time.format("'yyyMMHH''HH").unwrap());
+        assert_eq!(
+            "yyyyMMHH19700100yyyMMHH'HH",
+            date_time.format("'yyyyMMHH'yyyyMMHH'yyyMMHH''HH'").unwrap()
+        );
+        assert_eq!("''", date_time.format("''''").unwrap());
+        assert_eq!("'00'", date_time.format("''HH''").unwrap());
+        assert_eq!("'HH'", date_time.format("'''HH'''").unwrap());
+        assert_eq!("''00''", date_time.format("''''HH''''").unwrap());
+        assert_eq!("''HH''", date_time.format("'''''HH'''''").unwrap());
+    }
 }

@@ -15,4 +15,4 @@ mod datetime;
 #[cfg(feature = "format")]
 mod format;
 
-pub use self::datetime::{DateTime, Error as DateTimeError};
+pub use self::datetime::{DateTime, Error as DateTimeError, Precision};

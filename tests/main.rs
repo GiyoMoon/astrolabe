@@ -4,7 +4,7 @@ mod format;
 mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use astrolabe::DateTime;
+    use astrolabe::{DateTime, Precision};
 
     #[test]
     fn from_ymd() {
@@ -89,5 +89,43 @@ mod tests {
 
     fn from_ymdhms_err(year: u64, month: u64, day: u64, hour: u64, minute: u64, second: u64) {
         assert!(DateTime::from_ymdhms(year, month, day, hour, minute, second).is_err());
+    }
+
+    #[test]
+    fn format_rfc3339() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!(
+            "1970-01-01T00:00:00Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000Z",
+            date_time.format_rfc3339(Precision::Millis)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000000Z",
+            date_time.format_rfc3339(Precision::Micros)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000000000Z",
+            date_time.format_rfc3339(Precision::Nanos)
+        );
+        let date_time = DateTime::from_ymdhms(2000, 12, 31, 23, 59, 59).unwrap();
+        assert_eq!(
+            "2000-12-31T23:59:59Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000Z",
+            date_time.format_rfc3339(Precision::Millis)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000000Z",
+            date_time.format_rfc3339(Precision::Micros)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000000000Z",
+            date_time.format_rfc3339(Precision::Nanos)
+        );
     }
 }
