@@ -1,11 +1,29 @@
 [package]
 name = "astrolabe"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 description = "Date and time library for Rust"
+homepage = "https://github.com/giyomoon/astrolabe"
+repository = "https://github.com/giyomoon/astrolabe"
+readme = "README.md"
 authors = ["GiyoMoon"]
 license = "MIT OR Apache-2.0"
 keywords = ["date", "time"]
 categories = ["date-and-time"]
+include = [
+    "src/**",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
+fancy-regex = { version = "0.10.0", default-features = false, features = ["unicode"], optional = true }
+
+[features]
+default = []
+format = ["dep:fancy-regex"]
