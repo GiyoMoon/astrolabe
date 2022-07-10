@@ -1,7 +1,7 @@
 <h1 align="center">Astrolabe</h1>
 <div align="center">
  <strong>
-  Date and time library for Rust. Feature rich and easy-to-use.
+  Date and time library for Rust. Feature rich, lightweight and easy-to-use.
  </strong>
 </div>
 
@@ -19,8 +19,8 @@
     alt="Crates.io version" />
   </a>
   <!-- MSRV -->
-  <a href="https://github.com/rust-lang/rust/releases/tag/1.60.0" target="_blank">
-    <img src="https://img.shields.io/badge/MSRV-1.60-fa6733.svg?style=flat"
+  <a href="https://github.com/rust-lang/rust/releases/tag/1.56.1" target="_blank">
+    <img src="https://img.shields.io/badge/MSRV-1.56.1-fa6733.svg?style=flat"
     alt="MSRV" />
   </a>
   <!-- Github Actions -->
@@ -57,7 +57,7 @@
 
 <br />
 
-Astrolabe is a date and time library for Rust which aims to be feature rich and easy-to-use.
+Astrolabe is a date and time library for Rust which aims to be feature rich, lightweight (zero dependencies) and easy-to-use.
 
 ## Status
 Astrolabe is currently in **heavy development**. Please do not use the crate in production yet.
@@ -68,10 +68,10 @@ Astrolabe is currently in **heavy development**. Please do not use the crate in 
 * Formatting
   * RFC3339 timestamp
   * Formatting with specific format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table). (Which allows formatting `SystemTime` into basically any string format)
-* Zero dependencies if used without the `format` feature
+* Zero dependencies
 
 ## MSRV
-This crate uses Rust 2021 edition and requires at least version `1.60`.
+This crate uses the Rust 2021 Edition and requires at least version `1.56.1`.
 
 ## License
 Licensed under either of

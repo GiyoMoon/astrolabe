@@ -1,52 +1,48 @@
 use crate::DateTimeError;
-use std::time::Duration;
 
-pub fn format_part(chars: &str, duration: Duration) -> Result<String, DateTimeError> {
+pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError> {
     let first_char = chars.chars().next().ok_or(DateTimeError::InvalidFormat)?;
     Ok(match first_char {
         'y' => match chars.len() {
             2 => {
-                let year = get_date_val(duration.as_secs(), DateValue::Year).to_string();
+                let year = get_date_val(timestamp, DateValue::Year).to_string();
                 let last_two = &year[year.len() - 2..];
                 last_two.to_string()
             }
-            _ => zero_padded(
-                get_date_val(duration.as_secs(), DateValue::Year),
-                chars.len(),
-            ),
+            _ => zero_padded(get_date_val(timestamp, DateValue::Year), chars.len()),
         },
-        'M' => format_month(chars.len(), duration.as_secs())?,
-        'd' => format_days(chars.len(), duration.as_secs()),
+        'M' => format_month(chars.len(), timestamp)?,
+        'd' => format_days(chars.len(), timestamp),
         'h' => {
-            let hour = if get_time_val(duration.as_secs(), TimeValue::Hour) % 12 == 0 {
+            let hour = if get_time_val(timestamp, TimeValue::Hour) % 12 == 0 {
                 12
             } else {
-                get_time_val(duration.as_secs(), TimeValue::Hour) % 12
+                get_time_val(timestamp, TimeValue::Hour) % 12
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
         'H' => zero_padded(
-            get_time_val(duration.as_secs(), TimeValue::Hour),
+            get_time_val(timestamp, TimeValue::Hour),
             get_length(chars.len(), 2, 2),
         ),
         'K' => zero_padded(
-            get_time_val(duration.as_secs(), TimeValue::Hour) % 12,
+            get_time_val(timestamp, TimeValue::Hour) % 12,
             get_length(chars.len(), 2, 2),
         ),
         'k' => {
-            let hour = if get_time_val(duration.as_secs(), TimeValue::Hour) == 0 {
+            let hour = if get_time_val(timestamp, TimeValue::Hour) == 0 {
                 24
             } else {
-                get_time_val(duration.as_secs(), TimeValue::Hour)
+                get_time_val(timestamp, TimeValue::Hour)
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
         'm' => zero_padded(
-            get_time_val(duration.as_secs(), TimeValue::Min),
+            get_time_val(timestamp, TimeValue::Min),
             get_length(chars.len(), 2, 2),
         ),
         's' => zero_padded(
-            get_time_val(duration.as_secs(), TimeValue::Sec),
+            get_time_val(timestamp, TimeValue::Sec),
             get_length(chars.len(), 2, 2),
         ),
         _ => chars.to_string(),

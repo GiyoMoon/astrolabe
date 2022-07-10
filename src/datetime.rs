@@ -1,15 +1,6 @@
-#[cfg(feature = "format")]
 use crate::format::format_part;
 use crate::format::{date_from_timestamp, time_from_timestamp, zero_padded};
-#[cfg(feature = "format")]
-use fancy_regex::Regex;
-#[cfg(feature = "format")]
-use once_cell::sync::Lazy;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-#[cfg(feature = "format")]
-static FORMAT_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([^'])\1*|''|'(''|[^'])+('|$)").unwrap());
 
 /// Error parsing or formatting [`DateTime`] struct
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,15 +15,15 @@ pub enum Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Precision {
     /// Only seconds -> `2022-05-02T15:30:20Z`
-    Seconds,
+    Seconds = 0,
     /// 2 decimal places -> `2022-05-02T15:30:20.00Z`
-    Centi,
+    Centi = 2,
     /// 3 decimal places -> `2022-05-02T15:30:20.000Z`
-    Millis,
+    Millis = 3,
     /// 6 decimal places -> `2022-05-02T15:30:20.000000Z`
-    Micros,
+    Micros = 6,
     /// 9 decimal places -> `2022-05-02T15:30:20.000000000Z`
-    Nanos,
+    Nanos = 9,
 }
 
 /// Wrapper around [`std::time::SystemTime`] which implements formatting and manipulation functions
@@ -150,10 +141,10 @@ impl DateTime {
             zero_padded(sec, 2),
             match precision {
                 Precision::Seconds => "".to_string(),
-                Precision::Centi => format!(".{}", &zero_padded(nanos, 2)[..2]),
-                Precision::Millis => format!(".{}", &zero_padded(nanos, 3)[..3]),
-                Precision::Micros => format!(".{}", &zero_padded(nanos, 6)[..6]),
-                Precision::Nanos => format!(".{}", &zero_padded(nanos, 9)[..9]),
+                _ => {
+                    let length = precision as usize;
+                    format!(".{}", &zero_padded(nanos, length)[..length])
+                }
             }
         )
     }
@@ -208,42 +199,55 @@ impl DateTime {
     /// assert_eq!("'01/01/1970' 00:00:00", date_time.format("''MM/dd/yyyy'' HH:mm:ss").unwrap());
     /// ```
     ///
-    #[cfg(feature = "format")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "format")))]
     pub fn format(&self, format: &str) -> Result<String, Error> {
-        FORMAT_REGEX
-            .captures_iter(format)
-            .into_iter()
-            .map(|capture| -> Result<Vec<char>, Error> {
-                let part = capture
-                    .map_err(|_| Error::InvalidFormat)?
-                    .get(0)
-                    .ok_or(Error::InvalidFormat)?
-                    .as_str();
+        let escaped_format = format.replace("''", "\u{0000}");
 
+        let mut parts: Vec<String> = Vec::new();
+        let mut currently_escaped = false;
+        escaped_format
+            .chars()
+            .into_iter()
+            .for_each(|char| match char {
+                '\'' => {
+                    if !currently_escaped {
+                        parts.push(char.to_string());
+                    } else {
+                        parts.last_mut().unwrap().push(char);
+                    }
+                    currently_escaped = !currently_escaped;
+                }
+                _ => {
+                    if (currently_escaped
+                        || parts.last().unwrap_or(&"".to_string()).starts_with(char))
+                        && parts.last().is_some()
+                    {
+                        parts.last_mut().unwrap().push(char);
+                    } else {
+                        parts.push(char.to_string());
+                    }
+                }
+            });
+
+        let timestamp = self.timestamp();
+        parts
+            .iter()
+            .map(|part| -> Result<Vec<char>, Error> {
                 // Escaped apostrophes
-                if part == "''" {
-                    return Ok("'".chars().collect::<Vec<char>>());
+                if part.starts_with('\u{0000}') {
+                    return Ok(part.replace('\u{0000}', "'").chars().collect::<Vec<char>>());
                 }
 
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
-                    let part = part.replace("''", "'");
-                    if part.ends_with('\'') {
-                        return Ok(part[1..part.len() - 1].chars().collect::<Vec<char>>());
-                    } else {
-                        return Ok(part[1..part.len()].chars().collect::<Vec<char>>());
-                    }
+                    let part = part.replace('\u{0000}', "'");
+                    return Ok(
+                        part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                            .chars()
+                            .collect::<Vec<char>>(),
+                    );
                 }
 
-                Ok(format_part(
-                    part,
-                    self.0
-                        .duration_since(UNIX_EPOCH)
-                        .expect("All times should be after epoch"),
-                )?
-                .chars()
-                .collect::<Vec<char>>())
+                Ok(format_part(part, timestamp)?.chars().collect::<Vec<char>>())
             })
             .flat_map(|result| match result {
                 Ok(vec) => vec.into_iter().map(Ok).collect(),

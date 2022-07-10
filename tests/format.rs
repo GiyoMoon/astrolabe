@@ -1,4 +1,3 @@
-#[cfg(feature = "format")]
 #[cfg(test)]
 mod tests {
     use astrolabe::DateTime;

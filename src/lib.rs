@@ -1,4 +1,4 @@
-//! Date and time library for Rust. Aims to be feature rich and easy-to-use.
+//! Date and time library for Rust. Aims to be feature rich, lightweight (zero dependencies) and easy-to-use.
 //!
 //! Features:
 //!
@@ -10,10 +10,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod datetime;
-#[cfg(feature = "format")]
 mod format;
 
 pub use self::datetime::{DateTime, Error as DateTimeError, Precision};
