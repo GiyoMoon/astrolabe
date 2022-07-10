@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod datetime;
 #[cfg(feature = "format")]

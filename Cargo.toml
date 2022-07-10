@@ -21,11 +21,11 @@ include = [
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 fancy-regex = { version = "0.10.0", default-features = false, features = ["unicode"], optional = true }
 once_cell = { version = "1.13.0", default-features = false, features = ["std"], optional = true }
 
 [features]
-default = []
-format = ["dep:fancy-regex", "dep:once_cell"]
+format = ["fancy-regex", "once_cell"]
