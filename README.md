@@ -65,9 +65,13 @@ Astrolabe is currently in **heavy development**. Please do not use the crate in 
 ## Features
 > At this stage of development, not all features have been fully implemented.
 * [`DateTime`](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html), a wrapper around [`std::time::SystemTime`](https://doc.rust-lang.org/std/time/struct.SystemTime.html) which implements formatting and manipulation functions
-* Formatting
+* **Formatting**
   * RFC3339 timestamp
-  * Formatting with specific format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table). (Which allows formatting `SystemTime` into basically any string format)
+  * Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table). (Which allows formatting `SystemTime` into basically any string format)
+* **Manipulation**
+  * Use modify functions like [`DateTime::add`](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html#method.add) or [`DateTime::sub`](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html#method.sub) to create a new, modified `DateTime` struct
+* **Timezone**
+  * Specify a timezone offset which will be applied in any format function
 * Zero dependencies
 
 ## MSRV

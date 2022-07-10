@@ -49,7 +49,7 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
     })
 }
 
-pub fn zero_padded(number: i64, length: usize) -> String {
+pub fn zero_padded(number: u64, length: usize) -> String {
     format!("{:0width$}", number, width = length)
 }
 
@@ -114,16 +114,16 @@ fn format_days(length: usize, secs_since_epoch: u64) -> String {
 }
 
 // Most of the logic is taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c (MIT license)
-pub fn date_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
+pub fn date_from_timestamp(timestamp: u64) -> (u64, u64, u64) {
     // 2000-03-01
     const LEAPOCH: i64 = 11017;
     const DAYS_PER_400Y: i64 = 365 * 400 + 97;
     const DAYS_PER_100Y: i64 = 365 * 100 + 24;
     const DAYS_PER_4Y: i64 = 365 * 4 + 1;
-    const SECS_PER_DAY: u64 = 60 * 60 * 24;
+    const SECS_PER_DAY: i64 = 60 * 60 * 24;
     const MONTH_DAYS: [i64; 12] = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29];
 
-    let days = (timestamp / SECS_PER_DAY) as i64 - LEAPOCH;
+    let days = (timestamp as i64 / SECS_PER_DAY) - LEAPOCH;
 
     let mut qc_cycles = days / DAYS_PER_400Y;
     let mut remdays = days % DAYS_PER_400Y;
@@ -169,10 +169,10 @@ pub fn date_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
     } else {
         mon + 2
     };
-    (year, mon, mday)
+    (year as u64, mon, mday as u64)
 }
 
-pub fn time_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
+pub fn time_from_timestamp(timestamp: u64) -> (u64, u64, u64) {
     const SECS_PER_MINUTE: u64 = 60;
     const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
     const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
@@ -180,7 +180,7 @@ pub fn time_from_timestamp(timestamp: u64) -> (i64, i64, i64) {
     let hour = remaining_secs / 3600;
     let min = remaining_secs / 60 % 60;
     let sec = remaining_secs % 60;
-    (hour as i64, min as i64, sec as i64)
+    (hour, min, sec)
 }
 
 #[derive(PartialEq)]
@@ -197,7 +197,7 @@ enum TimeValue {
     Sec,
 }
 
-fn get_date_val(timestamp: u64, value: DateValue) -> i64 {
+fn get_date_val(timestamp: u64, value: DateValue) -> u64 {
     match value {
         DateValue::Year => date_from_timestamp(timestamp).0,
         DateValue::Month => date_from_timestamp(timestamp).1,
@@ -205,7 +205,7 @@ fn get_date_val(timestamp: u64, value: DateValue) -> i64 {
     }
 }
 
-fn get_time_val(timestamp: u64, value: TimeValue) -> i64 {
+fn get_time_val(timestamp: u64, value: TimeValue) -> u64 {
     match value {
         TimeValue::Hour => time_from_timestamp(timestamp).0,
         TimeValue::Min => time_from_timestamp(timestamp).1,

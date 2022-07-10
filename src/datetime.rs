@@ -1,5 +1,7 @@
 use crate::format::format_part;
 use crate::format::{date_from_timestamp, time_from_timestamp, zero_padded};
+use std::cmp::Ordering;
+use std::ops::{Add, Sub};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Error parsing or formatting [`DateTime`] struct
@@ -24,6 +26,40 @@ pub enum Precision {
     Micros = 6,
     /// 9 decimal places -> `2022-05-02T15:30:20.000000000Z`
     Nanos = 9,
+}
+
+/// Time unit for functions like [`DateTime::add`]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Unit {
+    #[allow(missing_docs)]
+    Year,
+    /// Note: Adds or removes calendar months, not 30 days.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::{DateTime, Unit};
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 31).unwrap();
+    /// assert_eq!("1970-02-28", date_time.add(1, Unit::Month).unwrap().format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-03-31", date_time.add(2, Unit::Month).unwrap().format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-04-30", date_time.add(3, Unit::Month).unwrap().format("yyyy-MM-dd").unwrap());
+    /// ```
+    Month,
+    #[allow(missing_docs)]
+    Day,
+    #[allow(missing_docs)]
+    Hour,
+    #[allow(missing_docs)]
+    Min,
+    #[allow(missing_docs)]
+    Sec,
+    #[allow(missing_docs)]
+    Milli,
+    #[allow(missing_docs)]
+    Micro,
+    #[allow(missing_docs)]
+    Nano,
 }
 
 /// Wrapper around [`std::time::SystemTime`] which implements formatting and manipulation functions
@@ -87,6 +123,20 @@ impl DateTime {
         ))
     }
 
+    /// Returns the duration since January 1, 1970 0:00:00 UTC
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+    /// assert_eq!(0, date_time.duration().as_secs());
+    /// ```
+    pub fn duration(&self) -> Duration {
+        self.0.duration_since(UNIX_EPOCH).unwrap()
+    }
+
     /// Returns the number of non-leap seconds since January 1, 1970 0:00:00 UTC
     ///
     /// # Example
@@ -98,10 +148,97 @@ impl DateTime {
     /// assert_eq!(0, date_time.timestamp());
     /// ```
     pub fn timestamp(&self) -> u64 {
-        SystemTime::from(self)
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
+        self.duration().as_secs()
+    }
+
+    /// Returns the duration between two [`DateTime`] structs
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+    /// let date_time_2 = DateTime::from_ymd(1970, 1, 2).unwrap();
+    /// assert_eq!(86400, date_time.between(&date_time_2).as_secs());
+    /// assert_eq!(86400, date_time_2.between(&date_time).as_secs());
+    /// ```
+    pub fn between(&self, compare: &DateTime) -> Duration {
+        if self.0.cmp(&compare.0) == Ordering::Greater {
+            self.0.duration_since(compare.0).unwrap()
+        } else {
+            compare.0.duration_since(self.0).unwrap()
+        }
+    }
+
+    /// Adds [`Duration`] to [`DateTime`]
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::time::Duration;
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+    /// let added = date_time.add_dur(Duration::new(86400, 0));
+    /// assert_eq!(0, date_time.timestamp());
+    /// assert_eq!(86400, added.timestamp());
+    /// ```
+    pub fn add_dur(&self, duration: Duration) -> Self {
+        DateTime(self.0.add(duration))
+    }
+
+    /// Removes [`Duration`] from [`DateTime`]
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::time::Duration;
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 2).unwrap();
+    /// let removed = date_time.remove_dur(Duration::new(86400, 0));
+    /// assert_eq!(86400, date_time.timestamp());
+    /// assert_eq!(0, removed.timestamp());
+    /// ```
+    pub fn remove_dur(&self, duration: Duration) -> Self {
+        DateTime(self.0.sub(duration))
+    }
+
+    /// Adds a specified amount of time to [`DateTime`]
+    ///
+    /// **Note**: When using [`Unit::Month`], it adds calendar months and not 30 days. See it's [documentation](Unit::Month) for examples.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::{DateTime, Unit};
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+    /// let added = date_time.add(1, Unit::Day).unwrap();
+    /// assert_eq!("1970-01-01", date_time.format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-01-02", added.format("yyyy-MM-dd").unwrap());
+    /// ```
+    pub fn add(&self, amount: u64, unit: Unit) -> Result<Self, Error> {
+        apply_unit(self, amount, unit, ApplyType::Add)
+    }
+
+    /// Removes a specified amount of time to [`DateTime`]
+    ///
+    /// **Note**: When using [`Unit::Month`], it removes calendar months and not 30 days. See it's [documentation](Unit::Month) for examples.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::{DateTime, Unit};
+    ///
+    /// let date_time = DateTime::from_ymd(1970, 1, 2).unwrap();
+    /// let removed = date_time.sub(1, Unit::Day).unwrap();
+    /// assert_eq!("1970-01-02", date_time.format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-01-01", removed.format("yyyy-MM-dd").unwrap());
+    /// ```
+    pub fn sub(&self, amount: u64, unit: Unit) -> Result<Self, Error> {
+        apply_unit(self, amount, unit, ApplyType::Sub)
     }
 
     /// Format as an RFC3339 timestamp
@@ -123,13 +260,9 @@ impl DateTime {
     /// assert_eq!("2022-05-02T15:30:20Z", date_time.format_rfc3339(Precision::Seconds));
     /// ```
     pub fn format_rfc3339(&self, precision: Precision) -> String {
-        let duration = self
-            .0
-            .duration_since(UNIX_EPOCH)
-            .expect("All times should be after epoch");
-        let (year, month, day) = date_from_timestamp(duration.as_secs());
-        let (hour, min, sec) = time_from_timestamp(duration.as_secs());
-        let nanos = duration.subsec_nanos() as i64;
+        let (year, month, day) = date_from_timestamp(self.timestamp());
+        let (hour, min, sec) = time_from_timestamp(self.timestamp());
+        let nanos = self.duration().subsec_nanos() as u64;
 
         format!(
             "{}-{}-{}T{}:{}:{}{}Z",
@@ -149,7 +282,7 @@ impl DateTime {
         )
     }
 
-    /// Formatting with specific format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
+    /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
     ///
     /// # Available Symbols:
     ///
@@ -185,7 +318,7 @@ impl DateTime {
     /// If the sequence is longer than listed in the table, the output will be the same as the default pattern for this unit (marked with `*`)
     ///
     /// Surround any character with apostrophes (`'`) to escape them.
-    /// If you want escape `'`, write `''`
+    /// If you want escape `'`, write `''`.
     ///
     /// # Example
     ///
@@ -204,15 +337,13 @@ impl DateTime {
 
         let mut parts: Vec<String> = Vec::new();
         let mut currently_escaped = false;
-        escaped_format
-            .chars()
-            .into_iter()
-            .for_each(|char| match char {
+        for char in escaped_format.chars() {
+            match char {
                 '\'' => {
                     if !currently_escaped {
                         parts.push(char.to_string());
                     } else {
-                        parts.last_mut().unwrap().push(char);
+                        parts.last_mut().ok_or(Error::InvalidFormat)?.push(char);
                     }
                     currently_escaped = !currently_escaped;
                 }
@@ -221,12 +352,13 @@ impl DateTime {
                         || parts.last().unwrap_or(&"".to_string()).starts_with(char))
                         && parts.last().is_some()
                     {
-                        parts.last_mut().unwrap().push(char);
+                        parts.last_mut().ok_or(Error::InvalidFormat)?.push(char);
                     } else {
                         parts.push(char.to_string());
                     }
                 }
-            });
+            };
+        }
 
         let timestamp = self.timestamp();
         parts
@@ -277,10 +409,24 @@ impl From<&DateTime> for SystemTime {
 
 fn days_from_ymd(year: u64, month: u64, day: u64) -> Result<u64, Error> {
     let leap_years = leap_years_before(year);
+    let (mut ydays, mdays) = month_to_mdays(year, month)?;
+
+    if day > mdays || day == 0 {
+        return Err(Error::OutOfRange);
+    }
+    ydays += day - 1;
+
     let is_leap = is_leap_year(year);
-    let (mut ydays, mdays) = match month {
+    if is_leap && month > 2 {
+        ydays += 1;
+    }
+    Ok((year - 1970) * 365 + leap_years + ydays)
+}
+
+fn month_to_mdays(year: u64, month: u64) -> Result<(u64, u64), Error> {
+    Ok(match month {
         1 => (0, 31),
-        2 if is_leap => (31, 29),
+        2 if is_leap_year(year) => (31, 29),
         2 => (31, 28),
         3 => (59, 31),
         4 => (90, 30),
@@ -293,17 +439,7 @@ fn days_from_ymd(year: u64, month: u64, day: u64) -> Result<u64, Error> {
         11 => (304, 30),
         12 => (334, 31),
         _ => return Err(Error::OutOfRange),
-    };
-
-    if day > mdays || day == 0 {
-        return Err(Error::OutOfRange);
-    }
-    ydays += day - 1;
-
-    if is_leap && month > 2 {
-        ydays += 1;
-    }
-    Ok((year - 1970) * 365 + leap_years + ydays)
+    })
 }
 
 fn leap_years_before(mut year: u64) -> u64 {
@@ -313,4 +449,101 @@ fn leap_years_before(mut year: u64) -> u64 {
 
 fn is_leap_year(year: u64) -> bool {
     year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ApplyType {
+    Add,
+    Sub,
+}
+
+fn apply_unit(
+    old: &DateTime,
+    amount: u64,
+    unit: Unit,
+    atype: ApplyType,
+) -> Result<DateTime, Error> {
+    Ok(match unit {
+        Unit::Year => {
+            let (year, month, mut day) = date_from_timestamp(old.timestamp());
+            if is_leap_year(year) && month == 2 && day == 29 {
+                day = 28;
+            }
+            let target_year = match atype {
+                ApplyType::Add => year + amount,
+                ApplyType::Sub => year - amount,
+            };
+            DateTime::from_ymd(target_year, month, day)?
+        }
+        Unit::Month => {
+            let (year, month, day) = date_from_timestamp(old.timestamp());
+            let target_year = match atype {
+                ApplyType::Add => (year * 12 + month + amount - 1) / 12,
+                ApplyType::Sub => (year * 12 + month - amount - 1) / 12,
+            };
+            let target_month = match atype {
+                ApplyType::Add => {
+                    if (month + amount) % 12 == 0 {
+                        12
+                    } else {
+                        (month + amount) % 12
+                    }
+                }
+                ApplyType::Sub => {
+                    if (month - amount) % 12 == 0 {
+                        12
+                    } else {
+                        (month - amount) % 12
+                    }
+                }
+            };
+            let target_day = match day {
+                day if day < 29 => day,
+                _ => {
+                    let (_, mdays) = month_to_mdays(target_year, target_month)?;
+                    if day > mdays {
+                        mdays
+                    } else {
+                        day
+                    }
+                }
+            };
+            DateTime::from_ymd(target_year, target_month, target_day)?
+        }
+        Unit::Day => {
+            let dur = Duration::new(amount * 60 * 60 * 24, 0);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Hour => {
+            let dur = Duration::new(amount * 60 * 60, 0);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Min => {
+            let dur = Duration::new(amount * 60, 0);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Sec => {
+            let dur = Duration::new(amount, 0);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Milli => {
+            let dur = Duration::new(0, (amount * 1000000) as u32);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Micro => {
+            let dur = Duration::new(0, (amount * 1000) as u32);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Nano => {
+            let dur = Duration::new(0, amount as u32);
+            apply_duration(old, dur, atype)
+        }
+    })
+}
+
+fn apply_duration(old: &DateTime, duration: Duration, atype: ApplyType) -> DateTime {
+    match atype {
+        ApplyType::Add => DateTime(old.0.add(duration)),
+        ApplyType::Sub => DateTime(old.0.sub(duration)),
+    }
 }
