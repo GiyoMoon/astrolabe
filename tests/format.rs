@@ -3,6 +3,18 @@ mod tests {
     use astrolabe::DateTime;
 
     #[test]
+    fn format_era() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!("AD", date_time.format("G").unwrap());
+        assert_eq!("AD", date_time.format("GG").unwrap());
+        assert_eq!("AD", date_time.format("GGG").unwrap());
+        assert_eq!("Anno Domini", date_time.format("GGGG").unwrap());
+        assert_eq!("A", date_time.format("GGGGG").unwrap());
+        assert_eq!("Anno Domini", date_time.format("GGGGGG").unwrap());
+        assert_eq!("Anno Domini", date_time.format("GGGGGGG").unwrap());
+    }
+
+    #[test]
     fn format_year() {
         let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1970", date_time.format("y").unwrap());
@@ -24,6 +36,31 @@ mod tests {
         assert_eq!("2345", date_time.format("yyy").unwrap());
         assert_eq!("2345", date_time.format("yyyy").unwrap());
         assert_eq!("02345", date_time.format("yyyyy").unwrap());
+    }
+
+    #[test]
+    fn format_quarter() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!("1", date_time.format("q").unwrap());
+        assert_eq!("01", date_time.format("qq").unwrap());
+        assert_eq!("Q1", date_time.format("qqq").unwrap());
+        assert_eq!("1st quarter", date_time.format("qqqq").unwrap());
+        assert_eq!("1", date_time.format("qqqqq").unwrap());
+        assert_eq!("1", date_time.format("qqqqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 3, 31, 0, 0, 0).unwrap();
+        assert_eq!("1st quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 4, 1, 0, 0, 0).unwrap();
+        assert_eq!("2nd quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 6, 30, 0, 0, 0).unwrap();
+        assert_eq!("2nd quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 7, 1, 0, 0, 0).unwrap();
+        assert_eq!("3rd quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 9, 30, 0, 0, 0).unwrap();
+        assert_eq!("3rd quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 10, 1, 0, 0, 0).unwrap();
+        assert_eq!("4th quarter", date_time.format("qqqq").unwrap());
+        let date_time = DateTime::from_ymdhms(1970, 12, 31, 0, 0, 0).unwrap();
+        assert_eq!("4th quarter", date_time.format("qqqq").unwrap());
     }
 
     #[test]

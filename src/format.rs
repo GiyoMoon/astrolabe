@@ -3,6 +3,12 @@ use crate::DateTimeError;
 pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError> {
     let first_char = chars.chars().next().ok_or(DateTimeError::InvalidFormat)?;
     Ok(match first_char {
+        // SystemTime can only be year 1970 or later, which is always AD
+        'G' => match chars.len() {
+            1 | 2 | 3 => "AD".to_string(),
+            5 => "A".to_string(),
+            _ => "Anno Domini".to_string(),
+        },
         'y' => match chars.len() {
             2 => {
                 let year = get_date_val(timestamp, DateValue::Year).to_string();
@@ -11,8 +17,20 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
             }
             _ => zero_padded(get_date_val(timestamp, DateValue::Year), chars.len()),
         },
+        'q' => {
+            let quarter = (get_date_val(timestamp, DateValue::Month) - 1) / 3 + 1;
+            match chars.len() {
+                1 | 2 => zero_padded(quarter, chars.len()),
+                3 => format!("Q{quarter}"),
+                4 => {
+                    let ordinal = ordinal_indicator(quarter);
+                    format!("{ordinal} quarter")
+                },
+                _ => zero_padded(quarter, 1)
+            }
+        },
         'M' => format_month(chars.len(), timestamp)?,
-        'd' => format_days(chars.len(), timestamp),
+        'd' => zero_padded(get_date_val(timestamp, DateValue::Day), get_length(chars.len(), 2, 2)),
         'h' => {
             let hour = if get_time_val(timestamp, TimeValue::Hour) % 12 == 0 {
                 12
@@ -61,8 +79,8 @@ fn get_length(length: usize, default: usize, max: usize) -> usize {
     }
 }
 
-fn format_month(length: usize, secs_since_epoch: u64) -> Result<String, DateTimeError> {
-    let month = get_date_val(secs_since_epoch, DateValue::Month);
+fn format_month(length: usize, timestamp: u64) -> Result<String, DateTimeError> {
+    let month = get_date_val(timestamp, DateValue::Month);
     const MONTH_ABBREVIATED: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
@@ -105,12 +123,6 @@ fn format_month(length: usize, secs_since_epoch: u64) -> Result<String, DateTime
             .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
     })
-}
-
-fn format_days(length: usize, secs_since_epoch: u64) -> String {
-    let days = get_date_val(secs_since_epoch, DateValue::Day);
-
-    zero_padded(days, get_length(length, 2, 2))
 }
 
 // Most of the logic is taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c (MIT license)
@@ -210,5 +222,15 @@ fn get_time_val(timestamp: u64, value: TimeValue) -> u64 {
         TimeValue::Hour => time_from_timestamp(timestamp).0,
         TimeValue::Min => time_from_timestamp(timestamp).1,
         TimeValue::Sec => time_from_timestamp(timestamp).2,
+    }
+}
+
+fn ordinal_indicator(number: u64) -> String {
+    match number {
+        11 | 12 | 13 => format!("{number}th"),
+        number if (number - 1) % 10 == 0 => format!("{number}st"),
+        number if (number - 2) % 10 == 0 => format!("{number}nd"),
+        number if (number - 3) % 10 == 0 => format!("{number}rd"),
+        _ => format!("{number}th"),
     }
 }

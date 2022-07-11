@@ -288,11 +288,19 @@ impl DateTime {
     ///
     /// | Field Type | Pattern | Examples                      | Hint                                     |
     /// | ---------- | ------- | ----------------------------- | ---------------------------------------- |
+    /// | era       | G..GGG       | AD       |                                          |
+    /// |            | GGGG      | Anno Domini            | *                                         |
+    /// |            | GGGGG     | A    |                                          |
     /// | year       | y       | 2, 20, 201, 2017, 20173       |                                          |
     /// |            | yy      | 02, 20, 01, 17, 73            |                                          |
     /// |            | yyy     | 002, 020, 201, 2017, 20173    |                                          |
     /// |            | yyyy    | 0002, 0020, 0201, 2017, 20173 |                                          |
     /// |            | yyyyy+  | ...                           | Unlimited length,<br/>padded with zeros. |
+    /// | quarter       | q       | 2       | *                                         |
+    /// |            | qq      | 02            |                                          |
+    /// |            | qqq     | Q2   |                                          |
+    /// |            | qqqq     | 2nd quarter    |                                          |
+    /// |            | qqqqq     | 2    |                                          |
     /// | month      | M       | 9, 12                         |                                          |
     /// |            | MM      | 09, 12                        |                                          |
     /// |            | MMM     | Sep                           |                                          |
