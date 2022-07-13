@@ -9,16 +9,35 @@
 //!     (Which allows formatting [`SystemTime`](std::time::SystemTime) into basically any string format).
 //!     <br>See [`DateTime::format`]
 //! * **Manipulation**
-//!   * Use modify functions like [`DateTime::add`] or [`DateTime::sub`] to create a new, modified [`DateTime`] struct
+//!   * Manipulation functions like [`DateTime::add`] or [`DateTime::sub`] to create a new, modified [`DateTime`] struct
 //! * **Timezone**
 //!   * Specify a timezone offset which will be applied in any format function
 //! * Zero dependencies
+//!
+//! ### Example
+//! ```rust
+//! use astrolabe::{DateTime, Precision, Unit};
+//!
+//! // Create a DateTime instance from year, month, and days (day of month)
+//! let date_time = DateTime::from_ymd(2022, 5, 2).unwrap();
+//!
+//! // Use the format function to freely format your `DateTime` instance
+//! assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());
+//!
+//! // Create a new instance with a modified `DateTime`
+//! // The previous instance is not modified and is still in scope
+//! let modified_dt = date_time.add(11, Unit::Hour).add(23, Unit::Min);
+//!
+//! assert_eq!("2022/05/02 11:23:00", modified_dt.format("yyyy/MM/dd HH:mm:ss").unwrap());
+//! assert_eq!("2022-05-02T11:23:00Z", modified_dt.format_rfc3339(Precision::Seconds));
+//! ```
+//! To see all implementations for the [`DateTime`] struct, check out it's [documentation](DateTime).
 
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 
 mod datetime;
-mod format;
+mod util;
 
-pub use self::datetime::{DateTime, Error as DateTimeError, Precision, Unit};
+pub use self::datetime::{DateTime, DateTimeError, Precision, Unit};

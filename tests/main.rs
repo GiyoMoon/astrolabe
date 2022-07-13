@@ -118,51 +118,47 @@ mod tests {
         assert_eq!(86400, modified.timestamp());
         assert_eq!(0, modified2.timestamp());
 
-        let modified = date_time.add(123, Unit::Nano).unwrap();
+        let modified = date_time.add(123, Unit::Nano);
         assert_eq!(123, modified.duration().as_nanos());
-        let modified = date_time.add(123, Unit::Micro).unwrap();
+        let modified = date_time.add(123, Unit::Micro);
         assert_eq!(123000, modified.duration().as_nanos());
-        let modified = date_time.add(123, Unit::Milli).unwrap();
+        let modified = date_time.add(123, Unit::Milli);
         assert_eq!(123000000, modified.duration().as_nanos());
-        let modified = date_time.add(123, Unit::Sec).unwrap();
+        let modified = date_time.add(123, Unit::Sec);
         assert_eq!(123, modified.duration().as_secs());
-        let modified = date_time.add(123, Unit::Min).unwrap();
+        let modified = date_time.add(123, Unit::Min);
         assert_eq!(7380, modified.duration().as_secs());
-        let modified = date_time.add(123, Unit::Hour).unwrap();
+        let modified = date_time.add(123, Unit::Hour);
         assert_eq!(442800, modified.duration().as_secs());
-        let modified = date_time.add(123, Unit::Day).unwrap();
+        let modified = date_time.add(123, Unit::Day);
         assert_eq!(10627200, modified.duration().as_secs());
-        let modified = date_time.add(11, Unit::Month).unwrap();
+        let modified = date_time.add(11, Unit::Month);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time.add(12, Unit::Month).unwrap();
+        let modified = date_time.add(12, Unit::Month);
         assert_eq!("1971-01-01", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time.add(14, Unit::Month).unwrap();
+        let modified = date_time.add(14, Unit::Month);
         assert_eq!("1971-03-01", modified.format("yyyy-MM-dd").unwrap());
 
         // Leap year cases
-        let modified = date_time.add(30, Unit::Day).unwrap();
+        let modified = date_time.add(30, Unit::Day);
         assert_eq!("1970-01-31", modified.format("yyyy-MM-dd").unwrap());
-        let modified = modified.add(1, Unit::Month).unwrap();
+        let modified = modified.add(1, Unit::Month);
         assert_eq!("1970-02-28", modified.format("yyyy-MM-dd").unwrap());
-        let modified = modified.add(2, Unit::Year).unwrap();
+        let modified = modified.add(2, Unit::Year);
         assert_eq!("1972-02-28", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time
-            .add(2, Unit::Year)
-            .unwrap()
-            .add(30, Unit::Day)
-            .unwrap();
+        let modified = date_time.add(2, Unit::Year).add(30, Unit::Day);
         assert_eq!("1972-01-31", modified.format("yyyy-MM-dd").unwrap());
-        let modified = modified.add(1, Unit::Month).unwrap();
+        let modified = modified.add(1, Unit::Month);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
 
         let date_time = DateTime::from_ymd(1971, 1, 1).unwrap();
-        let modified = date_time.sub(1, Unit::Month).unwrap();
+        let modified = date_time.sub(1, Unit::Month);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
 
         let date_time = DateTime::from_ymd(1972, 3, 31).unwrap();
-        let modified = date_time.sub(1, Unit::Month).unwrap();
+        let modified = date_time.sub(1, Unit::Month);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
-        let modified = modified.sub(1, Unit::Month).unwrap();
+        let modified = modified.sub(1, Unit::Month);
         assert_eq!("1972-01-29", modified.format("yyyy-MM-dd").unwrap());
     }
 
