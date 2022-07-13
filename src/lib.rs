@@ -33,6 +33,7 @@
 //! ```
 //! To see all implementations for the [`DateTime`] struct, check out it's [documentation](DateTime).
 
+#![doc(html_logo_url = "https://raw.githubusercontent.com/giyomoon/astrolabe/main/assets/logo.svg")]
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
