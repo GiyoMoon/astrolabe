@@ -1,6 +1,11 @@
 use super::leap::{is_leap_year, leaps_since_epoch};
 use crate::DateTimeError;
 
+const SECS_PER_MINUTE: u64 = 60;
+const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
+const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
+const SECS_PER_WEEK: u64 = 7 * SECS_PER_DAY;
+
 /// Converts a unix timestamp to date units (year, month and day of month)
 /// Logic originally released by the musl project (http://www.musl-libc.org/) under the MIT license. Taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
 pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
@@ -63,9 +68,6 @@ pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
 
 /// Converts a unix timestamp to subday time units (hour, min, sec)
 pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
-    const SECS_PER_MINUTE: u64 = 60;
-    const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
-    const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
     let subday_sec = (timestamp % SECS_PER_DAY as u64) as u64;
     let hour = subday_sec / 3600;
     let min = subday_sec / 60 % 60;
@@ -73,6 +75,7 @@ pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
     (hour, min, sec)
 }
 
+/// Converts a date (year, month and day of month) to days since January 1, 1970
 pub(crate) fn date_to_days(year: u64, month: u64, day: u64) -> Result<u64, DateTimeError> {
     let leap_years = leaps_since_epoch(year);
     let (mut ydays, mdays) = month_to_ymdays(year, month)?;
@@ -121,4 +124,17 @@ pub(crate) fn month_to_ymdays(year: u64, month: u64) -> Result<(u64, u64), DateT
             _ => return Err(DateTimeError::OutOfRange),
         })
     }
+}
+
+/// Converts a timestamp to day of year
+pub(crate) fn ts_to_yday(timestamp: u64) -> u64 {
+    let (year, month, day) = ts_to_d_units(timestamp);
+    // Using unwrap because it's safe to assume that month is valid
+    let (ydays, _) = month_to_ymdays(year, month).unwrap();
+    ydays + day
+}
+
+/// Converts a timestamp to day of week
+pub(crate) fn ts_to_wday(timestamp: u64, monday_first: bool) -> u64 {
+    (timestamp % SECS_PER_WEEK / SECS_PER_DAY + if monday_first { 3 } else { 4 }) % 7
 }

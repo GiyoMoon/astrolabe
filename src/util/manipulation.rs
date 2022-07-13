@@ -27,7 +27,7 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
                 ApplyType::Add => year + amount,
                 ApplyType::Sub => year - amount,
             };
-            // Use unwrap here because month and day will always be valid
+            // Using unwrap because it's safe to assume that month and day is valid
             DateTime::from_ymd(target_year, month, day).unwrap()
         }
         Unit::Month => {
@@ -55,7 +55,7 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
             let target_day = match day {
                 day if day < 29 => day,
                 _ => {
-                    // Use unwrap here because month will always be between 1 and 12
+                    // Using unwrap because it's safe to assume that month is valid
                     let (_, mdays) = month_to_ymdays(target_year, target_month).unwrap();
                     if day > mdays {
                         mdays
@@ -64,7 +64,7 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
                     }
                 }
             };
-            // Use unwrap here because month and day will always be valid
+            // Using unwrap because it's safe to assume that month and day is valid
             DateTime::from_ymd(target_year, target_month, target_day).unwrap()
         }
         Unit::Day => {

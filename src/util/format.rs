@@ -1,5 +1,5 @@
-use super::convert::{ts_to_d_units, ts_to_t_units};
-use crate::DateTimeError;
+use super::convert::{ts_to_d_units, ts_to_t_units, ts_to_yday};
+use crate::{util::convert::ts_to_wday, DateTimeError};
 
 /// Formats a number as a zero padded string
 pub(crate) fn zero_padded(number: u64, length: usize) -> String {
@@ -58,6 +58,8 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
         }
         'M' => format_month(chars.len(), timestamp)?,
         'd' => zero_padded(ts_to_d_units(timestamp).2, get_length(chars.len(), 2, 2)),
+        'D' => zero_padded(ts_to_yday(timestamp), get_length(chars.len(), 1, 3)),
+        'e' => format_wday(chars.len(), timestamp)?,
         'h' => {
             let hour = if ts_to_t_units(timestamp).0 % 12 == 0 {
                 12
@@ -124,5 +126,48 @@ fn format_month(length: usize, timestamp: u64) -> Result<String, DateTimeError> 
             .nth((month - 1) as usize)
             .ok_or(DateTimeError::InvalidFormat)?
             .to_string(),
+    })
+}
+
+/// Formats the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
+fn format_wday(length: usize, timestamp: u64) -> Result<String, DateTimeError> {
+    const MONTH_ABBREVIATED: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTH_WIDE: [&str; 7] = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ];
+    const MONTH_NARROW: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
+    const MONTH_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    Ok(match length {
+        1 | 2 => zero_padded(ts_to_wday(timestamp, false) + 1, length),
+        3 => MONTH_ABBREVIATED
+            .into_iter()
+            .nth(ts_to_wday(timestamp, false) as usize)
+            .ok_or(DateTimeError::InvalidFormat)?
+            .to_string(),
+        4 => MONTH_WIDE
+            .into_iter()
+            .nth(ts_to_wday(timestamp, false) as usize)
+            .ok_or(DateTimeError::InvalidFormat)?
+            .to_string(),
+        5 => MONTH_NARROW
+            .into_iter()
+            .nth(ts_to_wday(timestamp, false) as usize)
+            .ok_or(DateTimeError::InvalidFormat)?
+            .to_string(),
+        6 => MONTH_SHORT
+            .into_iter()
+            .nth(ts_to_wday(timestamp, false) as usize)
+            .ok_or(DateTimeError::InvalidFormat)?
+            .to_string(),
+        7 => zero_padded(ts_to_wday(timestamp, true) + 1, 1),
+        8 => zero_padded(ts_to_wday(timestamp, true) + 1, 2),
+        _ => zero_padded(ts_to_wday(timestamp, false) + 1, 1),
     })
 }

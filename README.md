@@ -61,8 +61,6 @@
   </h4>
 </div>
 
-<br />
-
 ## Status
 Astrolabe is currently in **heavy development**. Please do not use the crate in production yet.
 
@@ -71,7 +69,7 @@ Astrolabe is currently in **heavy development**. Please do not use the crate in 
 Astrolabe is a date and time library for Rust which aims to be feature rich, lightweight (zero dependencies) and easy-to-use.
 
 ### Features
-> At this stage of development, not all features have been fully implemented.
+At this stage of development, not all features have been fully implemented.
 * [`DateTime`](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html), a wrapper around [`std::time::SystemTime`](https://doc.rust-lang.org/std/time/struct.SystemTime.html) which implements formatting and manipulation functions
 * **Formatting**
   * RFC3339 timestamp
@@ -86,7 +84,7 @@ Astrolabe is a date and time library for Rust which aims to be feature rich, lig
 
 A basic example which demonstrates creating, formatting and manipulating a `DateTime` instance.
 
-```rs
+```rust
 use astrolabe::{DateTime, Precision, Unit};
 
 // Create a DateTime instance from year, month, and days (day of month)
