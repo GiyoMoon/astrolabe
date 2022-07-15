@@ -282,6 +282,65 @@ mod tests {
     }
 
     #[test]
+    fn format_period() {
+        let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+        assert_eq!("AM", date_time.format("a").unwrap());
+        assert_eq!("AM", date_time.format("aa").unwrap());
+        assert_eq!("am", date_time.format("aaa").unwrap());
+        assert_eq!("a.m.", date_time.format("aaaa").unwrap());
+        assert_eq!("a", date_time.format("aaaaa").unwrap());
+        assert_eq!("am", date_time.format("aaaaaa").unwrap());
+        assert_eq!("midnight", date_time.format("b").unwrap());
+        assert_eq!("midnight", date_time.format("bb").unwrap());
+        assert_eq!("midnight", date_time.format("bbb").unwrap());
+        assert_eq!("midnight", date_time.format("bbbb").unwrap());
+        assert_eq!("mi", date_time.format("bbbbb").unwrap());
+        assert_eq!("midnight", date_time.format("bbbbbb").unwrap());
+
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 12, 0, 0).unwrap();
+        assert_eq!("PM", date_time.format("a").unwrap());
+        assert_eq!("PM", date_time.format("aa").unwrap());
+        assert_eq!("pm", date_time.format("aaa").unwrap());
+        assert_eq!("p.m.", date_time.format("aaaa").unwrap());
+        assert_eq!("p", date_time.format("aaaaa").unwrap());
+        assert_eq!("pm", date_time.format("aaaaaa").unwrap());
+        assert_eq!("noon", date_time.format("b").unwrap());
+        assert_eq!("noon", date_time.format("bb").unwrap());
+        assert_eq!("noon", date_time.format("bbb").unwrap());
+        assert_eq!("noon", date_time.format("bbbb").unwrap());
+        assert_eq!("n", date_time.format("bbbbb").unwrap());
+        assert_eq!("noon", date_time.format("bbbbbb").unwrap());
+
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 9, 0, 0).unwrap();
+        assert_eq!("AM", date_time.format("a").unwrap());
+        assert_eq!("AM", date_time.format("aa").unwrap());
+        assert_eq!("am", date_time.format("aaa").unwrap());
+        assert_eq!("a.m.", date_time.format("aaaa").unwrap());
+        assert_eq!("a", date_time.format("aaaaa").unwrap());
+        assert_eq!("am", date_time.format("aaaaaa").unwrap());
+        assert_eq!("AM", date_time.format("b").unwrap());
+        assert_eq!("AM", date_time.format("bb").unwrap());
+        assert_eq!("am", date_time.format("bbb").unwrap());
+        assert_eq!("a.m.", date_time.format("bbbb").unwrap());
+        assert_eq!("a", date_time.format("bbbbb").unwrap());
+        assert_eq!("am", date_time.format("bbbbbb").unwrap());
+
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 21, 0, 0).unwrap();
+        assert_eq!("PM", date_time.format("a").unwrap());
+        assert_eq!("PM", date_time.format("aa").unwrap());
+        assert_eq!("pm", date_time.format("aaa").unwrap());
+        assert_eq!("p.m.", date_time.format("aaaa").unwrap());
+        assert_eq!("p", date_time.format("aaaaa").unwrap());
+        assert_eq!("pm", date_time.format("aaaaaa").unwrap());
+        assert_eq!("PM", date_time.format("b").unwrap());
+        assert_eq!("PM", date_time.format("bb").unwrap());
+        assert_eq!("pm", date_time.format("bbb").unwrap());
+        assert_eq!("p.m.", date_time.format("bbbb").unwrap());
+        assert_eq!("p", date_time.format("bbbbb").unwrap());
+        assert_eq!("pm", date_time.format("bbbbbb").unwrap());
+    }
+
+    #[test]
     fn format_hour() {
         let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
         assert_eq!("12", date_time.format("h").unwrap());

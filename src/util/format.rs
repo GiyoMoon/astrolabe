@@ -60,7 +60,9 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
         'w' => zero_padded(ts_to_wyear(timestamp), get_length(chars.len(), 2, 2)),
         'd' => zero_padded(ts_to_d_units(timestamp).2, get_length(chars.len(), 2, 2)),
         'D' => zero_padded(ts_to_yday(timestamp), get_length(chars.len(), 1, 3)),
-        'e' => format_wday(chars.len(), timestamp)?,
+        'e' => format_wday(timestamp, chars.len())?,
+        'a' => format_period(timestamp, get_length(chars.len(), 3, 5), false),
+        'b' => format_period(timestamp, get_length(chars.len(), 3, 5), true),
         'h' => {
             let hour = if ts_to_t_units(timestamp).0 % 12 == 0 {
                 12
@@ -131,7 +133,7 @@ fn format_month(length: usize, timestamp: u64) -> Result<String, DateTimeError> 
 }
 
 /// Formats the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_wday(length: usize, timestamp: u64) -> Result<String, DateTimeError> {
+fn format_wday(timestamp: u64, length: usize) -> Result<String, DateTimeError> {
     const MONTH_ABBREVIATED: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_WIDE: [&str; 7] = [
         "Sunday",
@@ -171,4 +173,26 @@ fn format_wday(length: usize, timestamp: u64) -> Result<String, DateTimeError> {
         8 => zero_padded(ts_to_wday(timestamp, true) + 1, 2),
         _ => zero_padded(ts_to_wday(timestamp, false) + 1, 1),
     })
+}
+
+fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
+    const FORMATS: [[&str; 4]; 5] = [
+        ["AM", "PM", "noon", "midnight"],
+        ["AM", "PM", "noon", "midnight"],
+        ["am", "pm", "noon", "midnight"],
+        ["a.m.", "p.m.", "noon", "midnight"],
+        ["a", "p", "n", "mi"],
+    ];
+    let time = timestamp % 86400;
+
+    match time {
+        time if seperate_12 && time == 0 => {
+            FORMATS.into_iter().nth(length - 1).unwrap()[3].to_string()
+        }
+        time if seperate_12 && time == 43200 => {
+            FORMATS.into_iter().nth(length - 1).unwrap()[2].to_string()
+        }
+        time if time < 43200 => FORMATS.into_iter().nth(length - 1).unwrap()[0].to_string(),
+        _ => FORMATS.into_iter().nth(length - 1).unwrap()[1].to_string(),
+    }
 }

@@ -312,53 +312,61 @@ impl DateTime {
     ///
     /// # Available Symbols:
     ///
-    /// | Field Type | Pattern  | Examples                      | Hint                                     |
-    /// | ---------- | -------- | ----------------------------- | ---------------------------------------- |
-    /// | era        | G..GGG   | AD                            |                                          |
-    /// |            | GGGG     | Anno Domini                   | *                                        |
-    /// |            | GGGGG    | A                             |                                          |
-    /// | year       | y        | 2, 20, 201, 2017, 20173       |                                          |
-    /// |            | yy       | 02, 20, 01, 17, 73            |                                          |
-    /// |            | yyy      | 002, 020, 201, 2017, 20173    |                                          |
-    /// |            | yyyy     | 0002, 0020, 0201, 2017, 20173 |                                          |
-    /// |            | yyyyy+   | ...                           | Unlimited length,<br/>padded with zeros. |
-    /// | quarter    | q        | 2                             | *                                        |
-    /// |            | qq       | 02                            |                                          |
-    /// |            | qqq      | Q2                            |                                          |
-    /// |            | qqqq     | 2nd quarter                   |                                          |
-    /// |            | qqqqq    | 2                             |                                          |
-    /// | month      | M        | 9, 12                         |                                          |
-    /// |            | MM       | 09, 12                        |                                          |
-    /// |            | MMM      | Sep                           |                                          |
-    /// |            | MMMM     | September                     | *                                        |
-    /// |            | MMMMM    | S                             |                                          |
-    /// | week       | w        | 8, 27                         | Week of year                             |
-    /// |            | ww       | 08, 27                        | *                                        |
-    /// | days       | d        | 1                             | Day of month                             |
-    /// |            | dd       | 01                            | *                                        |
-    /// |            | D        | 1, 24 135                     | Day of year, *                           |
-    /// |            | DD       | 01, 24, 135                   |                                          |
-    /// |            | DDD      | 001, 024, 135                 |                                          |
-    /// | week day   | e        | 3                             | 1-7, 1 is Sunday, *                      |
-    /// |            | ee       | 03                            | 1-7, 1 is Sunday                         |
-    /// |            | eee      | Tue                           |                                          |
-    /// |            | eeee     | Tuesday                       |                                          |
-    /// |            | eeeee    | T                             |                                          |
-    /// |            | eeeeee   | Tu                            |                                          |
-    /// |            | eeeeeee  | 2                             | 1-7, 1 is Monday                         |
-    /// |            | eeeeeeee | 02                            | 1-7, 1 is Monday                         |
-    /// | hour       | h        | 1, 12                         | [1-12]                                   |
-    /// |            | hh       | 01, 12                        | *                                        |
-    /// |            | H        | 0, 23                         | [0-23]                                   |
-    /// |            | HH       | 00, 23                        | *                                        |
-    /// |            | K        | 0, 11                         | [0-11]                                   |
-    /// |            | KK       | 00, 11                        | *                                        |
-    /// |            | h        | 1, 24                         | [1-24]                                   |
-    /// |            | hh       | 01, 24                        | *                                        |
-    /// | minute     | m        | 0, 59                         |                                          |
-    /// |            | mm       | 00, 59                        | *                                        |
-    /// | second     | s        | 0, 59                         |                                          |
-    /// |            | ss       | 00, 59                        | *                                        |
+    /// | Field Type                 | Pattern  | Examples                       | Hint                                     |
+    /// | -------------------------- | -------- | ------------------------------ | ---------------------------------------- |
+    /// | era                        | G..GGG   | AD                             |                                          |
+    /// |                            | GGGG     | Anno Domini                    | *                                        |
+    /// |                            | GGGGG    | A                              |                                          |
+    /// | year                       | y        | 2, 20, 201, 2017, 20173        |                                          |
+    /// |                            | yy       | 02, 20, 01, 17, 73             |                                          |
+    /// |                            | yyy      | 002, 020, 201, 2017, 20173     |                                          |
+    /// |                            | yyyy     | 0002, 0020, 0201, 2017, 20173  |                                          |
+    /// |                            | yyyyy+   | ...                            | Unlimited length,<br/>padded with zeros. |
+    /// | quarter                    | q        | 2                              | *                                        |
+    /// |                            | qq       | 02                             |                                          |
+    /// |                            | qqq      | Q2                             |                                          |
+    /// |                            | qqqq     | 2nd quarter                    |                                          |
+    /// |                            | qqqqq    | 2                              |                                          |
+    /// | month                      | M        | 9, 12                          |                                          |
+    /// |                            | MM       | 09, 12                         |                                          |
+    /// |                            | MMM      | Sep                            |                                          |
+    /// |                            | MMMM     | September                      | *                                        |
+    /// |                            | MMMMM    | S                              |                                          |
+    /// | week                       | w        | 8, 27                          | Week of year                             |
+    /// |                            | ww       | 08, 27                         | *                                        |
+    /// | days                       | d        | 1                              | Day of month                             |
+    /// |                            | dd       | 01                             | *                                        |
+    /// |                            | D        | 1, 24 135                      | Day of year, *                           |
+    /// |                            | DD       | 01, 24, 135                    |                                          |
+    /// |                            | DDD      | 001, 024, 135                  |                                          |
+    /// | week day                   | e        | 3                              | 1-7, 1 is Sunday, *                      |
+    /// |                            | ee       | 03                             | 1-7, 1 is Sunday                         |
+    /// |                            | eee      | Tue                            |                                          |
+    /// |                            | eeee     | Tuesday                        |                                          |
+    /// |                            | eeeee    | T                              |                                          |
+    /// |                            | eeeeee   | Tu                             |                                          |
+    /// |                            | eeeeeee  | 2                              | 1-7, 1 is Monday                         |
+    /// |                            | eeeeeeee | 02                             | 1-7, 1 is Monday                         |
+    /// | AM, PM                     | a..aa    | AM, PM                         |                                          |
+    /// |                            | aaa      | am, pm                         | *                                        |
+    /// |                            | aaaa     | a.m., p.m.                     |                                          |
+    /// |                            | aaaaa    | a, p                           |                                          |
+    /// | AM, PM,<br/>noon, midnight | b..bb    | AM, PM,<br/>noon, midnight     |                                          |
+    /// |                            | bbb      | am, pm,<br/>noon, midnight     | *                                        |
+    /// |                            | bbbb     | a.m., p.m.,<br/>noon, midnight |                                          |
+    /// |                            | bbbbb    | a, p, n, mi                    |                                          |
+    /// | hour                       | h        | 1, 12                          | [1-12]                                   |
+    /// |                            | hh       | 01, 12                         | *                                        |
+    /// |                            | H        | 0, 23                          | [0-23]                                   |
+    /// |                            | HH       | 00, 23                         | *                                        |
+    /// |                            | K        | 0, 11                          | [0-11]                                   |
+    /// |                            | KK       | 00, 11                         | *                                        |
+    /// |                            | h        | 1, 24                          | [1-24]                                   |
+    /// |                            | hh       | 01, 24                         | *                                        |
+    /// | minute                     | m        | 0, 59                          |                                          |
+    /// |                            | mm       | 00, 59                         | *                                        |
+    /// | second                     | s        | 0, 59                          |                                          |
+    /// |                            | ss       | 00, 59                         | *                                        |
     ///
     /// `*` = Default
     ///
