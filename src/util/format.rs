@@ -1,4 +1,4 @@
-use super::convert::{ts_to_d_units, ts_to_t_units, ts_to_yday};
+use super::convert::{ts_to_d_units, ts_to_t_units, ts_to_wyear, ts_to_yday};
 use crate::{util::convert::ts_to_wday, DateTimeError};
 
 /// Formats a number as a zero padded string
@@ -57,6 +57,7 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
             }
         }
         'M' => format_month(chars.len(), timestamp)?,
+        'w' => zero_padded(ts_to_wyear(timestamp), get_length(chars.len(), 2, 2)),
         'd' => zero_padded(ts_to_d_units(timestamp).2, get_length(chars.len(), 2, 2)),
         'D' => zero_padded(ts_to_yday(timestamp), get_length(chars.len(), 1, 3)),
         'e' => format_wday(chars.len(), timestamp)?,

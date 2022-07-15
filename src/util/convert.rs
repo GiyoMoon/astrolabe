@@ -138,3 +138,31 @@ pub(crate) fn ts_to_yday(timestamp: u64) -> u64 {
 pub(crate) fn ts_to_wday(timestamp: u64, monday_first: bool) -> u64 {
     (timestamp % SECS_PER_WEEK / SECS_PER_DAY + if monday_first { 3 } else { 4 }) % 7
 }
+
+/// Converts a timestamp to week of year
+/// Formula taken from https://tondering.dk/claus/cal/week.php#calcweekno
+pub(crate) fn ts_to_wyear(timestamp: u64) -> u64 {
+    let (year, month, day) = ts_to_d_units(timestamp);
+    let year = year as i64;
+    let month = month as i64;
+    let day = day as i64;
+
+    let a = if month <= 2 { year - 1 } else { year };
+    let b = a / 4 - a / 100 + a / 400;
+    let c = (a - 1) / 4 - (a - 1) / 100 + (a - 1) / 400;
+    let s = b - c;
+    let e = if month <= 2 { 0 } else { s + 1 };
+    let f = if month <= 2 {
+        day - 1 + 31 * (month - 1)
+    } else {
+        day + (153 * (month - 3) + 2) / 5 + 58 + s
+    };
+    let g = (a + b) % 7;
+    let d = (f + g - e) % 7;
+    let n = f + 3 - d;
+    match n {
+        n if n < 0 => (53 - (g - s) / 5) as u64,
+        n if n > 364 + s => 1,
+        _ => (n / 7 + 1) as u64,
+    }
+}

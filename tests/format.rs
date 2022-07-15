@@ -91,6 +91,99 @@ mod tests {
     }
 
     #[test]
+    fn format_week() {
+        let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+        assert_eq!("01", date_time.format("www").unwrap());
+
+        let date_time = DateTime::from_ymd(1971, 1, 1).unwrap();
+        assert_eq!("53", date_time.format("w").unwrap());
+        assert_eq!("53", date_time.format("ww").unwrap());
+        assert_eq!("53", date_time.format("www").unwrap());
+
+        let date_time = DateTime::from_ymd(1972, 1, 1).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1973, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1974, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1975, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1976, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1977, 1, 1).unwrap();
+        assert_eq!("53", date_time.format("w").unwrap());
+        assert_eq!("53", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1978, 1, 1).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1979, 1, 1).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1970, 12, 31).unwrap();
+        assert_eq!("53", date_time.format("w").unwrap());
+        assert_eq!("53", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1971, 12, 31).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1972, 12, 31).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1973, 12, 31).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1974, 12, 31).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1975, 12, 31).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1976, 12, 31).unwrap();
+        assert_eq!("53", date_time.format("w").unwrap());
+        assert_eq!("53", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1977, 12, 31).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1978, 12, 31).unwrap();
+        assert_eq!("52", date_time.format("w").unwrap());
+        assert_eq!("52", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(1979, 12, 31).unwrap();
+        assert_eq!("1", date_time.format("w").unwrap());
+        assert_eq!("01", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(2022, 3, 1).unwrap();
+        assert_eq!("9", date_time.format("w").unwrap());
+        assert_eq!("09", date_time.format("ww").unwrap());
+
+        let date_time = DateTime::from_ymd(2032, 3, 1).unwrap();
+        assert_eq!("10", date_time.format("w").unwrap());
+        assert_eq!("10", date_time.format("ww").unwrap());
+    }
+
+    #[test]
     fn format_day() {
         let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date_time.format("d").unwrap());

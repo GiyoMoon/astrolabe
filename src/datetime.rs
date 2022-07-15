@@ -128,6 +128,21 @@ impl DateTime {
         ))
     }
 
+    /// Creates a new [`DateTime`] struct from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_timestamp(0);
+    /// assert_eq!(0, date_time.timestamp());
+    /// assert_eq!("1970-01-01", date_time.format("yyyy-MM-dd").unwrap());
+    /// ```
+    pub fn from_timestamp(timestamp: u64) -> Self {
+        DateTime(UNIX_EPOCH + Duration::new(timestamp, 0))
+    }
+
     /// Returns the duration since January 1, 1970 00:00:00 UTC
     ///
     /// # Example
@@ -317,6 +332,8 @@ impl DateTime {
     /// |            | MMM      | Sep                           |                                          |
     /// |            | MMMM     | September                     | *                                        |
     /// |            | MMMMM    | S                             |                                          |
+    /// | week       | w        | 8, 27                         | Week of year                             |
+    /// |            | ww       | 08, 27                        | *                                        |
     /// | days       | d        | 1                             | Day of month                             |
     /// |            | dd       | 01                            | *                                        |
     /// |            | D        | 1, 24 135                     | Day of year, *                           |
@@ -426,19 +443,31 @@ impl DateTime {
 }
 
 impl From<SystemTime> for DateTime {
-    fn from(time: SystemTime) -> DateTime {
+    fn from(time: SystemTime) -> Self {
         DateTime(time)
     }
 }
 
+impl From<Duration> for DateTime {
+    fn from(duration: Duration) -> Self {
+        DateTime(UNIX_EPOCH + duration)
+    }
+}
+
 impl From<DateTime> for SystemTime {
-    fn from(date_time: DateTime) -> SystemTime {
+    fn from(date_time: DateTime) -> Self {
         date_time.0
     }
 }
 
 impl From<&DateTime> for SystemTime {
-    fn from(date_time: &DateTime) -> SystemTime {
+    fn from(date_time: &DateTime) -> Self {
         date_time.0
+    }
+}
+
+impl Default for DateTime {
+    fn default() -> Self {
+        Self::from_timestamp(0)
     }
 }

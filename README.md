@@ -53,8 +53,7 @@
     <a href="https://crates.io/crates/astrolabe" target="_blank">
       Crate
     </a>
-  </h4>
-  <h4>
+    <span> | </span>
     <a href="#example">
       Example
     </a>
@@ -65,7 +64,6 @@
 Astrolabe is currently in **heavy development**. Please do not use the crate in production yet.
 
 ## Overview
-
 Astrolabe is a date and time library for Rust which aims to be feature rich, lightweight (zero dependencies) and easy-to-use.
 
 ### Features
@@ -81,7 +79,6 @@ At this stage of development, not all features have been fully implemented.
 * Zero dependencies
 
 ## Example
-
 A basic example which demonstrates creating, formatting and manipulating a `DateTime` instance.
 
 ```rust
@@ -112,7 +109,6 @@ Licensed under either of
 at your option.
 
 ### Contribution
-
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
