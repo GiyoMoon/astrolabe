@@ -21,7 +21,7 @@ pub enum Precision {
     /// Only seconds -> `2022-05-02T15:30:20Z`
     Seconds = 0,
     /// 2 decimal places -> `2022-05-02T15:30:20.00Z`
-    Centi = 2,
+    Centis = 2,
     /// 3 decimal places -> `2022-05-02T15:30:20.000Z`
     Millis = 3,
     /// 6 decimal places -> `2022-05-02T15:30:20.000000Z`
@@ -35,10 +35,9 @@ pub enum Precision {
 pub enum Unit {
     #[allow(missing_docs)]
     Year,
-    /// Note: Adds or removes calendar months, not 30 days.
+    /// **Note**: When used in the [`DateTime::add`] or [`DateTime::sub`] functions, this unit adds or removes calendar months, not 30 days.
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::{DateTime, Unit};
     ///
@@ -57,11 +56,13 @@ pub enum Unit {
     #[allow(missing_docs)]
     Sec,
     #[allow(missing_docs)]
-    Milli,
+    Centis,
     #[allow(missing_docs)]
-    Micro,
+    Millis,
     #[allow(missing_docs)]
-    Nano,
+    Micros,
+    #[allow(missing_docs)]
+    Nanos,
 }
 
 /// Wrapper around [`std::time::SystemTime`] which implements formatting and manipulation functions
@@ -79,7 +80,6 @@ impl DateTime {
     /// Throws an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -87,10 +87,6 @@ impl DateTime {
     /// assert_eq!(0, date_time.timestamp());
     /// ```
     pub fn from_ymd(year: u64, month: u64, day: u64) -> Result<Self, DateTimeError> {
-        if year < 1970 {
-            return Err(DateTimeError::OutOfRange);
-        }
-
         let days = date_to_days(year, month, day)?;
 
         Ok(DateTime(UNIX_EPOCH + Duration::new(days * 86400, 0)))
@@ -101,7 +97,6 @@ impl DateTime {
     /// Throws an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -116,7 +111,7 @@ impl DateTime {
         min: u64,
         sec: u64,
     ) -> Result<Self, DateTimeError> {
-        if year < 1970 || hour > 23 || min > 59 || sec > 59 {
+        if hour > 23 || min > 59 || sec > 59 {
             return Err(DateTimeError::OutOfRange);
         }
 
@@ -131,7 +126,6 @@ impl DateTime {
     /// Creates a new [`DateTime`] struct from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC)
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -146,7 +140,6 @@ impl DateTime {
     /// Returns the duration since January 1, 1970 00:00:00 UTC
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -161,7 +154,6 @@ impl DateTime {
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -175,7 +167,6 @@ impl DateTime {
     /// Returns the duration between two [`DateTime`] structs
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///
@@ -196,7 +187,6 @@ impl DateTime {
     /// Adds [`Duration`] to [`DateTime`]
     ///
     /// # Example
-    ///
     /// ```rust
     /// use std::time::Duration;
     /// use astrolabe::DateTime;
@@ -213,7 +203,6 @@ impl DateTime {
     /// Removes [`Duration`] from [`DateTime`]
     ///
     /// # Example
-    ///
     /// ```rust
     /// use std::time::Duration;
     /// use astrolabe::DateTime;
@@ -233,7 +222,6 @@ impl DateTime {
     ///
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::{DateTime, Unit};
     ///
@@ -251,7 +239,6 @@ impl DateTime {
     /// **Note**: When using [`Unit::Month`], it removes calendar months and not 30 days. See it's [documentation](Unit::Month) for examples.
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::{DateTime, Unit};
     ///
@@ -264,18 +251,162 @@ impl DateTime {
         apply_unit(self, amount, unit, ApplyType::Sub)
     }
 
+    /// Get a specific [`Unit`].
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::{DateTime, Unit};
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 15, 30, 20).unwrap();
+    /// assert_eq!(2022, date_time.get(Unit::Year));
+    /// assert_eq!(2, date_time.get(Unit::Day));
+    /// assert_eq!(20, date_time.get(Unit::Sec));
+    /// ```
+    pub fn get(&self, unit: Unit) -> u64 {
+        match unit {
+            Unit::Year => ts_to_d_units(self.timestamp()).0,
+            Unit::Month => ts_to_d_units(self.timestamp()).1,
+            Unit::Day => ts_to_d_units(self.timestamp()).2,
+            Unit::Hour => ts_to_t_units(self.timestamp()).0,
+            Unit::Min => ts_to_t_units(self.timestamp()).1,
+            Unit::Sec => ts_to_t_units(self.timestamp()).2,
+            Unit::Centis => (self.duration().subsec_millis() / 10) as u64,
+            Unit::Millis => self.duration().subsec_millis() as u64,
+            Unit::Micros => self.duration().subsec_micros() as u64,
+            Unit::Nanos => self.duration().subsec_nanos() as u64,
+        }
+    }
+
+    /// Set a specific [`Unit`].
+    ///
+    /// Throws an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided value is invalid or the year is before `1970`
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::{DateTime, Unit};
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 15, 30, 20).unwrap();
+    /// assert_eq!(2000, date_time.set(2000, Unit::Year).unwrap().get(Unit::Year));
+    /// assert_eq!(10, date_time.set(10, Unit::Hour).unwrap().get(Unit::Hour));
+    /// ```
+    pub fn set(&self, value: u64, unit: Unit) -> Result<DateTime, DateTimeError> {
+        Ok(match unit {
+            Unit::Year => {
+                let timestamp = self.timestamp();
+                let (_, month, day) = ts_to_d_units(timestamp);
+                let days = date_to_days(value, month, day)?;
+                let day_seconds = timestamp % 86400;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Month => {
+                let timestamp = self.timestamp();
+                let (year, _, day) = ts_to_d_units(timestamp);
+                let days = date_to_days(year, value, day)?;
+                let day_seconds = timestamp % 86400;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Day => {
+                let timestamp = self.timestamp();
+                let (year, month, _) = ts_to_d_units(timestamp);
+                let days = date_to_days(year, month, value)?;
+                let day_seconds = timestamp % 86400;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Hour => {
+                if value > 23 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                let timestamp = self.timestamp();
+                let (_, min, sec) = ts_to_t_units(timestamp);
+                let days = timestamp / 86400;
+                let day_seconds = value * 3600 + min * 60 + sec;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Min => {
+                if value > 59 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                let timestamp = self.timestamp();
+                let (hour, _, sec) = ts_to_t_units(timestamp);
+                let days = timestamp / 86400;
+                let day_seconds = hour * 3600 + value * 60 + sec;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Sec => {
+                if value > 59 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                let timestamp = self.timestamp();
+                let (hour, min, _) = ts_to_t_units(timestamp);
+                let days = timestamp / 86400;
+                let day_seconds = hour * 3600 + min * 60 + value;
+                DateTime(
+                    UNIX_EPOCH
+                        + Duration::new(days * 86400 + day_seconds, self.duration().subsec_nanos()),
+                )
+            }
+            Unit::Centis => {
+                if value > 99 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                DateTime::from(Duration::new(
+                    self.timestamp(),
+                    value as u32 * 10000000 + self.duration().subsec_nanos() % 10000000,
+                ))
+            }
+            Unit::Millis => {
+                if value > 999 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                DateTime::from(Duration::new(
+                    self.timestamp(),
+                    value as u32 * 1000000 + self.duration().subsec_nanos() % 1000000,
+                ))
+            }
+            Unit::Micros => {
+                if value > 999999 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                DateTime::from(Duration::new(
+                    self.timestamp(),
+                    value as u32 * 1000 + self.duration().subsec_nanos() % 1000,
+                ))
+            }
+            Unit::Nanos => {
+                if value > 999999999 {
+                    return Err(DateTimeError::OutOfRange);
+                }
+                DateTime::from(Duration::new(self.timestamp(), value as u32))
+            }
+        })
+    }
+
     /// Format as an RFC3339 timestamp
     /// (`2022-05-02T15:30:20Z`)
     ///
     /// Use the [`Precision`] enum to specify decimal places after seconds:
     /// * [`Precision::Seconds`] -> `2022-05-02T15:30:20Z`
-    /// * [`Precision::Centi`] -> `2022-05-02T15:30:20.00Z`
+    /// * [`Precision::Centis`] -> `2022-05-02T15:30:20.00Z`
     /// * [`Precision::Millis`] -> `2022-05-02T15:30:20.000Z`
     /// * [`Precision::Micros`] -> `2022-05-02T15:30:20.000000Z`
     /// * [`Precision::Nanos`] -> `2022-05-02T15:30:20.000000000Z`
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::{DateTime, Precision};
     ///
@@ -376,7 +507,6 @@ impl DateTime {
     /// If you want escape `'`, write `''`
     ///
     /// # Example
-    ///
     /// ```rust
     /// use astrolabe::DateTime;
     ///

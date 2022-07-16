@@ -83,15 +83,19 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
             let dur = Duration::new(amount, 0);
             apply_duration(old, dur, atype)
         }
-        Unit::Milli => {
+        Unit::Centis => {
+            let dur = Duration::new(0, (amount * 10000000) as u32);
+            apply_duration(old, dur, atype)
+        }
+        Unit::Millis => {
             let dur = Duration::new(0, (amount * 1000000) as u32);
             apply_duration(old, dur, atype)
         }
-        Unit::Micro => {
+        Unit::Micros => {
             let dur = Duration::new(0, (amount * 1000) as u32);
             apply_duration(old, dur, atype)
         }
-        Unit::Nano => {
+        Unit::Nanos => {
             let dur = Duration::new(0, amount as u32);
             apply_duration(old, dur, atype)
         }

@@ -77,6 +77,10 @@ pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
 
 /// Converts a date (year, month and day of month) to days since January 1, 1970
 pub(crate) fn date_to_days(year: u64, month: u64, day: u64) -> Result<u64, DateTimeError> {
+    if year < 1970 {
+        return Err(DateTimeError::OutOfRange);
+    }
+
     let leap_years = leaps_since_epoch(year);
     let (mut ydays, mdays) = month_to_ymdays(year, month)?;
 

@@ -118,12 +118,14 @@ mod tests {
         assert_eq!(86400, modified.timestamp());
         assert_eq!(0, modified2.timestamp());
 
-        let modified = date_time.add(123, Unit::Nano);
+        let modified = date_time.add(123, Unit::Nanos);
         assert_eq!(123, modified.duration().as_nanos());
-        let modified = date_time.add(123, Unit::Micro);
+        let modified = date_time.add(123, Unit::Micros);
         assert_eq!(123000, modified.duration().as_nanos());
-        let modified = date_time.add(123, Unit::Milli);
+        let modified = date_time.add(123, Unit::Millis);
         assert_eq!(123000000, modified.duration().as_nanos());
+        let modified = date_time.add(12, Unit::Centis);
+        assert_eq!(120000000, modified.duration().as_nanos());
         let modified = date_time.add(123, Unit::Sec);
         assert_eq!(123, modified.duration().as_secs());
         let modified = date_time.add(123, Unit::Min);
@@ -160,6 +162,108 @@ mod tests {
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
         let modified = modified.sub(1, Unit::Month);
         assert_eq!("1972-01-29", modified.format("yyyy-MM-dd").unwrap());
+    }
+
+    #[test]
+    fn get() {
+        let date_time = DateTime::from_ymdhms(2000, 5, 10, 15, 34, 12)
+            .unwrap()
+            .add_dur(Duration::new(0, 123456789));
+        assert_eq!(2000, date_time.get(Unit::Year));
+        assert_eq!(5, date_time.get(Unit::Month));
+        assert_eq!(10, date_time.get(Unit::Day));
+        assert_eq!(15, date_time.get(Unit::Hour));
+        assert_eq!(34, date_time.get(Unit::Min));
+        assert_eq!(12, date_time.get(Unit::Sec));
+        assert_eq!(12, date_time.get(Unit::Centis));
+        assert_eq!(123, date_time.get(Unit::Millis));
+        assert_eq!(123456, date_time.get(Unit::Micros));
+        assert_eq!(123456789, date_time.get(Unit::Nanos));
+    }
+
+    #[test]
+    fn set() {
+        let date_time = DateTime::from_ymdhms(2000, 5, 10, 15, 34, 12)
+            .unwrap()
+            .add_dur(Duration::new(0, 123456789));
+        let modified = date_time.set(2022, Unit::Year).unwrap();
+        assert_eq!(2022, modified.get(Unit::Year));
+        let modified = date_time.set(1, Unit::Month).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(1, modified.get(Unit::Month));
+        let modified = date_time.set(13, Unit::Day).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(13, modified.get(Unit::Day));
+        let modified = date_time.set(3, Unit::Hour).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(3, modified.get(Unit::Hour));
+        let modified = date_time.set(15, Unit::Min).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(15, modified.get(Unit::Min));
+        let modified = date_time.set(10, Unit::Sec).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(34, modified.get(Unit::Min));
+        assert_eq!(10, modified.get(Unit::Sec));
+        let modified = date_time.set(99, Unit::Centis).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(34, modified.get(Unit::Min));
+        assert_eq!(12, modified.get(Unit::Sec));
+        assert_eq!(99, modified.get(Unit::Centis));
+        assert_eq!(993456789, modified.get(Unit::Nanos));
+        let modified = date_time.set(999, Unit::Millis).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(34, modified.get(Unit::Min));
+        assert_eq!(12, modified.get(Unit::Sec));
+        assert_eq!(999, modified.get(Unit::Millis));
+        assert_eq!(999456789, modified.get(Unit::Nanos));
+        let modified = date_time.set(999999, Unit::Micros).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(34, modified.get(Unit::Min));
+        assert_eq!(12, modified.get(Unit::Sec));
+        assert_eq!(999999, modified.get(Unit::Micros));
+        assert_eq!(999999789, modified.get(Unit::Nanos));
+        let modified = date_time.set(999999999, Unit::Nanos).unwrap();
+        assert_eq!(2000, modified.get(Unit::Year));
+        assert_eq!(5, modified.get(Unit::Month));
+        assert_eq!(10, modified.get(Unit::Day));
+        assert_eq!(15, modified.get(Unit::Hour));
+        assert_eq!(34, modified.get(Unit::Min));
+        assert_eq!(12, modified.get(Unit::Sec));
+        assert_eq!(999999999, modified.get(Unit::Nanos));
+
+        assert!(date_time.set(1969, Unit::Year).is_err());
+        assert!(date_time.set(13, Unit::Month).is_err());
+        assert!(date_time
+            .set(2, Unit::Month)
+            .unwrap()
+            .set(31, Unit::Day)
+            .is_err());
+        assert!(date_time.set(32, Unit::Day).is_err());
+        assert!(date_time.set(24, Unit::Hour).is_err());
+        assert!(date_time.set(60, Unit::Min).is_err());
+        assert!(date_time.set(60, Unit::Sec).is_err());
+        assert!(date_time.set(100, Unit::Centis).is_err());
+        assert!(date_time.set(1000, Unit::Millis).is_err());
+        assert!(date_time.set(1000000, Unit::Micros).is_err());
+        assert!(date_time.set(1000000000, Unit::Nanos).is_err());
     }
 
     #[test]
