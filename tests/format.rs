@@ -440,6 +440,45 @@ mod tests {
     }
 
     #[test]
+    fn format_zone() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0).unwrap();
+        assert_eq!("Z", date_time.format("X").unwrap());
+        assert_eq!("Z", date_time.format("XX").unwrap());
+        assert_eq!("Z", date_time.format("XXX").unwrap());
+        assert_eq!("Z", date_time.format("XXXX").unwrap());
+        assert_eq!("Z", date_time.format("XXXXX").unwrap());
+        assert_eq!("+00", date_time.format("x").unwrap());
+        assert_eq!("+0000", date_time.format("xx").unwrap());
+        assert_eq!("+00:00", date_time.format("xxx").unwrap());
+        assert_eq!("+0000", date_time.format("xxxx").unwrap());
+        assert_eq!("+00:00", date_time.format("xxxxx").unwrap());
+
+        let date_time = date_time.set_offset(3661).unwrap();
+        assert_eq!("+0101", date_time.format("X").unwrap());
+        assert_eq!("+0101", date_time.format("XX").unwrap());
+        assert_eq!("+01:01", date_time.format("XXX").unwrap());
+        assert_eq!("+010101", date_time.format("XXXX").unwrap());
+        assert_eq!("+01:01:01", date_time.format("XXXXX").unwrap());
+        assert_eq!("+0101", date_time.format("x").unwrap());
+        assert_eq!("+0101", date_time.format("xx").unwrap());
+        assert_eq!("+01:01", date_time.format("xxx").unwrap());
+        assert_eq!("+010101", date_time.format("xxxx").unwrap());
+        assert_eq!("+01:01:01", date_time.format("xxxxx").unwrap());
+
+        let date_time = date_time.set_offset(-3661).unwrap();
+        assert_eq!("-0101", date_time.format("X").unwrap());
+        assert_eq!("-0101", date_time.format("XX").unwrap());
+        assert_eq!("-01:01", date_time.format("XXX").unwrap());
+        assert_eq!("-010101", date_time.format("XXXX").unwrap());
+        assert_eq!("-01:01:01", date_time.format("XXXXX").unwrap());
+        assert_eq!("-0101", date_time.format("x").unwrap());
+        assert_eq!("-0101", date_time.format("xx").unwrap());
+        assert_eq!("-01:01", date_time.format("xxx").unwrap());
+        assert_eq!("-010101", date_time.format("xxxx").unwrap());
+        assert_eq!("-01:01:01", date_time.format("xxxxx").unwrap());
+    }
+
+    #[test]
     fn format_rfc_3339() {
         let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
         assert_eq!(
@@ -493,5 +532,26 @@ mod tests {
         assert_eq!("'HH'", date_time.format("'''HH'''").unwrap());
         assert_eq!("''00''", date_time.format("''''HH''''").unwrap());
         assert_eq!("''HH''", date_time.format("'''''HH'''''").unwrap());
+    }
+
+    #[test]
+    fn format_offset() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0)
+            .unwrap()
+            .set_offset(3661)
+            .unwrap();
+        assert_eq!(
+            "1970-01-01T01:01:01+00:00",
+            date_time.format("yyyy-MM-ddTHH:mm:ss+00:00").unwrap()
+        );
+
+        let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
+            .unwrap()
+            .set_offset(-3661)
+            .unwrap();
+        assert_eq!(
+            "1970-01-01T22:58:59+00:00",
+            date_time.format("yyyy-MM-ddTHH:mm:ss+00:00").unwrap()
+        );
     }
 }

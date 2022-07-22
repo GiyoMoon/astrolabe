@@ -9,10 +9,10 @@ pub(crate) fn zero_padded(number: u64, length: usize) -> String {
 /// Formats a number as an ordinal number
 pub(crate) fn add_ordinal_indicator(number: u64) -> String {
     match number {
-        number if (number - 1) % 10 == 0 && number != 11 => format!("{number}st"),
-        number if (number - 2) % 10 == 0 && number != 12 => format!("{number}nd"),
-        number if (number - 3) % 10 == 0 && number != 13 => format!("{number}rd"),
-        _ => format!("{number}th"),
+        number if (number - 1) % 10 == 0 && number != 11 => format!("{}st", number),
+        number if (number - 2) % 10 == 0 && number != 12 => format!("{}nd", number),
+        number if (number - 3) % 10 == 0 && number != 13 => format!("{}rd", number),
+        _ => format!("{}th", number),
     }
 }
 
@@ -27,7 +27,7 @@ pub(crate) fn get_length(length: usize, default: usize, max: usize) -> usize {
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
-pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError> {
+pub fn format_part(chars: &str, timestamp: u64, offset: i64) -> Result<String, DateTimeError> {
     let first_char = chars.chars().next().ok_or(DateTimeError::InvalidFormat)?;
     Ok(match first_char {
         // SystemTime can only be year 1970 or later, which is always AD
@@ -48,10 +48,10 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
             let quarter = (ts_to_d_units(timestamp).1 - 1) / 3 + 1;
             match chars.len() {
                 1 | 2 => zero_padded(quarter, chars.len()),
-                3 => format!("Q{quarter}"),
+                3 => format!("Q{}", quarter),
                 4 => {
                     let ordinal = add_ordinal_indicator(quarter);
-                    format!("{ordinal} quarter")
+                    format!("{} quarter", ordinal)
                 }
                 _ => zero_padded(quarter, 1),
             }
@@ -86,6 +86,8 @@ pub fn format_part(chars: &str, timestamp: u64) -> Result<String, DateTimeError>
         }
         'm' => zero_padded(ts_to_t_units(timestamp).1, get_length(chars.len(), 2, 2)),
         's' => zero_padded(ts_to_t_units(timestamp).2, get_length(chars.len(), 2, 2)),
+        'X' => format_zone(offset, chars.len(), true),
+        'x' => format_zone(offset, chars.len(), false),
         _ => chars.to_string(),
     })
 }
@@ -194,5 +196,63 @@ fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
         }
         time if time < 43200 => FORMATS.into_iter().nth(length - 1).unwrap()[0].to_string(),
         _ => FORMATS.into_iter().nth(length - 1).unwrap()[1].to_string(),
+    }
+}
+
+fn format_zone(offset: i64, length: usize, with_z: bool) -> String {
+    if with_z && offset == 0 {
+        return "Z".to_string();
+    }
+
+    let hour = offset.unsigned_abs() / 3600;
+    let min = offset.unsigned_abs() % 3600 / 60;
+    let sec = offset.unsigned_abs() % 3600 % 60;
+    let prefix = if offset < 0 { "-" } else { "+" };
+
+    match length {
+        1 => {
+            format!(
+                "{}{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                if min > 0 {
+                    zero_padded(min, 2)
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        2 => {
+            format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+        }
+        4 => {
+            format!(
+                "{}{}{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(min, 2),
+                if sec > 0 {
+                    zero_padded(sec, 2)
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        5 => {
+            format!(
+                "{}{}:{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(min, 2),
+                if sec > 0 {
+                    format!(":{}", zero_padded(sec, 2))
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        _ => {
+            format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+        }
     }
 }

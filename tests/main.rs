@@ -1,4 +1,5 @@
 mod format;
+mod offset;
 
 #[cfg(test)]
 mod tests {
@@ -113,7 +114,7 @@ mod tests {
         let modified = date_time.add_dur(Duration::new(86400, 0));
         assert_eq!(0, date_time.timestamp());
         assert_eq!(86400, modified.timestamp());
-        let modified2 = modified.remove_dur(Duration::new(86400, 0));
+        let modified2 = modified.sub_dur(Duration::new(86400, 0));
         assert_eq!(0, date_time.timestamp());
         assert_eq!(86400, modified.timestamp());
         assert_eq!(0, modified2.timestamp());
@@ -301,6 +302,20 @@ mod tests {
         assert_eq!(
             "2000-12-31T23:59:59.000000000Z",
             date_time.format_rfc3339(Precision::Nanos)
+        );
+
+        let with_offset = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
+            .unwrap()
+            .set_offset(3660)
+            .unwrap();
+        assert_eq!(
+            "1970-01-02T01:01:00+01:01",
+            with_offset.format_rfc3339(Precision::Seconds)
+        );
+        let with_offset = with_offset.set_offset(-3660).unwrap();
+        assert_eq!(
+            "1970-01-01T22:59:00-01:01",
+            with_offset.format_rfc3339(Precision::Seconds)
         );
     }
 }

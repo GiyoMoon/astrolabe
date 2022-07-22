@@ -9,7 +9,7 @@
 //!     (Which allows formatting [`SystemTime`](std::time::SystemTime) into basically any string format).
 //!     <br>See [`DateTime::format`]
 //! * **Manipulation**
-//!   * Manipulation functions like [`DateTime::add`] or [`DateTime::sub`] to create a new, modified [`DateTime`] struct
+//!   * Manipulation functions like [`DateTime::add`] or [`DateTime::sub`] to create a new, modified [`DateTime`] instance
 //! * **Timezone**
 //!   * Specify a timezone offset which will be applied in any format function
 //! * Zero dependencies
@@ -21,10 +21,10 @@
 //! // Create a DateTime instance from year, month, and days (day of month)
 //! let date_time = DateTime::from_ymd(2022, 5, 2).unwrap();
 //!
-//! // Use the format function to freely format your `DateTime` instance
+//! // Use the format function to freely format your DateTime instance
 //! assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());
 //!
-//! // Create a new instance with a modified `DateTime`
+//! // Create a new instance with a modified DateTime
 //! // The previous instance is not modified and is still in scope
 //! let modified_dt = date_time.add(11, Unit::Hour).add(23, Unit::Min);
 //!
@@ -41,4 +41,4 @@
 mod datetime;
 mod util;
 
-pub use self::datetime::{DateTime, DateTimeError, Precision, Unit};
+pub use self::datetime::{DateTime, DateTimeError, Offset, Precision, Unit};

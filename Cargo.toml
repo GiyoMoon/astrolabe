@@ -11,6 +11,7 @@ authors = ["GiyoMoon"]
 license = "MIT OR Apache-2.0"
 keywords = ["date", "time"]
 categories = ["date-and-time"]
+rust-version = "1.56"
 include = [
     "src/**",
     "Cargo.toml",
