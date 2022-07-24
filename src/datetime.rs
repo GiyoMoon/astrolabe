@@ -2,6 +2,7 @@ use crate::util::convert::{date_to_days, ts_to_d_units, ts_to_t_units};
 use crate::util::format::format_part;
 use crate::util::format::zero_padded;
 use crate::util::manipulation::{apply_unit, ApplyType};
+use crate::util::parse::parse_offset;
 use std::cmp::Ordering;
 use std::ops::{Add, Sub};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -569,7 +570,10 @@ impl DateTime {
             self.timestamp() - secs as u64
         };
 
-        Ok(DateTime(UNIX_EPOCH + Duration::new(new_timestamp, 0), secs))
+        Ok(DateTime(
+            UNIX_EPOCH + Duration::new(new_timestamp, self.duration().subsec_nanos()),
+            secs,
+        ))
     }
 
     /// Returns the offset as seconds.
@@ -583,6 +587,72 @@ impl DateTime {
     /// ```
     pub fn get_offset(&self) -> i64 {
         self.1
+    }
+
+    /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::{DateTime, Precision};
+    ///
+    /// let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20Z").unwrap();
+    /// assert_eq!("2022/05/02 15:30:20", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// ```
+    pub fn parse_rfc3339(string: &str) -> Result<DateTime, DateTimeError> {
+        if string.len() < 20 {
+            return Err(DateTimeError::InvalidFormat);
+        }
+
+        let year = string[0..4]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+        let month = string[5..7]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+        let day = string[8..10]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+        let hour = string[11..13]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+        let min = string[14..16]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+        let sec = string[17..19]
+            .parse::<u64>()
+            .map_err(|_| DateTimeError::InvalidFormat)?;
+
+        if hour > 23 || min > 59 || sec > 59 {
+            return Err(DateTimeError::OutOfRange);
+        }
+
+        let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
+            let nanos_string = string[20..]
+                .chars()
+                .take_while(|&char| char != 'Z' && char != '+' && char != '-')
+                .collect::<String>();
+            let nanos = nanos_string
+                .parse::<u32>()
+                .map_err(|_| DateTimeError::InvalidFormat)?
+                * (1000000000 / 10_u32.pow(nanos_string.len() as u32));
+
+            let offset_substring = string[20..]
+                .chars()
+                .position(|char| char == 'Z' || char == '+' || char == '-')
+                .ok_or(DateTimeError::InvalidFormat)?;
+            let offset = parse_offset(&string[20 + offset_substring..])?;
+
+            (nanos, offset)
+        } else {
+            let offset = parse_offset(&string[19..])?;
+            (0, offset)
+        };
+
+        let days = date_to_days(year, month, day)?;
+        let day_seconds = hour * 3600 + min * 60 + sec;
+
+        let duration = Duration::new(days * 86400 + day_seconds, nanos);
+        DateTime::from(duration).as_offset(offset)
     }
 
     /// Format as an RFC3339 timestamp (`2022-05-02T15:30:20Z`).
@@ -809,7 +879,6 @@ impl DateTime {
     }
 
     fn remove_offset(&self, timestamp_with_offset: u64) -> u64 {
-        println!("{}", timestamp_with_offset);
         if self.1 < 0 {
             timestamp_with_offset + -self.1 as u64
         } else {
