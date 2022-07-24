@@ -1,5 +1,10 @@
-use super::convert::{ts_to_d_units, ts_to_t_units, ts_to_wyear, ts_to_yday};
-use crate::{util::convert::ts_to_wday, DateTimeError};
+use super::convert::{
+    ts_to_d_units, ts_to_t_units, ts_to_wyear, ts_to_yday, SECS_PER_HOUR, SECS_PER_MINUTE,
+};
+use crate::{
+    util::convert::{ts_to_wday, SECS_PER_DAY},
+    DateTimeError,
+};
 
 /// Formats a number as a zero padded string
 pub(crate) fn zero_padded(number: u64, length: usize) -> String {
@@ -185,7 +190,7 @@ fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
         ["a.m.", "p.m.", "noon", "midnight"],
         ["a", "p", "n", "mi"],
     ];
-    let time = timestamp % 86400;
+    let time = timestamp % SECS_PER_DAY;
 
     match time {
         time if seperate_12 && time == 0 => {
@@ -204,9 +209,9 @@ fn format_zone(offset: i64, length: usize, with_z: bool) -> String {
         return "Z".to_string();
     }
 
-    let hour = offset.unsigned_abs() / 3600;
-    let min = offset.unsigned_abs() % 3600 / 60;
-    let sec = offset.unsigned_abs() % 3600 % 60;
+    let hour = offset.unsigned_abs() / SECS_PER_HOUR;
+    let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
+    let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
     let prefix = if offset < 0 { "-" } else { "+" };
 
     match length {

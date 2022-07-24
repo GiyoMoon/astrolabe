@@ -1,13 +1,12 @@
+use super::{
+    convert::{month_to_ymdays, ts_to_d_units, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
+    leap::is_leap_year,
+};
+use crate::{DateTime, Unit};
 use std::{
     ops::{Add, Sub},
     time::{Duration, SystemTime},
 };
-
-use super::{
-    convert::{month_to_ymdays, ts_to_d_units},
-    leap::is_leap_year,
-};
-use crate::{DateTime, Unit};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ApplyType {
@@ -68,15 +67,15 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
             DateTime::from_ymd(target_year, target_month, target_day).unwrap()
         }
         Unit::Day => {
-            let dur = Duration::new(amount * 60 * 60 * 24, 0);
+            let dur = Duration::new(amount * SECS_PER_DAY, 0);
             apply_duration(old, dur, atype)
         }
         Unit::Hour => {
-            let dur = Duration::new(amount * 60 * 60, 0);
+            let dur = Duration::new(amount * SECS_PER_HOUR, 0);
             apply_duration(old, dur, atype)
         }
         Unit::Min => {
-            let dur = Duration::new(amount * 60, 0);
+            let dur = Duration::new(amount * SECS_PER_MINUTE, 0);
             apply_duration(old, dur, atype)
         }
         Unit::Sec => {
@@ -84,15 +83,15 @@ pub(crate) fn apply_unit(old: &DateTime, amount: u64, unit: Unit, atype: ApplyTy
             apply_duration(old, dur, atype)
         }
         Unit::Centis => {
-            let dur = Duration::new(0, (amount * 10000000) as u32);
+            let dur = Duration::new(0, amount as u32 * 10000000);
             apply_duration(old, dur, atype)
         }
         Unit::Millis => {
-            let dur = Duration::new(0, (amount * 1000000) as u32);
+            let dur = Duration::new(0, amount as u32 * 1000000);
             apply_duration(old, dur, atype)
         }
         Unit::Micros => {
-            let dur = Duration::new(0, (amount * 1000) as u32);
+            let dur = Duration::new(0, amount as u32 * 1000);
             apply_duration(old, dur, atype)
         }
         Unit::Nanos => {

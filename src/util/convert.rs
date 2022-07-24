@@ -1,9 +1,9 @@
 use super::leap::{is_leap_year, leaps_since_epoch};
 use crate::DateTimeError;
 
-const SECS_PER_MINUTE: u64 = 60;
-const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
-const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
+pub(crate) const SECS_PER_MINUTE: u64 = 60;
+pub(crate) const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
+pub(crate) const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
 const SECS_PER_WEEK: u64 = 7 * SECS_PER_DAY;
 
 /// Converts a unix timestamp to date units (year, month and day of month)
@@ -14,10 +14,9 @@ pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
     const DAYS_PER_400Y: i64 = 365 * 400 + 97;
     const DAYS_PER_100Y: i64 = 365 * 100 + 24;
     const DAYS_PER_4Y: i64 = 365 * 4 + 1;
-    const SECS_PER_DAY: i64 = 60 * 60 * 24;
     const MONTH_DAYS: [i64; 12] = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29];
 
-    let days = (timestamp as i64 / SECS_PER_DAY) - LEAPOCH;
+    let days = (timestamp / SECS_PER_DAY) as i64 - LEAPOCH;
 
     let mut qc_cycles = days / DAYS_PER_400Y;
     let mut remdays = days % DAYS_PER_400Y;
@@ -69,9 +68,9 @@ pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
 /// Converts a unix timestamp to subday time units (hour, min, sec)
 pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
     let subday_sec = timestamp % SECS_PER_DAY;
-    let hour = subday_sec / 3600;
-    let min = subday_sec / 60 % 60;
-    let sec = subday_sec % 60;
+    let hour = subday_sec / SECS_PER_HOUR;
+    let min = subday_sec / SECS_PER_MINUTE % SECS_PER_MINUTE;
+    let sec = subday_sec % SECS_PER_MINUTE;
     (hour, min, sec)
 }
 
@@ -89,7 +88,15 @@ pub(crate) fn date_to_days(year: u64, month: u64, day: u64) -> Result<u64, DateT
     }
     ydays += day - 1;
 
-    Ok((year - 1970) * 365 + leap_years + ydays as u64)
+    Ok((year - 1970) * 365 + leap_years + ydays)
+}
+
+/// Converts time values (hour, minute and seconds) to day seconds
+pub(crate) fn time_to_day_seconds(hour: u64, min: u64, sec: u64) -> Result<u64, DateTimeError> {
+    if hour > 23 || min > 59 || sec > 59 {
+        return Err(DateTimeError::OutOfRange);
+    }
+    Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
 }
 
 /// Converts year and month to the days until this month and days in the current month

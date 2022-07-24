@@ -1,4 +1,7 @@
-use crate::util::convert::{date_to_days, ts_to_d_units, ts_to_t_units};
+use crate::util::convert::{
+    date_to_days, time_to_day_seconds, ts_to_d_units, ts_to_t_units, SECS_PER_DAY, SECS_PER_HOUR,
+    SECS_PER_MINUTE,
+};
 use crate::util::format::format_part;
 use crate::util::format::zero_padded;
 use crate::util::manipulation::{apply_unit, ApplyType};
@@ -7,16 +10,16 @@ use std::cmp::Ordering;
 use std::ops::{Add, Sub};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// Error parsing or formatting [`DateTime`] struct
+/// Error parsing or formatting [`DateTime`] struct.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DateTimeError {
-    /// Failed parsing the provided format string
+    /// Failed parsing the provided format string.
     InvalidFormat,
-    /// Numeric component is out of range
+    /// Numeric component is out of range.
     OutOfRange,
 }
 
-/// Used for specifing the precision for RFC3339 timestamps
+/// Used for specifing the precision for RFC3339 timestamps.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Precision {
     /// Only seconds -> `2022-05-02T15:30:20Z`
@@ -31,7 +34,7 @@ pub enum Precision {
     Nanos = 9,
 }
 
-/// Time units for functions like [`DateTime::add`]
+/// Time units for functions like [`DateTime::add`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Unit {
     #[allow(missing_docs)]
@@ -66,21 +69,21 @@ pub enum Unit {
     Nanos,
 }
 
-/// Used to define if an offset is `UTC+` or `UTC-` (eastern or western hemisphere)
+/// Used to define if an offset is `UTC+` or `UTC-` (eastern or western hemisphere).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Offset {
-    /// Offset in the eastern hemisphere (`UTC±00:00 - UTC+23:59:59`)
+    /// Offset in the eastern hemisphere (`UTC±00:00 - UTC+23:59:59`).
     East,
-    /// Offset in the western hemisphere (`UTC±00:00 - UTC-23:59:59`)
+    /// Offset in the western hemisphere (`UTC±00:00 - UTC-23:59:59`).
     West,
 }
 
-/// Wrapper around [`std::time::SystemTime`] which implements formatting and manipulation functions
+/// Wrapper around [`std::time::SystemTime`] which implements formatting and manipulation functions.
 #[derive(Debug)]
 pub struct DateTime(SystemTime, i64);
 
 impl DateTime {
-    /// Creates a new [`DateTime`] instance with [`SystemTime::now()`]
+    /// Creates a new [`DateTime`] instance with [`SystemTime::now()`].
     ///
     /// # Example
     /// ```rust
@@ -93,9 +96,9 @@ impl DateTime {
         DateTime(SystemTime::now(), 0)
     }
 
-    /// Creates a new [`DateTime`] instance from year, month and day (day of month)
+    /// Creates a new [`DateTime`] instance from year, month and day (day of month).
     ///
-    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`
+    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`.
     ///
     /// # Example
     /// ```rust
@@ -107,12 +110,15 @@ impl DateTime {
     pub fn from_ymd(year: u64, month: u64, day: u64) -> Result<Self, DateTimeError> {
         let days = date_to_days(year, month, day)?;
 
-        Ok(DateTime(UNIX_EPOCH + Duration::new(days * 86400, 0), 0))
+        Ok(DateTime(
+            UNIX_EPOCH + Duration::new(days * SECS_PER_DAY, 0),
+            0,
+        ))
     }
 
-    /// Creates a new [`DateTime`] instance from year, month, day (day of month), hours, minutes and seconds
+    /// Creates a new [`DateTime`] instance from year, month, day (day of month), hours, minutes and seconds.
     ///
-    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`
+    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided date is invalid or before the year `1970`.
     ///
     /// # Example
     /// ```rust
@@ -129,20 +135,16 @@ impl DateTime {
         min: u64,
         sec: u64,
     ) -> Result<Self, DateTimeError> {
-        if hour > 23 || min > 59 || sec > 59 {
-            return Err(DateTimeError::OutOfRange);
-        }
-
         let days = date_to_days(year, month, day)?;
-        let day_seconds = hour * 3600 + min * 60 + sec;
+        let day_seconds = time_to_day_seconds(hour, min, sec)?;
 
         Ok(DateTime(
-            UNIX_EPOCH + Duration::new(days * 86400 + day_seconds, 0),
+            UNIX_EPOCH + Duration::new(days * SECS_PER_DAY + day_seconds, 0),
             0,
         ))
     }
 
-    /// Creates a new [`DateTime`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC)
+    /// Creates a new [`DateTime`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
     ///
     /// # Example
     /// ```rust
@@ -156,7 +158,7 @@ impl DateTime {
         DateTime(UNIX_EPOCH + Duration::new(timestamp, 0), 0)
     }
 
-    /// Returns the duration since January 1, 1970 00:00:00 UTC
+    /// Returns the duration since January 1, 1970 00:00:00 UTC.
     ///
     /// # Example
     /// ```rust
@@ -170,7 +172,7 @@ impl DateTime {
         self.0.duration_since(UNIX_EPOCH).unwrap()
     }
 
-    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC
+    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC.
     ///
     /// # Example
     /// ```rust
@@ -183,7 +185,7 @@ impl DateTime {
         self.duration().as_secs()
     }
 
-    /// Returns the duration between two [`DateTime`] instances
+    /// Returns the duration between two [`DateTime`] instances.
     ///
     /// # Example
     /// ```rust
@@ -292,7 +294,7 @@ impl DateTime {
             Unit::Hour => ts_to_t_units(timestamp).0,
             Unit::Min => ts_to_t_units(timestamp).1,
             Unit::Sec => ts_to_t_units(timestamp).2,
-            Unit::Centis => (self.duration().subsec_millis() / 10) as u64,
+            Unit::Centis => self.duration().subsec_millis() as u64 / 10,
             Unit::Millis => self.duration().subsec_millis() as u64,
             Unit::Micros => self.duration().subsec_micros() as u64,
             Unit::Nanos => self.duration().subsec_nanos() as u64,
@@ -303,7 +305,7 @@ impl DateTime {
     ///
     /// The set offset is considered in this function (Default is `UTC`).
     ///
-    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided value is invalid or the year is before `1970`
+    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided value is invalid or the year is before `1970`.
     ///
     /// # Example
     /// ```rust
@@ -319,9 +321,9 @@ impl DateTime {
                 let timestamp = self.timestamp_with_offset();
                 let (_, month, day) = ts_to_d_units(timestamp);
                 let days = date_to_days(value, month, day)?;
-                let day_seconds = timestamp % 86400;
+                let day_seconds = timestamp % SECS_PER_DAY;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -331,9 +333,9 @@ impl DateTime {
                 let timestamp = self.timestamp_with_offset();
                 let (year, _, day) = ts_to_d_units(timestamp);
                 let days = date_to_days(year, value, day)?;
-                let day_seconds = timestamp % 86400;
+                let day_seconds = timestamp % SECS_PER_DAY;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -343,9 +345,9 @@ impl DateTime {
                 let timestamp = self.timestamp_with_offset();
                 let (year, month, _) = ts_to_d_units(timestamp);
                 let days = date_to_days(year, month, value)?;
-                let day_seconds = timestamp % 86400;
+                let day_seconds = timestamp % SECS_PER_DAY;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -357,10 +359,10 @@ impl DateTime {
                 }
                 let timestamp = self.timestamp_with_offset();
                 let (_, min, sec) = ts_to_t_units(timestamp);
-                let days = timestamp / 86400;
-                let day_seconds = value * 3600 + min * 60 + sec;
+                let days = timestamp / SECS_PER_DAY;
+                let day_seconds = value * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -372,10 +374,10 @@ impl DateTime {
                 }
                 let timestamp = self.timestamp_with_offset();
                 let (hour, _, sec) = ts_to_t_units(timestamp);
-                let days = timestamp / 86400;
-                let day_seconds = hour * 3600 + value * 60 + sec;
+                let days = timestamp / SECS_PER_DAY;
+                let day_seconds = hour * SECS_PER_HOUR + value * SECS_PER_MINUTE + sec;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -387,10 +389,10 @@ impl DateTime {
                 }
                 let timestamp = self.timestamp_with_offset();
                 let (hour, min, _) = ts_to_t_units(timestamp);
-                let days = timestamp / 86400;
-                let day_seconds = hour * 3600 + min * 60 + value;
+                let days = timestamp / SECS_PER_DAY;
+                let day_seconds = hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + value;
 
-                let timestamp = self.remove_offset(days * 86400 + day_seconds);
+                let timestamp = self.remove_offset(days * SECS_PER_DAY + day_seconds);
                 DateTime(
                     UNIX_EPOCH + Duration::new(timestamp, self.duration().subsec_nanos()),
                     self.1,
@@ -462,28 +464,19 @@ impl DateTime {
         sec: u64,
         offset: Offset,
     ) -> Result<DateTime, DateTimeError> {
-        if hour > 23 || min > 59 || sec > 59 {
-            return Err(DateTimeError::OutOfRange);
-        }
-
-        let mut hour = hour as i64;
-        let mut min = min as i64;
-        let mut sec = sec as i64;
-        if offset == Offset::West {
-            hour *= -1;
-            min *= -1;
-            sec *= -1;
-        }
-
-        let offset = hour * 3600 + min * 60 + sec;
-        self.set_offset(offset)
+        let offset_seconds = time_to_day_seconds(hour, min, sec)? as i64;
+        self.set_offset(if offset == Offset::West {
+            -offset_seconds
+        } else {
+            offset_seconds
+        })
     }
 
     /// Creates a new [`DateTime`] instance with a given timezone offset defined as seconds.
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the timestamp which always represents `UTC`.
     ///
-    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC-23:59:59` or if it would lead to an invalid date (any date before the year 1970).
+    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an invalid date (any date before the year 1970).
     ///
     /// # Example
     /// ```rust
@@ -495,7 +488,7 @@ impl DateTime {
     /// assert_eq!("17:30", with_offset.format("HH:mm").unwrap());
     /// ```
     pub fn set_offset(&self, secs: i64) -> Result<DateTime, DateTimeError> {
-        if secs < -86399 || secs > 86399 || secs < 0 && self.timestamp() < -secs as u64 {
+        if secs < -86399 || secs > 86399 || secs < 0 && self.timestamp() < secs.unsigned_abs() {
             return Err(DateTimeError::OutOfRange);
         }
 
@@ -526,21 +519,12 @@ impl DateTime {
         sec: u64,
         offset: Offset,
     ) -> Result<DateTime, DateTimeError> {
-        if hour > 23 || min > 59 || sec > 59 {
-            return Err(DateTimeError::OutOfRange);
-        }
-
-        let mut hour = hour as i64;
-        let mut min = min as i64;
-        let mut sec = sec as i64;
-        if offset == Offset::West {
-            hour *= -1;
-            min *= -1;
-            sec *= -1;
-        }
-
-        let offset = hour * 3600 + min * 60 + sec;
-        self.as_offset(offset)
+        let offset_seconds = time_to_day_seconds(hour, min, sec)? as i64;
+        self.as_offset(if offset == Offset::West {
+            -offset_seconds
+        } else {
+            offset_seconds
+        })
     }
 
     /// Creates a new [`DateTime`] instance, assuming the current timestamp has the provided offset applied.
@@ -548,7 +532,7 @@ impl DateTime {
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the timestamp which always represents `UTC`.
     ///
-    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC-23:59:59` or if it would lead to an invalid date (any date before the year 1970).
+    /// Returns an [`OutOfRange`](DateTimeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an invalid date (any date before the year 1970).
     ///
     /// # Example
     /// ```rust
@@ -565,9 +549,9 @@ impl DateTime {
             return Err(DateTimeError::OutOfRange);
         }
         let new_timestamp = if secs < 0 {
-            self.timestamp() + -secs as u64
+            self.timestamp() + secs.unsigned_abs()
         } else {
-            self.timestamp() - secs as u64
+            self.timestamp() - secs.unsigned_abs()
         };
 
         Ok(DateTime(
@@ -589,7 +573,7 @@ impl DateTime {
         self.1
     }
 
-    /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string
+    /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string.
     ///
     /// # Example
     /// ```rust
@@ -622,10 +606,6 @@ impl DateTime {
             .parse::<u64>()
             .map_err(|_| DateTimeError::InvalidFormat)?;
 
-        if hour > 23 || min > 59 || sec > 59 {
-            return Err(DateTimeError::OutOfRange);
-        }
-
         let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
             let nanos_string = string[20..]
                 .chars()
@@ -649,9 +629,9 @@ impl DateTime {
         };
 
         let days = date_to_days(year, month, day)?;
-        let day_seconds = hour * 3600 + min * 60 + sec;
+        let day_seconds = time_to_day_seconds(hour, min, sec)?;
 
-        let duration = Duration::new(days * 86400 + day_seconds, nanos);
+        let duration = Duration::new(days * SECS_PER_DAY + day_seconds, nanos);
         DateTime::from(duration).as_offset(offset)
     }
 
@@ -698,25 +678,25 @@ impl DateTime {
             match self.1 {
                 0 => "Z".to_string(),
                 _ => {
-                    let hour = self.1.abs() / 3600;
-                    let minute = self.1.abs() % 3600 / 60;
+                    let hour = self.1.unsigned_abs() / SECS_PER_HOUR;
+                    let minute = self.1.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
                     let prefix = if self.1 < 0 { "-" } else { "+" };
                     format!(
                         "{}{}:{}",
                         prefix,
-                        zero_padded(hour as u64, 2),
-                        zero_padded(minute as u64, 2),
+                        zero_padded(hour, 2),
+                        zero_padded(minute, 2),
                     )
                 }
             }
         )
     }
 
-    /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
+    /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
     ///
     /// The set offset is considered in this function (Default is `UTC`).
     ///
-    /// Returns an [`InvalidFormat`](DateTimeError::InvalidFormat`) error if the provided format string can't be parsed
+    /// Returns an [`InvalidFormat`](DateTimeError::InvalidFormat`) error if the provided format string can't be parsed.
     ///
     /// # Available Symbols:
     ///
@@ -788,10 +768,10 @@ impl DateTime {
     ///
     /// `*` = Default
     ///
-    /// If the sequence is longer than listed in the table, the output will be the same as the default pattern for this unit (marked with `*`)
+    /// If the sequence is longer than listed in the table, the output will be the same as the default pattern for this unit (marked with `*`).
     ///
     /// Surround any character with apostrophes (`'`) to escape them.
-    /// If you want escape `'`, write `''`
+    /// If you want escape `'`, write `''`.
     ///
     /// # Example
     /// ```rust
@@ -871,18 +851,18 @@ impl DateTime {
     fn timestamp_with_offset(&self) -> u64 {
         let mut timestamp = self.timestamp();
         if self.1 < 0 {
-            timestamp -= -self.1 as u64;
+            timestamp -= self.1.unsigned_abs();
         } else {
-            timestamp += self.1 as u64;
+            timestamp += self.1.unsigned_abs();
         }
         timestamp
     }
 
     fn remove_offset(&self, timestamp_with_offset: u64) -> u64 {
         if self.1 < 0 {
-            timestamp_with_offset + -self.1 as u64
+            timestamp_with_offset + self.1.unsigned_abs()
         } else {
-            timestamp_with_offset - self.1 as u64
+            timestamp_with_offset - self.1.unsigned_abs()
         }
     }
 }

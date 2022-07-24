@@ -3,9 +3,8 @@ mod offset;
 
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
     use astrolabe::{DateTime, Precision, Unit};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     #[test]
     fn from_ymd() {
