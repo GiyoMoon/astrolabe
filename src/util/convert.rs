@@ -68,7 +68,7 @@ pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
 
 /// Converts a unix timestamp to subday time units (hour, min, sec)
 pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
-    let subday_sec = (timestamp % SECS_PER_DAY as u64) as u64;
+    let subday_sec = timestamp % SECS_PER_DAY;
     let hour = subday_sec / 3600;
     let min = subday_sec / 60 % 60;
     let sec = subday_sec % 60;
