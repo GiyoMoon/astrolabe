@@ -1,18 +1,26 @@
-use super::convert::{
-    ts_to_d_units, ts_to_t_units, ts_to_wyear, ts_to_yday, SECS_PER_HOUR, SECS_PER_MINUTE,
-};
+use super::convert::{days_to_d_units, days_to_wyear, days_to_yday, nanos_to_t_units};
 use crate::{
-    util::convert::{ts_to_wday, SECS_PER_DAY},
-    DateTimeError,
+    shared::{SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
+    util::convert::days_to_wday,
+    AstrolabeError,
 };
 
 /// Formats a number as a zero padded string
-pub(crate) fn zero_padded(number: u64, length: usize) -> String {
+pub(crate) fn zero_padded_i(number: i32, length: usize) -> String {
+    format!(
+        "{}{}",
+        if number < 0 { "-" } else { "" },
+        zero_padded(number.unsigned_abs(), length)
+    )
+}
+
+/// Formats a number as a zero padded string
+pub(crate) fn zero_padded(number: u32, length: usize) -> String {
     format!("{:0width$}", number, width = length)
 }
 
 /// Formats a number as an ordinal number
-pub(crate) fn add_ordinal_indicator(number: u64) -> String {
+pub(crate) fn add_ordinal_indicator(number: u32) -> String {
     match number {
         number if (number - 1) % 10 == 0 && number != 11 => format!("{}st", number),
         number if (number - 2) % 10 == 0 && number != 12 => format!("{}nd", number),
@@ -30,27 +38,80 @@ pub(crate) fn get_length(length: usize, default: usize, max: usize) -> usize {
     }
 }
 
+// Parse a format string and return parts to format
+pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> {
+    let escaped_format = format.replace("''", "\u{0000}");
+
+    let mut parts: Vec<String> = Vec::new();
+    let mut currently_escaped = false;
+    for char in escaped_format.chars() {
+        match char {
+            '\'' => {
+                if !currently_escaped {
+                    parts.push(char.to_string());
+                } else {
+                    parts
+                        .last_mut()
+                        .ok_or(AstrolabeError::InvalidFormat)?
+                        .push(char);
+                }
+                currently_escaped = !currently_escaped;
+            }
+            _ => {
+                if (currently_escaped || parts.last().unwrap_or(&"".to_string()).starts_with(char))
+                    && parts.last().is_some()
+                {
+                    parts
+                        .last_mut()
+                        .ok_or(AstrolabeError::InvalidFormat)?
+                        .push(char);
+                } else {
+                    parts.push(char.to_string());
+                }
+            }
+        };
+    }
+    Ok(parts)
+}
+
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
-/// **Note**: Not all field types/symbols are implemented.
-pub fn format_part(chars: &str, timestamp: u64, offset: i64) -> Result<String, DateTimeError> {
-    let first_char = chars.chars().next().ok_or(DateTimeError::InvalidFormat)?;
+/// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
+pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError> {
+    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
-        // SystemTime can only be year 1970 or later, which is always AD
         'G' => match chars.len() {
-            1 | 2 | 3 => "AD".to_string(),
-            5 => "A".to_string(),
-            _ => "Anno Domini".to_string(),
+            1 | 2 | 3 => {
+                if days < 0 {
+                    "BC".to_string()
+                } else {
+                    "AD".to_string()
+                }
+            }
+            5 => {
+                if days < 0 {
+                    "B".to_string()
+                } else {
+                    "A".to_string()
+                }
+            }
+            _ => {
+                if days < 0 {
+                    "Before Christ".to_string()
+                } else {
+                    "Anno Domini".to_string()
+                }
+            }
         },
         'y' => match chars.len() {
             2 => {
-                let year = ts_to_d_units(timestamp).0.to_string();
+                let year = days_to_d_units(days).0.to_string();
                 let last_two = &year[year.len() - 2..];
                 last_two.to_string()
             }
-            _ => zero_padded(ts_to_d_units(timestamp).0, chars.len()),
+            _ => zero_padded_i(days_to_d_units(days).0, chars.len()),
         },
         'q' => {
-            let quarter = (ts_to_d_units(timestamp).1 - 1) / 3 + 1;
+            let quarter = (days_to_d_units(days).1 - 1) / 3 + 1;
             match chars.len() {
                 1 | 2 => zero_padded(quarter, chars.len()),
                 3 => format!("Q{}", quarter),
@@ -61,36 +122,52 @@ pub fn format_part(chars: &str, timestamp: u64, offset: i64) -> Result<String, D
                 _ => zero_padded(quarter, 1),
             }
         }
-        'M' => format_month(chars.len(), timestamp)?,
-        'w' => zero_padded(ts_to_wyear(timestamp), get_length(chars.len(), 2, 2)),
-        'd' => zero_padded(ts_to_d_units(timestamp).2, get_length(chars.len(), 2, 2)),
-        'D' => zero_padded(ts_to_yday(timestamp), get_length(chars.len(), 1, 3)),
-        'e' => format_wday(timestamp, chars.len())?,
-        'a' => format_period(timestamp, get_length(chars.len(), 3, 5), false),
-        'b' => format_period(timestamp, get_length(chars.len(), 3, 5), true),
+        'M' => format_month(chars.len(), days)?,
+        'w' => zero_padded(days_to_wyear(days), get_length(chars.len(), 2, 2)),
+        'd' => zero_padded(days_to_d_units(days).2, get_length(chars.len(), 2, 2)),
+        'D' => zero_padded(days_to_yday(days), get_length(chars.len(), 1, 3)),
+        'e' => format_wday(days, chars.len())?,
+        _ => chars.to_string(),
+    })
+}
+
+/// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
+/// **Note**: Not all field types/symbols are implemented.
+#[allow(dead_code)]
+pub fn format_part(
+    chars: &str,
+    days: i32,
+    nanos: u64,
+    offset: i32,
+) -> Result<String, AstrolabeError> {
+    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
+    Ok(match first_char {
+        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days)?,
+        'a' => format_period(nanos, get_length(chars.len(), 3, 5), false),
+        'b' => format_period(nanos, get_length(chars.len(), 3, 5), true),
         'h' => {
-            let hour = if ts_to_t_units(timestamp).0 % 12 == 0 {
+            let hour = if nanos_to_t_units(nanos).0 % 12 == 0 {
                 12
             } else {
-                ts_to_t_units(timestamp).0 % 12
+                nanos_to_t_units(nanos).0 % 12
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'H' => zero_padded(ts_to_t_units(timestamp).0, get_length(chars.len(), 2, 2)),
+        'H' => zero_padded(nanos_to_t_units(nanos).0, get_length(chars.len(), 2, 2)),
         'K' => zero_padded(
-            ts_to_t_units(timestamp).0 % 12,
+            nanos_to_t_units(nanos).0 % 12,
             get_length(chars.len(), 2, 2),
         ),
         'k' => {
-            let hour = if ts_to_t_units(timestamp).0 == 0 {
+            let hour = if nanos_to_t_units(nanos).0 == 0 {
                 24
             } else {
-                ts_to_t_units(timestamp).0
+                nanos_to_t_units(nanos).0
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'm' => zero_padded(ts_to_t_units(timestamp).1, get_length(chars.len(), 2, 2)),
-        's' => zero_padded(ts_to_t_units(timestamp).2, get_length(chars.len(), 2, 2)),
+        'm' => zero_padded(nanos_to_t_units(nanos).1, get_length(chars.len(), 2, 2)),
+        's' => zero_padded(nanos_to_t_units(nanos).2, get_length(chars.len(), 2, 2)),
         'X' => format_zone(offset, chars.len(), true),
         'x' => format_zone(offset, chars.len(), false),
         _ => chars.to_string(),
@@ -98,8 +175,8 @@ pub fn format_part(chars: &str, timestamp: u64, offset: i64) -> Result<String, D
 }
 
 /// Formats the month of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_month(length: usize, timestamp: u64) -> Result<String, DateTimeError> {
-    let month = ts_to_d_units(timestamp).1;
+fn format_month(length: usize, days: i32) -> Result<String, AstrolabeError> {
+    let month = days_to_d_units(days).1;
     const MONTH_ABBREVIATED: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
@@ -124,23 +201,23 @@ fn format_month(length: usize, timestamp: u64) -> Result<String, DateTimeError> 
         3 => MONTH_ABBREVIATED
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
         5 => MONTH_NARROW
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
         _ => MONTH_WIDE
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
     })
 }
 
 /// Formats the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_wday(timestamp: u64, length: usize) -> Result<String, DateTimeError> {
+fn format_wday(days: i32, length: usize) -> Result<String, AstrolabeError> {
     const MONTH_ABBREVIATED: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_WIDE: [&str; 7] = [
         "Sunday",
@@ -155,34 +232,34 @@ fn format_wday(timestamp: u64, length: usize) -> Result<String, DateTimeError> {
     const MONTH_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
     Ok(match length {
-        1 | 2 => zero_padded(ts_to_wday(timestamp, false) + 1, length),
+        1 | 2 => zero_padded(days_to_wday(days, false) + 1, length),
         3 => MONTH_ABBREVIATED
             .into_iter()
-            .nth(ts_to_wday(timestamp, false) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .nth(days_to_wday(days, false) as usize)
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
         4 => MONTH_WIDE
             .into_iter()
-            .nth(ts_to_wday(timestamp, false) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .nth(days_to_wday(days, false) as usize)
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
         5 => MONTH_NARROW
             .into_iter()
-            .nth(ts_to_wday(timestamp, false) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .nth(days_to_wday(days, false) as usize)
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
         6 => MONTH_SHORT
             .into_iter()
-            .nth(ts_to_wday(timestamp, false) as usize)
-            .ok_or(DateTimeError::InvalidFormat)?
+            .nth(days_to_wday(days, false) as usize)
+            .ok_or(AstrolabeError::InvalidFormat)?
             .to_string(),
-        7 => zero_padded(ts_to_wday(timestamp, true) + 1, 1),
-        8 => zero_padded(ts_to_wday(timestamp, true) + 1, 2),
-        _ => zero_padded(ts_to_wday(timestamp, false) + 1, 1),
+        7 => zero_padded(days_to_wday(days, true) + 1, 1),
+        8 => zero_padded(days_to_wday(days, true) + 1, 2),
+        _ => zero_padded(days_to_wday(days, false) + 1, 1),
     })
 }
 
-fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
+fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     const FORMATS: [[&str; 4]; 5] = [
         ["AM", "PM", "noon", "midnight"],
         ["AM", "PM", "noon", "midnight"],
@@ -190,7 +267,7 @@ fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
         ["a.m.", "p.m.", "noon", "midnight"],
         ["a", "p", "n", "mi"],
     ];
-    let time = timestamp % SECS_PER_DAY;
+    let time = (nanos / 1_000_000_000) as u32 % SECS_PER_DAY;
 
     match time {
         time if seperate_12 && time == 0 => {
@@ -204,7 +281,7 @@ fn format_period(timestamp: u64, length: usize, seperate_12: bool) -> String {
     }
 }
 
-fn format_zone(offset: i64, length: usize, with_z: bool) -> String {
+fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
     if with_z && offset == 0 {
         return "Z".to_string();
     }

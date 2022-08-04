@@ -1,22 +1,19 @@
-use super::leap::{is_leap_year, leaps_since_epoch};
-use crate::DateTimeError;
+use super::leap::{is_leap_year, leap_years};
+use crate::{
+    shared::{MAX_DATE, MIN_DATE, SECS_PER_HOUR, SECS_PER_MINUTE},
+    AstrolabeError,
+};
 
-pub(crate) const SECS_PER_MINUTE: u64 = 60;
-pub(crate) const SECS_PER_HOUR: u64 = 60 * SECS_PER_MINUTE;
-pub(crate) const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
-const SECS_PER_WEEK: u64 = 7 * SECS_PER_DAY;
-
-/// Converts a unix timestamp to date units (year, month and day of month)
-/// Logic originally released by the musl project (http://www.musl-libc.org/) under the MIT license. Taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
-pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
-    // 2000-03-01
-    const LEAPOCH: i64 = 11017;
+// Converts days (since 01. January 0001) to date units (year, month, day of month)
+pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
+    // 2000-03-01. Days since 0001-01-01
+    const LEAPOCH: i64 = 730_179;
     const DAYS_PER_400Y: i64 = 365 * 400 + 97;
     const DAYS_PER_100Y: i64 = 365 * 100 + 24;
     const DAYS_PER_4Y: i64 = 365 * 4 + 1;
     const MONTH_DAYS: [i64; 12] = [31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 29];
 
-    let days = (timestamp / SECS_PER_DAY) as i64 - LEAPOCH;
+    let days = days as i64 - LEAPOCH;
 
     let mut qc_cycles = days / DAYS_PER_400Y;
     let mut remdays = days % DAYS_PER_400Y;
@@ -62,45 +59,50 @@ pub(crate) fn ts_to_d_units(timestamp: u64) -> (u64, u64, u64) {
     } else {
         mon + 2
     };
-    (year as u64, mon, mday as u64)
+    (year as i32, mon as u32, mday as u32)
 }
 
-/// Converts a unix timestamp to subday time units (hour, min, sec)
-pub(crate) fn ts_to_t_units(timestamp: u64) -> (u64, u64, u64) {
-    let subday_sec = timestamp % SECS_PER_DAY;
-    let hour = subday_sec / SECS_PER_HOUR;
-    let min = subday_sec / SECS_PER_MINUTE % SECS_PER_MINUTE;
-    let sec = subday_sec % SECS_PER_MINUTE;
+// Converts nano seconds to time units (hour, min, sec)
+pub(crate) fn nanos_to_t_units(nanos: u64) -> (u32, u32, u32) {
+    let seconds = (nanos / 1_000_000_000) as u32;
+    let hour = seconds / SECS_PER_HOUR;
+    let min = seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
+    let sec = seconds % SECS_PER_MINUTE;
     (hour, min, sec)
 }
 
-/// Converts a date (year, month and day of month) to days since January 1, 1970
-pub(crate) fn date_to_days(year: u64, month: u64, day: u64) -> Result<u64, DateTimeError> {
-    if year < 1970 {
-        return Err(DateTimeError::OutOfRange);
-    }
-
-    let leap_years = leaps_since_epoch(year);
+// Converts a date (year, month and day of month) to days since 01. January 0001
+pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, AstrolabeError> {
+    print!("yo1");
+    valid_range(year, month, day)?;
+    print!("yo2");
+    let leap_years = leap_years(year);
     let (mut ydays, mdays) = month_to_ymdays(year, month)?;
 
     if day > mdays || day == 0 {
-        return Err(DateTimeError::OutOfRange);
+        return Err(AstrolabeError::OutOfRange);
     }
     ydays += day - 1;
 
-    Ok((year - 1970) * 365 + leap_years + ydays)
+    Ok(if year <= 0 {
+        ydays = if is_leap_year(year) { 366 } else { 365 } - ydays;
+        year * 365 - leap_years as i32 - ydays as i32
+    } else {
+        (year.abs() - 1) * 365 + leap_years as i32 + ydays as i32
+    })
 }
 
 /// Converts time values (hour, minute and seconds) to day seconds
-pub(crate) fn time_to_day_seconds(hour: u64, min: u64, sec: u64) -> Result<u64, DateTimeError> {
+#[allow(dead_code)]
+pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
     if hour > 23 || min > 59 || sec > 59 {
-        return Err(DateTimeError::OutOfRange);
+        return Err(AstrolabeError::OutOfRange);
     }
     Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
 }
 
 /// Converts year and month to the days until this month and days in the current month
-pub(crate) fn month_to_ymdays(year: u64, month: u64) -> Result<(u64, u64), DateTimeError> {
+pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), AstrolabeError> {
     let is_leap_year = is_leap_year(year);
     if is_leap_year {
         Ok(match month {
@@ -116,7 +118,7 @@ pub(crate) fn month_to_ymdays(year: u64, month: u64) -> Result<(u64, u64), DateT
             10 => (274, 31),
             11 => (305, 30),
             12 => (335, 31),
-            _ => return Err(DateTimeError::OutOfRange),
+            _ => return Err(AstrolabeError::OutOfRange),
         })
     } else {
         Ok(match month {
@@ -132,31 +134,30 @@ pub(crate) fn month_to_ymdays(year: u64, month: u64) -> Result<(u64, u64), DateT
             10 => (273, 31),
             11 => (304, 30),
             12 => (334, 31),
-            _ => return Err(DateTimeError::OutOfRange),
+            _ => return Err(AstrolabeError::OutOfRange),
         })
     }
 }
 
-/// Converts a timestamp to day of year
-pub(crate) fn ts_to_yday(timestamp: u64) -> u64 {
-    let (year, month, day) = ts_to_d_units(timestamp);
+/// Converts days to day of year
+pub(crate) fn days_to_yday(days: i32) -> u32 {
+    let (year, month, day) = days_to_d_units(days);
     // Using unwrap because it's safe to assume that month is valid
     let (ydays, _) = month_to_ymdays(year, month).unwrap();
     ydays + day
 }
 
-/// Converts a timestamp to day of week
-pub(crate) fn ts_to_wday(timestamp: u64, monday_first: bool) -> u64 {
-    (timestamp % SECS_PER_WEEK / SECS_PER_DAY + if monday_first { 3 } else { 4 }) % 7
+/// Converts days to day of week
+pub(crate) fn days_to_wday(days: i32, monday_first: bool) -> u32 {
+    (days.unsigned_abs() % 7 + if monday_first { 0 } else { 1 }) % 7
 }
 
 /// Converts a timestamp to week of year
 /// Formula taken from https://tondering.dk/claus/cal/week.php#calcweekno
-pub(crate) fn ts_to_wyear(timestamp: u64) -> u64 {
-    let (year, month, day) = ts_to_d_units(timestamp);
-    let year = year as i64;
-    let month = month as i64;
-    let day = day as i64;
+pub(crate) fn days_to_wyear(days: i32) -> u32 {
+    let (year, month, day) = days_to_d_units(days);
+    let month = month as i32;
+    let day = day as i32;
 
     let a = if month <= 2 { year - 1 } else { year };
     let b = a / 4 - a / 100 + a / 400;
@@ -172,8 +173,22 @@ pub(crate) fn ts_to_wyear(timestamp: u64) -> u64 {
     let d = (f + g - e) % 7;
     let n = f + 3 - d;
     match n {
-        n if n < 0 => (53 - (g - s) / 5) as u64,
+        n if n < 0 => (53 - (g - s) / 5) as u32,
         n if n > 364 + s => 1,
-        _ => (n / 7 + 1) as u64,
+        _ => (n / 7 + 1) as u32,
+    }
+}
+
+// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
+pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
+    if (year < MIN_DATE.0
+        || (year == MIN_DATE.0 && (month < MIN_DATE.1 || month == MIN_DATE.1 && day < MIN_DATE.2)))
+        || (year > MAX_DATE.0
+            || (year == MAX_DATE.0
+                && (month > MAX_DATE.1 || month == MAX_DATE.1 && day > MAX_DATE.2)))
+    {
+        Err(AstrolabeError::OutOfRange)
+    } else {
+        Ok(())
     }
 }

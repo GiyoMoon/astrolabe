@@ -1,10 +1,17 @@
-/// Returns the number of leap years since 1970 (excluding the specified year)
-pub(crate) fn leaps_since_epoch(mut year: u64) -> u64 {
-    year -= 1;
-    (year - 1968) / 4 - (year - 1900) / 100 + (year - 1600) / 400
+/// Returns leap years between the year 0001 and the given year (exluding the year itself)
+pub(crate) fn leap_years(mut year: i32) -> u32 {
+    if year > 0 {
+        year -= 1;
+    }
+    let year_abs = year.abs();
+    let mut leaps = year_abs / 4 - year_abs / 100 + year_abs / 400;
+    if year < 0 {
+        leaps += 1;
+    }
+    leaps as u32
 }
 
-/// Returns true if year is a leap year
-pub(crate) fn is_leap_year(year: u64) -> bool {
+/// Checks if the given year is a leap year
+pub(crate) fn is_leap_year(year: i32) -> bool {
     year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
