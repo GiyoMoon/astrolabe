@@ -1,11 +1,11 @@
 /// Returns leap years between the year 0001 and the given year (exluding the year itself)
 pub(crate) fn leap_years(mut year: i32) -> u32 {
-    if year > 0 {
+    if year.is_positive() {
         year -= 1;
     }
     let year_abs = year.abs();
     let mut leaps = year_abs / 4 - year_abs / 100 + year_abs / 400;
-    if year < 0 {
+    if year.is_negative() {
         leaps += 1;
     }
     leaps as u32

@@ -14,7 +14,9 @@
 
 mod date;
 mod shared;
+mod time;
 mod util;
 
 pub use self::date::{Date, DateUnit};
 pub use self::shared::AstrolabeError;
+pub use self::time::{Time, TimeUnit};

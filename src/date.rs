@@ -1,5 +1,5 @@
 use crate::{
-    shared::{DAYS_TO_1970, SECS_PER_DAY},
+    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY, SECS_PER_DAY_U64},
     util::{
         convert::{date_to_days, days_to_d_units},
         format::{format_date_part, parse_format_string},
@@ -51,7 +51,7 @@ impl Date {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
-            / SECS_PER_DAY as u64
+            / SECS_PER_DAY_U64
             + DAYS_TO_1970;
         Date(system_time as i32)
     }
@@ -88,15 +88,21 @@ impl Date {
 
     /// Creates a new [`Date`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
     ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
+    ///
     /// # Example
     /// ```rust
     /// use astrolabe::Date;
     ///
-    /// let date = Date::from_timestamp(0);
+    /// let date = Date::from_timestamp(0).unwrap();
     /// assert_eq!(0, date.timestamp());
     /// ```
-    pub fn from_timestamp(timestamp: i64) -> Self {
-        Date((timestamp % SECS_PER_DAY as i64 + DAYS_TO_1970 as i64) as i32)
+    pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
+        let days = timestamp / SECS_PER_DAY as i64 + DAYS_TO_1970_I64;
+        if days > 2_147_483_647 || days < -2_147_483_648 {
+            return Err(AstrolabeError::OutOfRange);
+        }
+        Ok(Date(days as i32))
     }
 
     /// Returns the number of days since January 1, 0001 (Negative if date is before)
@@ -106,9 +112,9 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_ymd(1, 1, 1).unwrap();
-    /// assert_eq!(0, date.days());
+    /// assert_eq!(0, date.as_days());
     /// ```
-    pub fn days(&self) -> i32 {
+    pub fn as_days(&self) -> i32 {
         self.0
     }
 
@@ -122,12 +128,7 @@ impl Date {
     /// assert_eq!(946_684_800, date.timestamp());
     /// ```
     pub fn timestamp(&self) -> i64 {
-        println!("{}", self.0 as i64 - DAYS_TO_1970 as i64);
-        println!(
-            "{}",
-            (self.0 as i64 - DAYS_TO_1970 as i64) * SECS_PER_DAY as i64
-        );
-        (self.0 as i64 - DAYS_TO_1970 as i64) * SECS_PER_DAY as i64
+        (self.0 as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY as i64
     }
 
     /// Returns the number of days between two [`Date`] instances.
@@ -200,16 +201,16 @@ impl Date {
     pub fn set(&self, value: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
         Ok(match unit {
             DateUnit::Year => {
-                let days = self.days();
+                let days = self.as_days();
                 let (_, month, day) = days_to_d_units(days);
                 let days = date_to_days(value, month, day)?;
 
                 Date(days)
             }
             DateUnit::Month => {
-                let days = self.days();
+                let days = self.as_days();
                 let (year, _, day) = days_to_d_units(days);
-                if value < 0 {
+                if value.is_negative() {
                     return Err(AstrolabeError::OutOfRange);
                 }
                 let days = date_to_days(year, value.unsigned_abs(), day)?;
@@ -217,9 +218,9 @@ impl Date {
                 Date(days)
             }
             DateUnit::Day => {
-                let days = self.days();
+                let days = self.as_days();
                 let (year, month, _) = days_to_d_units(days);
-                if value < 0 {
+                if value.is_negative() {
                     return Err(AstrolabeError::OutOfRange);
                 }
                 let days = date_to_days(year, month, value.unsigned_abs())?;
@@ -291,7 +292,7 @@ impl Date {
     ///
     pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
         let parts = parse_format_string(format)?;
-        let days = self.days();
+        let days = self.as_days();
         parts
             .iter()
             .map(|part| -> Result<Vec<char>, AstrolabeError> {
@@ -317,6 +318,12 @@ impl Date {
                 Err(er) => vec![Err(er)],
             })
             .collect::<Result<String, AstrolabeError>>()
+    }
+}
+
+impl From<&Date> for Date {
+    fn from(date: &Date) -> Self {
+        Date::from_days(date.as_days())
     }
 }
 

@@ -1,10 +1,11 @@
 use super::leap::{is_leap_year, leap_years};
 use crate::{
-    shared::{MAX_DATE, MIN_DATE, SECS_PER_HOUR, SECS_PER_MINUTE},
+    shared::{MAX_DATE, MIN_DATE, NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_MINUTE},
     AstrolabeError,
 };
 
 // Converts days (since 01. January 0001) to date units (year, month, day of month)
+/// Logic originally released by the musl project (http://www.musl-libc.org/) under the MIT license. Taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
 pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
     // 2000-03-01. Days since 0001-01-01
     const LEAPOCH: i64 = 730_179;
@@ -18,7 +19,7 @@ pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
     let mut qc_cycles = days / DAYS_PER_400Y;
     let mut remdays = days % DAYS_PER_400Y;
 
-    if remdays < 0 {
+    if remdays.is_negative() {
         remdays += DAYS_PER_400Y;
         qc_cycles -= 1;
     }
@@ -64,18 +65,17 @@ pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
 
 // Converts nano seconds to time units (hour, min, sec)
 pub(crate) fn nanos_to_t_units(nanos: u64) -> (u32, u32, u32) {
-    let seconds = (nanos / 1_000_000_000) as u32;
-    let hour = seconds / SECS_PER_HOUR;
-    let min = seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
-    let sec = seconds % SECS_PER_MINUTE;
+    let as_seconds = (nanos / NANOS_PER_SEC) as u32;
+    let hour = as_seconds / SECS_PER_HOUR;
+    let min = as_seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
+    let sec = as_seconds % SECS_PER_MINUTE;
     (hour, min, sec)
 }
 
 // Converts a date (year, month and day of month) to days since 01. January 0001
 pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, AstrolabeError> {
-    print!("yo1");
     valid_range(year, month, day)?;
-    print!("yo2");
+
     let leap_years = leap_years(year);
     let (mut ydays, mdays) = month_to_ymdays(year, month)?;
 
@@ -93,7 +93,6 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
 }
 
 /// Converts time values (hour, minute and seconds) to day seconds
-#[allow(dead_code)]
 pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
     if hour > 23 || min > 59 || sec > 59 {
         return Err(AstrolabeError::OutOfRange);
@@ -173,7 +172,7 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
     let d = (f + g - e) % 7;
     let n = f + 3 - d;
     match n {
-        n if n < 0 => (53 - (g - s) / 5) as u32,
+        n if n.is_negative() => (53 - (g - s) / 5) as u32,
         n if n > 364 + s => 1,
         _ => (n / 7 + 1) as u32,
     }
@@ -181,14 +180,15 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
 
 // Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
 pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
-    if (year < MIN_DATE.0
-        || (year == MIN_DATE.0 && (month < MIN_DATE.1 || month == MIN_DATE.1 && day < MIN_DATE.2)))
-        || (year > MAX_DATE.0
-            || (year == MAX_DATE.0
-                && (month > MAX_DATE.1 || month == MAX_DATE.1 && day > MAX_DATE.2)))
+    if year < MIN_DATE.0
+        || (year == MIN_DATE.0 && (month < MIN_DATE.1 || month == MIN_DATE.1 && day < MIN_DATE.2))
     {
-        Err(AstrolabeError::OutOfRange)
-    } else {
-        Ok(())
+        return Err(AstrolabeError::OutOfRange);
     }
+    if year > MAX_DATE.0
+        || (year == MAX_DATE.0 && (month > MAX_DATE.1 || month == MAX_DATE.1 && day > MAX_DATE.2))
+    {
+        return Err(AstrolabeError::OutOfRange);
+    }
+    Ok(())
 }

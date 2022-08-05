@@ -1,42 +1,9 @@
 use super::convert::{days_to_d_units, days_to_wyear, days_to_yday, nanos_to_t_units};
 use crate::{
-    shared::{SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
+    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
     util::convert::days_to_wday,
     AstrolabeError,
 };
-
-/// Formats a number as a zero padded string
-pub(crate) fn zero_padded_i(number: i32, length: usize) -> String {
-    format!(
-        "{}{}",
-        if number < 0 { "-" } else { "" },
-        zero_padded(number.unsigned_abs(), length)
-    )
-}
-
-/// Formats a number as a zero padded string
-pub(crate) fn zero_padded(number: u32, length: usize) -> String {
-    format!("{:0width$}", number, width = length)
-}
-
-/// Formats a number as an ordinal number
-pub(crate) fn add_ordinal_indicator(number: u32) -> String {
-    match number {
-        number if (number - 1) % 10 == 0 && number != 11 => format!("{}st", number),
-        number if (number - 2) % 10 == 0 && number != 12 => format!("{}nd", number),
-        number if (number - 3) % 10 == 0 && number != 13 => format!("{}rd", number),
-        _ => format!("{}th", number),
-    }
-}
-
-/// Determines length of formatting part based on actual, default and max length
-pub(crate) fn get_length(length: usize, default: usize, max: usize) -> usize {
-    if length > max {
-        default
-    } else {
-        length
-    }
-}
 
 // Parse a format string and return parts to format
 pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> {
@@ -75,27 +42,46 @@ pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> 
 }
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
+/// **Note**: Not all field types/symbols are implemented.
+#[allow(dead_code)]
+pub fn format_part(
+    chars: &str,
+    days: i32,
+    nano_seconds: u64,
+    offset: i32,
+) -> Result<String, AstrolabeError> {
+    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
+    Ok(match first_char {
+        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days)?,
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nano_seconds)?,
+        'X' => format_zone(offset, chars.len(), true),
+        'x' => format_zone(offset, chars.len(), false),
+        _ => chars.to_string(),
+    })
+}
+
+/// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
 pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
         'G' => match chars.len() {
             1 | 2 | 3 => {
-                if days < 0 {
+                if days.is_negative() {
                     "BC".to_string()
                 } else {
                     "AD".to_string()
                 }
             }
             5 => {
-                if days < 0 {
+                if days.is_negative() {
                     "B".to_string()
                 } else {
                     "A".to_string()
                 }
             }
             _ => {
-                if days < 0 {
+                if days.is_negative() {
                     "Before Christ".to_string()
                 } else {
                     "Anno Domini".to_string()
@@ -132,44 +118,44 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
 }
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
-/// **Note**: Not all field types/symbols are implemented.
-#[allow(dead_code)]
-pub fn format_part(
-    chars: &str,
-    days: i32,
-    nanos: u64,
-    offset: i32,
-) -> Result<String, AstrolabeError> {
+/// This function only formats time parts while ignoring date related parts (E.g. year, day)
+pub fn format_time_part(chars: &str, nano_seconds: u64) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
-        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days)?,
-        'a' => format_period(nanos, get_length(chars.len(), 3, 5), false),
-        'b' => format_period(nanos, get_length(chars.len(), 3, 5), true),
+        'a' => format_period(nano_seconds, get_length(chars.len(), 3, 5), false),
+        'b' => format_period(nano_seconds, get_length(chars.len(), 3, 5), true),
         'h' => {
-            let hour = if nanos_to_t_units(nanos).0 % 12 == 0 {
+            let hour = if nanos_to_t_units(nano_seconds).0 % 12 == 0 {
                 12
             } else {
-                nanos_to_t_units(nanos).0 % 12
+                nanos_to_t_units(nano_seconds).0 % 12
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'H' => zero_padded(nanos_to_t_units(nanos).0, get_length(chars.len(), 2, 2)),
+        'H' => zero_padded(
+            nanos_to_t_units(nano_seconds).0,
+            get_length(chars.len(), 2, 2),
+        ),
         'K' => zero_padded(
-            nanos_to_t_units(nanos).0 % 12,
+            nanos_to_t_units(nano_seconds).0 % 12,
             get_length(chars.len(), 2, 2),
         ),
         'k' => {
-            let hour = if nanos_to_t_units(nanos).0 == 0 {
+            let hour = if nanos_to_t_units(nano_seconds).0 == 0 {
                 24
             } else {
-                nanos_to_t_units(nanos).0
+                nanos_to_t_units(nano_seconds).0
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'm' => zero_padded(nanos_to_t_units(nanos).1, get_length(chars.len(), 2, 2)),
-        's' => zero_padded(nanos_to_t_units(nanos).2, get_length(chars.len(), 2, 2)),
-        'X' => format_zone(offset, chars.len(), true),
-        'x' => format_zone(offset, chars.len(), false),
+        'm' => zero_padded(
+            nanos_to_t_units(nano_seconds).1,
+            get_length(chars.len(), 2, 2),
+        ),
+        's' => zero_padded(
+            nanos_to_t_units(nano_seconds).2,
+            get_length(chars.len(), 2, 2),
+        ),
         _ => chars.to_string(),
     })
 }
@@ -267,7 +253,7 @@ fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
         ["a.m.", "p.m.", "noon", "midnight"],
         ["a", "p", "n", "mi"],
     ];
-    let time = (nanos / 1_000_000_000) as u32 % SECS_PER_DAY;
+    let time = (nanos / NANOS_PER_SEC) as u32 % SECS_PER_DAY;
 
     match time {
         time if seperate_12 && time == 0 => {
@@ -289,7 +275,7 @@ fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
     let hour = offset.unsigned_abs() / SECS_PER_HOUR;
     let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
     let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
-    let prefix = if offset < 0 { "-" } else { "+" };
+    let prefix = if offset.is_negative() { "-" } else { "+" };
 
     match length {
         1 => {
@@ -297,7 +283,7 @@ fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
                 "{}{}{}",
                 prefix,
                 zero_padded(hour, 2),
-                if min > 0 {
+                if min != 0 {
                     zero_padded(min, 2)
                 } else {
                     "".to_string()
@@ -313,7 +299,7 @@ fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
                 prefix,
                 zero_padded(hour, 2),
                 zero_padded(min, 2),
-                if sec > 0 {
+                if sec != 0 {
                     zero_padded(sec, 2)
                 } else {
                     "".to_string()
@@ -326,7 +312,7 @@ fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
                 prefix,
                 zero_padded(hour, 2),
                 zero_padded(min, 2),
-                if sec > 0 {
+                if sec != 0 {
                     format!(":{}", zero_padded(sec, 2))
                 } else {
                     "".to_string()
@@ -336,5 +322,38 @@ fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
         _ => {
             format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
         }
+    }
+}
+
+/// Formats a number as a zero padded string
+pub(crate) fn zero_padded_i(number: i32, length: usize) -> String {
+    format!(
+        "{}{}",
+        if number.is_negative() { "-" } else { "" },
+        zero_padded(number.unsigned_abs(), length)
+    )
+}
+
+/// Formats a number as a zero padded string
+pub(crate) fn zero_padded(number: u32, length: usize) -> String {
+    format!("{:0width$}", number, width = length)
+}
+
+/// Determines length of formatting part based on actual, default and max length
+pub(crate) fn get_length(length: usize, default: usize, max: usize) -> usize {
+    if length > max {
+        default
+    } else {
+        length
+    }
+}
+
+/// Formats a number as an ordinal number
+pub(crate) fn add_ordinal_indicator(number: u32) -> String {
+    match number {
+        number if (number - 1) % 10 == 0 && number != 11 => format!("{}st", number),
+        number if (number - 2) % 10 == 0 && number != 12 => format!("{}nd", number),
+        number if (number - 3) % 10 == 0 && number != 13 => format!("{}rd", number),
+        _ => format!("{}th", number),
     }
 }
