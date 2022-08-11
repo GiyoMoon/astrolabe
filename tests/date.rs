@@ -72,7 +72,7 @@ mod date_tests {
                 .timestamp()
         );
         assert_eq!(
-            "-5879610/06/23",
+            "-5879611/06/23",
             Date::from_timestamp(-185_604_722_784_000)
                 .unwrap()
                 .format("yyyy/MM/dd")
@@ -84,57 +84,42 @@ mod date_tests {
     }
 
     #[test]
+    fn between() {
+        let date1 = Date::from_days(123);
+        let date2 = Date::from_days(200);
+        assert_eq!(77, date1.between(&date2));
+        assert_eq!(77, date2.between(&date1));
+    }
+
+    #[test]
     fn get() {
-        let date_time = Date::from_ymd(2000, 5, 10).unwrap();
-        assert_eq!(2000, date_time.get(DateUnit::Year));
-        assert_eq!(5, date_time.get(DateUnit::Month));
-        assert_eq!(10, date_time.get(DateUnit::Day));
+        let date = Date::from_ymd(2000, 5, 10).unwrap();
+        assert_eq!(2000, date.get(DateUnit::Year));
+        assert_eq!(5, date.get(DateUnit::Month));
+        assert_eq!(10, date.get(DateUnit::Day));
     }
 
     #[test]
-    fn set() {
-        let date_time = Date::from_ymd(2000, 5, 10).unwrap();
-        let modified = date_time.set(2022, DateUnit::Year).unwrap();
-        assert_eq!(2022, modified.get(DateUnit::Year));
-        let modified = date_time.set(1, DateUnit::Month).unwrap();
-        assert_eq!(2000, modified.get(DateUnit::Year));
-        assert_eq!(1, modified.get(DateUnit::Month));
-        let modified = date_time.set(13, DateUnit::Day).unwrap();
-        assert_eq!(2000, modified.get(DateUnit::Year));
-        assert_eq!(5, modified.get(DateUnit::Month));
-        assert_eq!(13, modified.get(DateUnit::Day));
+    fn apply() {
+        let date = Date::from_ymd(1970, 1, 1).unwrap();
 
-        assert!(date_time.set(5_879_612, DateUnit::Year).is_err());
-        assert!(date_time.set(13, DateUnit::Month).is_err());
-        assert!(date_time
-            .set(2, DateUnit::Month)
-            .unwrap()
-            .set(31, DateUnit::Day)
-            .is_err());
-        assert!(date_time.set(32, DateUnit::Day).is_err());
-    }
-
-    #[test]
-    fn manipulation() {
-        let date_time = Date::from_ymd(1970, 1, 1).unwrap();
-
-        let modified = date_time.apply(123, DateUnit::Day).unwrap();
+        let modified = date.apply(123, DateUnit::Day).unwrap();
         assert_eq!(10627200, modified.timestamp());
-        let modified = date_time.apply(11, DateUnit::Month).unwrap();
+        let modified = date.apply(11, DateUnit::Month).unwrap();
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time.apply(12, DateUnit::Month).unwrap();
+        let modified = date.apply(12, DateUnit::Month).unwrap();
         assert_eq!("1971-01-01", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time.apply(14, DateUnit::Month).unwrap();
+        let modified = date.apply(14, DateUnit::Month).unwrap();
         assert_eq!("1971-03-01", modified.format("yyyy-MM-dd").unwrap());
 
         // Leap year cases
-        let modified = date_time.apply(30, DateUnit::Day).unwrap();
+        let modified = date.apply(30, DateUnit::Day).unwrap();
         assert_eq!("1970-01-31", modified.format("yyyy-MM-dd").unwrap());
         let modified = modified.apply(1, DateUnit::Month).unwrap();
         assert_eq!("1970-02-28", modified.format("yyyy-MM-dd").unwrap());
         let modified = modified.apply(2, DateUnit::Year).unwrap();
         assert_eq!("1972-02-28", modified.format("yyyy-MM-dd").unwrap());
-        let modified = date_time
+        let modified = date
             .apply(2, DateUnit::Year)
             .unwrap()
             .apply(30, DateUnit::Day)
@@ -143,14 +128,53 @@ mod date_tests {
         let modified = modified.apply(1, DateUnit::Month).unwrap();
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
 
-        let date_time = Date::from_ymd(1971, 1, 1).unwrap();
-        let modified = date_time.apply(-1, DateUnit::Month).unwrap();
+        let date = Date::from_ymd(1971, 1, 1).unwrap();
+        let modified = date.apply(-1, DateUnit::Month).unwrap();
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
 
-        let date_time = Date::from_ymd(1972, 3, 31).unwrap();
-        let modified = date_time.apply(-1, DateUnit::Month).unwrap();
+        let date = Date::from_ymd(1972, 3, 31).unwrap();
+        let modified = date.apply(-1, DateUnit::Month).unwrap();
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
         let modified = modified.apply(-1, DateUnit::Month).unwrap();
         assert_eq!("1972-01-29", modified.format("yyyy-MM-dd").unwrap());
+    }
+
+    #[test]
+    fn set() {
+        let date = Date::from_ymd(2000, 5, 10).unwrap();
+        let modified = date.set(2022, DateUnit::Year).unwrap();
+        assert_eq!(2022, modified.get(DateUnit::Year));
+        let modified = date.set(1, DateUnit::Month).unwrap();
+        assert_eq!(2000, modified.get(DateUnit::Year));
+        assert_eq!(1, modified.get(DateUnit::Month));
+        let modified = date.set(13, DateUnit::Day).unwrap();
+        assert_eq!(2000, modified.get(DateUnit::Year));
+        assert_eq!(5, modified.get(DateUnit::Month));
+        assert_eq!(13, modified.get(DateUnit::Day));
+
+        assert!(date.set(5_879_612, DateUnit::Year).is_err());
+        assert!(date.set(13, DateUnit::Month).is_err());
+        assert!(date
+            .set(2, DateUnit::Month)
+            .unwrap()
+            .set(31, DateUnit::Day)
+            .is_err());
+        assert!(date.set(32, DateUnit::Day).is_err());
+    }
+
+    #[test]
+    fn negative_years() {
+        let date = Date::from_days(0);
+        assert_eq!("0001-01-01", date.format("yyyy-MM-dd").unwrap());
+        assert_eq!("01-01-01", date.format("yy-MM-dd").unwrap());
+        assert_eq!(1, date.get(DateUnit::Year));
+        let date = Date::from_days(-366);
+        assert_eq!("-0001-01-01", date.format("yyyy-MM-dd").unwrap());
+        assert_eq!("-01-01-01", date.format("yy-MM-dd").unwrap());
+        assert_eq!(-1, date.get(DateUnit::Year));
+        let date = Date::from_days(-367);
+        assert_eq!("-0002-12-31", date.format("yyyy-MM-dd").unwrap());
+        assert_eq!("-02-12-31", date.format("yy-MM-dd").unwrap());
+        assert_eq!(-2, date.get(DateUnit::Year));
     }
 }

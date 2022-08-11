@@ -99,7 +99,7 @@ impl Date {
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         let days = timestamp / SECS_PER_DAY as i64 + DAYS_TO_1970_I64;
-        if days > 2_147_483_647 || days < -2_147_483_648 {
+        if !(-2_147_483_648..=2_147_483_647).contains(&days) {
             return Err(AstrolabeError::OutOfRange);
         }
         Ok(Date(days as i32))

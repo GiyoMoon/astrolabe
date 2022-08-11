@@ -90,9 +90,14 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
         },
         'y' => match chars.len() {
             2 => {
-                let year = days_to_d_units(days).0.to_string();
-                let last_two = &year[year.len() - 2..];
-                last_two.to_string()
+                let mut year = days_to_d_units(days).0;
+                let year_string = year.to_string();
+
+                if year_string.len() > 2 {
+                    let last_two = &year_string[year_string.len() - 2..];
+                    year = last_two.parse::<i32>().unwrap();
+                }
+                zero_padded_i(year, 2)
             }
             _ => zero_padded_i(days_to_d_units(days).0, chars.len()),
         },

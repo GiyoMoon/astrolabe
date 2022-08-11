@@ -76,7 +76,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Min => {
             let old_time = old.as_nano_seconds();
@@ -88,8 +89,8 @@ pub(crate) fn apply_time_unit(
                 old_time.checked_add(amount_nanos)
             }
             .ok_or(AstrolabeError::OutOfRange)?;
-
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Sec => {
             let old_time = old.as_nano_seconds();
@@ -102,7 +103,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Centis => {
             let old_time = old.as_nano_seconds();
@@ -115,7 +117,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Millis => {
             let old_time = old.as_nano_seconds();
@@ -128,7 +131,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Micros => {
             let old_time = old.as_nano_seconds();
@@ -141,7 +145,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
         TimeUnit::Nanos => {
             let old_time = old.as_nano_seconds();
@@ -154,7 +159,8 @@ pub(crate) fn apply_time_unit(
             }
             .ok_or(AstrolabeError::OutOfRange)?;
 
-            Time::from_nano_seconds(new_time)
+            // Using unwrap because it's safe to assume that new_time is valid
+            Time::from_nano_seconds(new_time).unwrap()
         }
     })
 }
