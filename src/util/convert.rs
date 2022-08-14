@@ -4,7 +4,7 @@ use crate::{
         MAX_DATE, MIN_DATE, NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
         SECS_PER_MINUTE_U64,
     },
-    AstrolabeError, TimeUnit,
+    AstrolabeError, DateTimeUnit, TimeUnit,
 };
 
 /// Converts days (since 01. January 0001) to date units (year, month, day of month)
@@ -119,9 +119,9 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     }
     ydays += day - 1;
 
-    Ok(if year <= 0 {
+    Ok(if year.is_negative() {
         ydays = if is_leap_year(year) { 366 } else { 365 } - ydays;
-        year * 365 - leap_years as i32 - ydays as i32
+        (year + 1) * 365 - leap_years as i32 - ydays as i32
     } else {
         (year.abs() - 1) * 365 + leap_years as i32 + ydays as i32
     })
@@ -215,6 +215,10 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
 
 /// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
 pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
+    if year == 0 {
+        return Err(AstrolabeError::OutOfRange);
+    }
+
     if year < MIN_DATE.0
         || (year == MIN_DATE.0 && (month < MIN_DATE.1 || month == MIN_DATE.1 && day < MIN_DATE.2))
     {
@@ -226,4 +230,18 @@ pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), Astrola
         return Err(AstrolabeError::OutOfRange);
     }
     Ok(())
+}
+
+/// Converts a [`DateTimeUnit`] to [`TimeUnit`]. If there is no corresponding time unit, the default, [`TimeUnit::Sec`], will be used.
+pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
+    match unit {
+        DateTimeUnit::Hour => TimeUnit::Hour,
+        DateTimeUnit::Min => TimeUnit::Min,
+        DateTimeUnit::Sec => TimeUnit::Sec,
+        DateTimeUnit::Centis => TimeUnit::Centis,
+        DateTimeUnit::Millis => TimeUnit::Millis,
+        DateTimeUnit::Micros => TimeUnit::Micros,
+        DateTimeUnit::Nanos => TimeUnit::Nanos,
+        _ => TimeUnit::Sec,
+    }
 }

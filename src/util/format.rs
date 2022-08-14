@@ -43,19 +43,18 @@ pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> 
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
-#[allow(dead_code)]
 pub fn format_part(
     chars: &str,
     days: i32,
-    nano_seconds: u64,
-    offset: i32,
+    nanoseconds: u64,
+    // offset: i32,
 ) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
         'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days)?,
-        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nano_seconds)?,
-        'X' => format_zone(offset, chars.len(), true),
-        'x' => format_zone(offset, chars.len(), false),
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nanoseconds)?,
+        // 'X' => format_zone(offset, chars.len(), true),
+        // 'x' => format_zone(offset, chars.len(), false),
         _ => chars.to_string(),
     })
 }
@@ -124,41 +123,41 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats time parts while ignoring date related parts (E.g. year, day)
-pub fn format_time_part(chars: &str, nano_seconds: u64) -> Result<String, AstrolabeError> {
+pub fn format_time_part(chars: &str, nanoseconds: u64) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
-        'a' => format_period(nano_seconds, get_length(chars.len(), 3, 5), false),
-        'b' => format_period(nano_seconds, get_length(chars.len(), 3, 5), true),
+        'a' => format_period(nanoseconds, get_length(chars.len(), 3, 5), false),
+        'b' => format_period(nanoseconds, get_length(chars.len(), 3, 5), true),
         'h' => {
-            let hour = if nanos_to_t_units(nano_seconds).0 % 12 == 0 {
+            let hour = if nanos_to_t_units(nanoseconds).0 % 12 == 0 {
                 12
             } else {
-                nanos_to_t_units(nano_seconds).0 % 12
+                nanos_to_t_units(nanoseconds).0 % 12
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
         'H' => zero_padded(
-            nanos_to_t_units(nano_seconds).0,
+            nanos_to_t_units(nanoseconds).0,
             get_length(chars.len(), 2, 2),
         ),
         'K' => zero_padded(
-            nanos_to_t_units(nano_seconds).0 % 12,
+            nanos_to_t_units(nanoseconds).0 % 12,
             get_length(chars.len(), 2, 2),
         ),
         'k' => {
-            let hour = if nanos_to_t_units(nano_seconds).0 == 0 {
+            let hour = if nanos_to_t_units(nanoseconds).0 == 0 {
                 24
             } else {
-                nanos_to_t_units(nano_seconds).0
+                nanos_to_t_units(nanoseconds).0
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
         'm' => zero_padded(
-            nanos_to_t_units(nano_seconds).1,
+            nanos_to_t_units(nanoseconds).1,
             get_length(chars.len(), 2, 2),
         ),
         's' => zero_padded(
-            nanos_to_t_units(nano_seconds).2,
+            nanos_to_t_units(nanoseconds).2,
             get_length(chars.len(), 2, 2),
         ),
         _ => chars.to_string(),
@@ -272,6 +271,7 @@ fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
     if with_z && offset == 0 {
         return "Z".to_string();

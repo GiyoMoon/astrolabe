@@ -1,36 +1,42 @@
 use super::{
-    convert::{days_to_d_units, month_to_ymdays, valid_range},
+    convert::{
+        date_to_days, days_to_d_units, month_to_ymdays, nanos_as_unit, nanos_to_t_units,
+        nanos_to_unit, valid_range,
+    },
     leap::is_leap_year,
 };
 use crate::{
-    shared::{NANOS_PER_SEC, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64},
-    AstrolabeError, Date, DateUnit, Time, TimeUnit,
+    shared::{
+        NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
+    },
+    AstrolabeError, DateUnit, TimeUnit,
 };
 
-/// Applies (add/subtract) a specified [`DateUnit`] to [`Date`]
+/// Applies (add/subtract) a specified [`DateUnit`] to days
 pub(crate) fn apply_date_unit(
-    old: &Date,
-    amount: i32,
+    old_days: i32,
+    amount: i64,
     unit: DateUnit,
-) -> Result<Date, AstrolabeError> {
+) -> Result<i32, AstrolabeError> {
+    let amount_i32: i32 = amount.try_into().map_err(|_| AstrolabeError::OutOfRange)?;
     Ok(match unit {
         DateUnit::Year => {
-            let (year, month, mut day) = days_to_d_units(old.as_days());
+            let (year, month, mut day) = days_to_d_units(old_days);
             if is_leap_year(year) && month == 2 && day == 29 {
                 day = 28;
             }
-            let target_year = year + amount;
+            let target_year: i32 = year + amount_i32;
             valid_range(target_year, month, day)?;
             // Using unwrap because it's safe to assume that the values provided are valid
-            Date::from_ymd(target_year, month, day).unwrap()
+            date_to_days(target_year, month, day).unwrap()
         }
         DateUnit::Month => {
-            let (year, month, day) = days_to_d_units(old.as_days());
-            let target_year = (year * 12 + month as i32 + amount - 1) / 12;
-            let target_month = if (month as i32 + amount) % 12 == 0 {
+            let (year, month, day) = days_to_d_units(old_days);
+            let target_year = (year * 12 + month as i32 + amount_i32 - 1) / 12;
+            let target_month = if (month as i32 + amount_i32) % 12 == 0 {
                 12
             } else {
-                (month as i32 + amount).unsigned_abs() % 12
+                (month as i32 + amount_i32).unsigned_abs() % 12
             };
             let target_day = match day {
                 day if day < 29 => day,
@@ -46,121 +52,189 @@ pub(crate) fn apply_date_unit(
             };
             valid_range(target_year, target_month, target_day)?;
             // Using unwrap because it's safe to assume that month and day is valid
-            Date::from_ymd(target_year, target_month, target_day).unwrap()
+            date_to_days(target_year, target_month, target_day).unwrap()
         }
-        DateUnit::Day => {
-            let new_days = old
-                .as_days()
-                .checked_add(amount)
-                .ok_or(AstrolabeError::OutOfRange)?;
-            Date::from_days(new_days)
+        DateUnit::Day => old_days
+            .checked_add(amount_i32)
+            .ok_or(AstrolabeError::OutOfRange)?,
+    })
+}
+
+/// Applies (add/subtract) a specified [`TimeUnit`] to nanoseconds
+pub(crate) fn apply_time_unit(
+    old_nanos: i128,
+    amount: i64,
+    unit: TimeUnit,
+) -> Result<i128, AstrolabeError> {
+    Ok(match unit {
+        TimeUnit::Hour => {
+            let amount_nanos = (amount.unsigned_abs() * SECS_PER_HOUR_U64 * NANOS_PER_SEC) as i128;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Min => {
+            let amount_nanos =
+                (amount.unsigned_abs() * SECS_PER_MINUTE_U64 * NANOS_PER_SEC) as i128;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Sec => {
+            let amount_nanos = (amount.unsigned_abs() * NANOS_PER_SEC) as i128;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Centis => {
+            let amount_nanos = amount.unsigned_abs() as i128 * 10_000_000;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Millis => {
+            let amount_nanos = amount.unsigned_abs() as i128 * 1_000_000;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Micros => {
+            let amount_nanos = amount.unsigned_abs() as i128 * 1_000;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
+        }
+        TimeUnit::Nanos => {
+            let amount_nanos = amount.unsigned_abs() as i128;
+
+            if amount.is_negative() {
+                old_nanos.checked_sub(amount_nanos)
+            } else {
+                old_nanos.checked_add(amount_nanos)
+            }
+            .ok_or(AstrolabeError::OutOfRange)?
         }
     })
 }
 
-/// Applies (add/subtract) a specified [`TimeUnit`] to [`Time`]
-pub(crate) fn apply_time_unit(
-    old: &Time,
-    amount: i64,
+/// Sets a specific [`DateUnit`] to the provided value
+pub(crate) fn set_date_unit(days: i32, value: i32, unit: DateUnit) -> Result<i32, AstrolabeError> {
+    Ok(match unit {
+        DateUnit::Year => {
+            let (_, month, day) = days_to_d_units(days);
+
+            date_to_days(value, month, day)?
+        }
+        DateUnit::Month => {
+            let (year, _, day) = days_to_d_units(days);
+            if value.is_negative() {
+                return Err(AstrolabeError::OutOfRange);
+            }
+
+            date_to_days(year, value.unsigned_abs(), day)?
+        }
+        DateUnit::Day => {
+            let (year, month, _) = days_to_d_units(days);
+            if value.is_negative() {
+                return Err(AstrolabeError::OutOfRange);
+            }
+
+            date_to_days(year, month, value.unsigned_abs())?
+        }
+    })
+}
+
+/// Sets a specific [`TimeUnit`] to the provided value
+pub(crate) fn set_time_unit(
+    nanoseconds: u64,
+    value: u32,
     unit: TimeUnit,
-) -> Result<Time, AstrolabeError> {
+) -> Result<u64, AstrolabeError> {
     Ok(match unit {
         TimeUnit::Hour => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * SECS_PER_HOUR_U64 * NANOS_PER_SEC;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 23 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
+            let (_, min, sec) = nanos_to_t_units(nanoseconds);
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            (value * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec) as u64 * NANOS_PER_SEC
+                + nanos_to_unit(nanoseconds, TimeUnit::Nanos)
         }
         TimeUnit::Min => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 59 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            let (hour, _, sec) = nanos_to_t_units(nanoseconds);
+
+            (hour * SECS_PER_HOUR + value * SECS_PER_MINUTE + sec) as u64 * NANOS_PER_SEC
+                + nanos_to_unit(nanoseconds, TimeUnit::Nanos)
         }
         TimeUnit::Sec => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * NANOS_PER_SEC;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 59 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
+            let (hour, min, _) = nanos_to_t_units(nanoseconds);
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            (hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + value) as u64 * NANOS_PER_SEC
+                + nanos_to_unit(nanoseconds, TimeUnit::Nanos)
         }
         TimeUnit::Centis => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * 10_000_000;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 99 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            nanos_as_unit(nanoseconds, TimeUnit::Sec) * NANOS_PER_SEC
+                + value as u64 * 10_000_000
+                + nanoseconds % 10_000_000
         }
         TimeUnit::Millis => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * 1_000_000;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 999 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            nanos_as_unit(nanoseconds, TimeUnit::Sec) * NANOS_PER_SEC
+                + value as u64 * 1_000_000
+                + nanoseconds % 1_000_000
         }
         TimeUnit::Micros => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs() * 1_000;
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 999_999 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            nanos_as_unit(nanoseconds, TimeUnit::Sec) * NANOS_PER_SEC
+                + value as u64 * 1_000
+                + nanoseconds % 1_000
         }
         TimeUnit::Nanos => {
-            let old_time = old.as_nano_seconds();
-            let amount_nanos = amount.unsigned_abs();
-
-            let new_time = if amount.is_negative() {
-                old_time.checked_sub(amount_nanos)
-            } else {
-                old_time.checked_add(amount_nanos)
+            if value > 999_999_999 {
+                return Err(AstrolabeError::OutOfRange);
             }
-            .ok_or(AstrolabeError::OutOfRange)?;
 
-            // Using unwrap because it's safe to assume that new_time is valid
-            Time::from_nano_seconds(new_time).unwrap()
+            nanos_as_unit(nanoseconds, TimeUnit::Sec) * NANOS_PER_SEC + value as u64
         }
     })
 }

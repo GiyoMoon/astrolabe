@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod date_tests {
+mod time_tests {
     use astrolabe::{Time, TimeUnit};
 
     #[test]
@@ -37,15 +37,15 @@ mod date_tests {
     }
 
     #[test]
-    fn nano_seconds() {
-        assert_eq!(0, Time::from_nano_seconds(0).unwrap().as_nano_seconds());
+    fn nanoseconds() {
+        assert_eq!(0, Time::from_nanoseconds(0).unwrap().as_nanoseconds());
         assert_eq!(
             86_399_999_999_999,
-            Time::from_nano_seconds(86_399_999_999_999)
+            Time::from_nanoseconds(86_399_999_999_999)
                 .unwrap()
-                .as_nano_seconds()
+                .as_nanoseconds()
         );
-        assert!(Time::from_nano_seconds(86_400_000_000_000).is_err())
+        assert!(Time::from_nanoseconds(86_400_000_000_000).is_err())
     }
 
     #[test]
@@ -58,7 +58,7 @@ mod date_tests {
 
     #[test]
     fn unit() {
-        let time = Time::from_nano_seconds(10_921_123_456_789).unwrap();
+        let time = Time::from_nanoseconds(10_921_123_456_789).unwrap();
 
         assert_eq!(3, time.as_unit(TimeUnit::Hour));
         assert_eq!(182, time.as_unit(TimeUnit::Min));
@@ -105,7 +105,7 @@ mod date_tests {
         time = time.apply(-6, TimeUnit::Micros).unwrap();
         time = time.apply(-7, TimeUnit::Nanos).unwrap();
 
-        assert_eq!(0, time.as_nano_seconds());
+        assert_eq!(0, time.as_nanoseconds());
 
         assert!(time.apply(-1, TimeUnit::Nanos).is_err());
     }
@@ -137,10 +137,10 @@ mod date_tests {
     #[test]
     fn implementations() {
         let default = Time::default();
-        assert_eq!(0, default.as_nano_seconds());
-        let time = Time::from_nano_seconds(12345).unwrap();
+        assert_eq!(0, default.as_nanoseconds());
+        let time = Time::from_nanoseconds(12345).unwrap();
         let time_copy = Time::from(&time);
-        assert_eq!(12345, time.as_nano_seconds());
-        assert_eq!(12345, time_copy.as_nano_seconds());
+        assert_eq!(12345, time.as_nanoseconds());
+        assert_eq!(12345, time_copy.as_nanoseconds());
     }
 }

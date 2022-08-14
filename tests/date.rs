@@ -19,7 +19,7 @@ mod date_tests {
         from_ymd_ok(1154, 4, 2, 29);
         from_ymd_ok(119, 1, 4, 30);
         from_ymd_ok(2_147_483_647, 5_879_611, 7, 12);
-        from_ymd_ok(-2_147_483_648, -5_879_610, 6, 23);
+        from_ymd_ok(-2_147_483_648, -5_879_611, 6, 23);
 
         // check invalid limits
         from_ymd_err(1, 0, 1);
@@ -32,9 +32,9 @@ mod date_tests {
         from_ymd_err(5_879_611, 7, 13);
         from_ymd_err(5_879_612, 1, 1);
         from_ymd_err(5_879_611, 8, 1);
-        from_ymd_err(-5_879_610, 6, 22);
-        from_ymd_err(-5_879_611, 1, 1);
-        from_ymd_err(-5_879_610, 5, 1);
+        from_ymd_err(-5_879_611, 6, 22);
+        from_ymd_err(-5_879_612, 1, 1);
+        from_ymd_err(-5_879_611, 5, 1);
     }
 
     fn from_ymd_ok(expected: i32, year: i32, month: u32, day: u32) {
@@ -160,6 +160,7 @@ mod date_tests {
             .set(31, DateUnit::Day)
             .is_err());
         assert!(date.set(32, DateUnit::Day).is_err());
+        assert!(date.set(0, DateUnit::Year).is_err());
     }
 
     #[test]

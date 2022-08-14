@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod format_tests {
     use astrolabe::{Date, Time};
 
     #[test]
@@ -12,7 +12,7 @@ mod tests {
         assert_eq!("A", date.format("GGGGG").unwrap());
         assert_eq!("Anno Domini", date.format("GGGGGG").unwrap());
         assert_eq!("Anno Domini", date.format("GGGGGGG").unwrap());
-        let date = Date::from_ymd(0, 1, 1).unwrap();
+        let date = Date::from_ymd(-1, 1, 1).unwrap();
         assert_eq!("BC", date.format("G").unwrap());
         assert_eq!("BC", date.format("GG").unwrap());
         assert_eq!("BC", date.format("GGG").unwrap());
@@ -52,14 +52,14 @@ mod tests {
         assert_eq!("0001", date.format("yyyy").unwrap());
         assert_eq!("00001", date.format("yyyyy").unwrap());
 
-        let date = Date::from_ymd(0, 1, 1).unwrap();
+        let date = Date::from_ymd(-1, 1, 1).unwrap();
         assert_eq!("-1", date.format("y").unwrap());
         assert_eq!("-01", date.format("yy").unwrap());
         assert_eq!("-001", date.format("yyy").unwrap());
         assert_eq!("-0001", date.format("yyyy").unwrap());
         assert_eq!("-00001", date.format("yyyyy").unwrap());
 
-        let date = Date::from_ymd(-1, 1, 1).unwrap();
+        let date = Date::from_ymd(-2, 1, 1).unwrap();
         assert_eq!("-2", date.format("y").unwrap());
         assert_eq!("-02", date.format("yy").unwrap());
         assert_eq!("-002", date.format("yyy").unwrap());

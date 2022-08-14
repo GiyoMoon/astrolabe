@@ -1,9 +1,9 @@
 use crate::{
-    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_MINUTE},
+    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
     util::{
-        convert::{nanos_as_unit, nanos_to_t_units, nanos_to_unit, time_to_day_seconds},
+        convert::{nanos_as_unit, nanos_to_unit, time_to_day_seconds},
         format::{format_time_part, parse_format_string},
-        manipulation::apply_time_unit,
+        manipulation::{apply_time_unit, set_time_unit},
     },
     AstrolabeError,
 };
@@ -60,8 +60,8 @@ impl Time {
     /// let time = Time::from_hms(12, 32, 12).unwrap();
     /// assert_eq!(45_132, time.as_seconds());
     /// ```
-    pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
-        let seconds = time_to_day_seconds(hour, minute, second)? as u64;
+    pub fn from_hms(hour: u32, min: u32, sec: u32) -> Result<Self, AstrolabeError> {
+        let seconds = time_to_day_seconds(hour, min, sec)? as u64;
 
         Ok(Time(seconds * NANOS_PER_SEC))
     }
@@ -92,14 +92,14 @@ impl Time {
     /// ```rust
     /// use astrolabe::{Time, TimeUnit};
     ///
-    /// let time = Time::from_nano_seconds(1_234).unwrap();
+    /// let time = Time::from_nanoseconds(1_234).unwrap();
     /// assert_eq!(1_234, time.as_unit(TimeUnit::Nanos));
     /// ```
-    pub fn from_nano_seconds(nano_seconds: u64) -> Result<Self, AstrolabeError> {
-        if nano_seconds > SECS_PER_DAY as u64 * NANOS_PER_SEC - 1 {
+    pub fn from_nanoseconds(nanoseconds: u64) -> Result<Self, AstrolabeError> {
+        if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
             return Err(AstrolabeError::OutOfRange);
         }
-        Ok(Time(nano_seconds))
+        Ok(Time(nanoseconds))
     }
 
     /// Returns the number of nano seconds between two [`Time`] instances.
@@ -137,9 +137,9 @@ impl Time {
     /// use astrolabe::{Time, TimeUnit};
     ///
     /// let time = Time::from_hms(12, 12, 12).unwrap();
-    /// assert_eq!(43_932_000_000_000, time.as_nano_seconds());
+    /// assert_eq!(43_932_000_000_000, time.as_nanoseconds());
     /// ```
-    pub fn as_nano_seconds(&self) -> u64 {
+    pub fn as_nanoseconds(&self) -> u64 {
         self.0
     }
 
@@ -167,7 +167,7 @@ impl Time {
     /// assert_eq!(32, time.get(TimeUnit::Min));
     /// assert_eq!(15, time.get(TimeUnit::Sec));
     ///
-    /// let time = Time::from_nano_seconds(1_123_456_789).unwrap();
+    /// let time = Time::from_nanoseconds(1_123_456_789).unwrap();
     /// assert_eq!(12, time.get(TimeUnit::Centis));
     /// assert_eq!(123, time.get(TimeUnit::Millis));
     /// assert_eq!(123_456, time.get(TimeUnit::Micros));
@@ -193,7 +193,7 @@ impl Time {
     /// assert_eq!("12:32:15", applied_2.format("HH:mm:ss").unwrap());
     /// ```
     pub fn apply(&self, amount: i64, unit: TimeUnit) -> Result<Time, AstrolabeError> {
-        apply_time_unit(self, amount, unit)
+        Time::from_nanoseconds(apply_time_unit(self.0 as i128, amount, unit)? as u64)
     }
 
     /// Creates a new [`Time`] instance with a specific [`TimeUnit`] set to the provided value.
@@ -209,93 +209,7 @@ impl Time {
     /// assert_eq!(10, time.set(10, TimeUnit::Min).unwrap().get(TimeUnit::Min));
     /// ```
     pub fn set(&self, value: u32, unit: TimeUnit) -> Result<Time, AstrolabeError> {
-        Ok(match unit {
-            TimeUnit::Hour => {
-                if value > 23 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let (_, min, sec) = nanos_to_t_units(old_time);
-                let new_time = (value * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec) as u64
-                    * NANOS_PER_SEC
-                    + nanos_to_unit(old_time, TimeUnit::Nanos);
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Min => {
-                if value > 59 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let (hour, _, sec) = nanos_to_t_units(old_time);
-                let new_time = (hour * SECS_PER_HOUR + value * SECS_PER_MINUTE + sec) as u64
-                    * NANOS_PER_SEC
-                    + nanos_to_unit(old_time, TimeUnit::Nanos);
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Sec => {
-                if value > 59 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let (hour, min, _) = nanos_to_t_units(old_time);
-                let new_time = (hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + value) as u64
-                    * NANOS_PER_SEC
-                    + nanos_to_unit(old_time, TimeUnit::Nanos);
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Centis => {
-                if value > 99 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let new_time = nanos_as_unit(old_time, TimeUnit::Sec) * NANOS_PER_SEC
-                    + value as u64 * 10_000_000
-                    + old_time % 10_000_000;
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Millis => {
-                if value > 999 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let new_time = nanos_as_unit(old_time, TimeUnit::Sec) * NANOS_PER_SEC
-                    + value as u64 * 1_000_000
-                    + old_time % 1_000_000;
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Micros => {
-                if value > 999_999 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let old_time = self.as_nano_seconds();
-                let new_time = nanos_as_unit(old_time, TimeUnit::Sec) * NANOS_PER_SEC
-                    + value as u64 * 1_000
-                    + old_time % 1_000;
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-            TimeUnit::Nanos => {
-                if value > 999_999_999 {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let new_time = nanos_as_unit(self.as_nano_seconds(), TimeUnit::Sec) * NANOS_PER_SEC
-                    + value as u64;
-
-                // Using unwrap because it's safe to assume that new_time is valid
-                Time::from_nano_seconds(new_time).unwrap()
-            }
-        })
+        Ok(Time(set_time_unit(self.0, value, unit)?))
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
@@ -336,18 +250,18 @@ impl Time {
     ///
     /// # Example
     /// ```rust
-    /// use astrolabe::Date;
+    /// use astrolabe::Time;
     ///
-    /// let date = Date::from_ymd(2022, 5, 2).unwrap();
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
+    /// let time = Time::from_hms(12, 32, 1).unwrap();
+    /// assert_eq!("12:32:01", time.format("kk:mm:ss").unwrap());
     /// // Escape characters
-    /// assert_eq!("2022/MM/dd", date.format("yyyy/'MM/dd'").unwrap());
-    /// assert_eq!("2022/'05/02'", date.format("yyyy/''MM/dd''").unwrap());
+    /// assert_eq!("12:mm:ss", time.format("kk:'mm:ss'").unwrap());
+    /// assert_eq!("12:'32:01'", time.format("kk:''mm:ss''").unwrap());
     /// ```
     ///
     pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
         let parts = parse_format_string(format)?;
-        let nano_seconds = self.as_nano_seconds();
+        let nanoseconds = self.as_nanoseconds();
         parts
             .iter()
             .map(|part| -> Result<Vec<char>, AstrolabeError> {
@@ -366,7 +280,7 @@ impl Time {
                     );
                 }
 
-                Ok(format_time_part(part, nano_seconds)?
+                Ok(format_time_part(part, nanoseconds)?
                     .chars()
                     .collect::<Vec<char>>())
             })
@@ -380,8 +294,8 @@ impl Time {
 
 impl From<&Time> for Time {
     fn from(time: &Time) -> Self {
-        // Using unwrap because it's safe to assume that new_time is valid
-        Time::from_nano_seconds(time.as_nano_seconds()).unwrap()
+        // Using unwrap because it's safe to assume that time is valid
+        Time::from_nanoseconds(time.as_nanoseconds()).unwrap()
     }
 }
 

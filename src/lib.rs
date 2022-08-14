@@ -13,10 +13,12 @@
 #![allow(clippy::many_single_char_names)]
 
 mod date;
+mod datetime;
 mod shared;
 mod time;
 mod util;
 
 pub use self::date::{Date, DateUnit};
+pub use self::datetime::{DateTime, DateTimeUnit};
 pub use self::shared::AstrolabeError;
 pub use self::time::{Time, TimeUnit};

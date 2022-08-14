@@ -1,9 +1,9 @@
 use crate::{
-    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY, SECS_PER_DAY_U64},
+    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
         convert::{date_to_days, days_to_d_units},
         format::{format_date_part, parse_format_string},
-        manipulation::apply_date_unit,
+        manipulation::{apply_date_unit, set_date_unit},
     },
     AstrolabeError,
 };
@@ -32,7 +32,7 @@ pub enum DateUnit {
 
 /// Date in the proleptic Gregorian calendar.
 ///
-/// Ranges from `30. June -5879610` to `12. July 5879611`
+/// Ranges from `30. June -5879611` to `12. July 5879611`
 #[derive(Debug)]
 pub struct Date(i32);
 
@@ -47,13 +47,13 @@ impl Date {
     /// assert!(2021 < date.get(DateUnit::Year));
     /// ```
     pub fn now() -> Self {
-        let system_time = SystemTime::now()
+        let days = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
             / SECS_PER_DAY_U64
             + DAYS_TO_1970;
-        Date(system_time as i32)
+        Date(days as i32)
     }
 
     /// Creates a new [`Date`] instance from days.
@@ -98,11 +98,10 @@ impl Date {
     /// assert_eq!(0, date.timestamp());
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
-        let days = timestamp / SECS_PER_DAY as i64 + DAYS_TO_1970_I64;
-        if !(-2_147_483_648..=2_147_483_647).contains(&days) {
-            return Err(AstrolabeError::OutOfRange);
-        }
-        Ok(Date(days as i32))
+        let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
+            .try_into()
+            .map_err(|_| AstrolabeError::OutOfRange)?;
+        Ok(Date(days))
     }
 
     /// Returns the number of days since January 1, 0001 (Negative if date is before)
@@ -128,7 +127,7 @@ impl Date {
     /// assert_eq!(946_684_800, date.timestamp());
     /// ```
     pub fn timestamp(&self) -> i64 {
-        (self.0 as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY as i64
+        (self.0 as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
     }
 
     /// Returns the number of days between two [`Date`] instances.
@@ -183,7 +182,11 @@ impl Date {
     /// assert_eq!("1970-01-01", applied_2.format("yyyy-MM-dd").unwrap());
     /// ```
     pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
-        apply_date_unit(self, amount, unit)
+        Ok(Date::from_days(apply_date_unit(
+            self.0,
+            amount as i64,
+            unit,
+        )?))
     }
 
     /// Creates a new [`Date`] instance with a specific [`DateUnit`] set to the provided value.
@@ -199,35 +202,7 @@ impl Date {
     /// assert_eq!(10, date.set(10, DateUnit::Day).unwrap().get(DateUnit::Day));
     /// ```
     pub fn set(&self, value: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
-        Ok(match unit {
-            DateUnit::Year => {
-                let days = self.as_days();
-                let (_, month, day) = days_to_d_units(days);
-                let days = date_to_days(value, month, day)?;
-
-                Date(days)
-            }
-            DateUnit::Month => {
-                let days = self.as_days();
-                let (year, _, day) = days_to_d_units(days);
-                if value.is_negative() {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let days = date_to_days(year, value.unsigned_abs(), day)?;
-
-                Date(days)
-            }
-            DateUnit::Day => {
-                let days = self.as_days();
-                let (year, month, _) = days_to_d_units(days);
-                if value.is_negative() {
-                    return Err(AstrolabeError::OutOfRange);
-                }
-                let days = date_to_days(year, month, value.unsigned_abs())?;
-
-                Date(days)
-            }
-        })
+        Ok(Date(set_date_unit(self.0, value, unit)?))
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
