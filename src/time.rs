@@ -29,7 +29,7 @@ pub enum TimeUnit {
 }
 
 /// Clock time with nanosecond precision.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Time(u64);
 
 impl Time {
@@ -57,8 +57,8 @@ impl Time {
     /// ```rust
     /// use astrolabe::Time;
     ///
-    /// let time = Time::from_hms(12, 32, 12).unwrap();
-    /// assert_eq!(45_132, time.as_seconds());
+    /// let time = Time::from_hms(12, 32, 01).unwrap();
+    /// assert_eq!("12:32:01", time.format("HH:mm:ss").unwrap());
     /// ```
     pub fn from_hms(hour: u32, min: u32, sec: u32) -> Result<Self, AstrolabeError> {
         let seconds = time_to_day_seconds(hour, min, sec)? as u64;
@@ -75,7 +75,7 @@ impl Time {
     /// use astrolabe::Time;
     ///
     /// let time = Time::from_seconds(1_234).unwrap();
-    /// assert_eq!(1_234, time.as_seconds());
+    /// assert_eq!("00:20:34", time.format("HH:mm:ss").unwrap());
     /// ```
     pub fn from_seconds(seconds: u32) -> Result<Self, AstrolabeError> {
         if seconds > SECS_PER_DAY - 1 {
@@ -93,7 +93,7 @@ impl Time {
     /// use astrolabe::{Time, TimeUnit};
     ///
     /// let time = Time::from_nanoseconds(1_234).unwrap();
-    /// assert_eq!(1_234, time.as_unit(TimeUnit::Nanos));
+    /// assert_eq!(1_234, time.as_nanoseconds());
     /// ```
     pub fn from_nanoseconds(nanoseconds: u64) -> Result<Self, AstrolabeError> {
         if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
@@ -147,10 +147,10 @@ impl Time {
     ///
     /// # Example
     /// ```rust
-    /// use astrolabe::Time;
+    /// use astrolabe::{Time, TimeUnit};
     ///
     /// let time = Time::from_hms(12, 12, 12).unwrap();
-    /// assert_eq!(43932, time.as_seconds());
+    /// assert_eq!(732, time.as_unit(TimeUnit::Min));
     /// ```
     pub fn as_unit(&self, unit: TimeUnit) -> u64 {
         nanos_as_unit(self.0, unit)
@@ -253,10 +253,10 @@ impl Time {
     /// use astrolabe::Time;
     ///
     /// let time = Time::from_hms(12, 32, 1).unwrap();
-    /// assert_eq!("12:32:01", time.format("kk:mm:ss").unwrap());
+    /// assert_eq!("12:32:01", time.format("HH:mm:ss").unwrap());
     /// // Escape characters
-    /// assert_eq!("12:mm:ss", time.format("kk:'mm:ss'").unwrap());
-    /// assert_eq!("12:'32:01'", time.format("kk:''mm:ss''").unwrap());
+    /// assert_eq!("12:mm:ss", time.format("HH:'mm:ss'").unwrap());
+    /// assert_eq!("12:'32:01'", time.format("HH:''mm:ss''").unwrap());
     /// ```
     ///
     pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
@@ -294,13 +294,6 @@ impl Time {
 
 impl From<&Time> for Time {
     fn from(time: &Time) -> Self {
-        // Using unwrap because it's safe to assume that time is valid
-        Time::from_nanoseconds(time.as_nanoseconds()).unwrap()
-    }
-}
-
-impl Default for Time {
-    fn default() -> Self {
-        Self::from_seconds(0).unwrap()
+        Self(time.0)
     }
 }

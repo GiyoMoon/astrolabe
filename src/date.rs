@@ -1,7 +1,7 @@
 use crate::{
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
-        convert::{date_to_days, days_to_d_units},
+        convert::{date_to_days, days_to_date},
         format::{format_date_part, parse_format_string},
         manipulation::{apply_date_unit, set_date_unit},
     },
@@ -32,8 +32,8 @@ pub enum DateUnit {
 
 /// Date in the proleptic Gregorian calendar.
 ///
-/// Ranges from `30. June -5879611` to `12. July 5879611`
-#[derive(Debug)]
+/// Ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
+#[derive(Debug, Default)]
 pub struct Date(i32);
 
 impl Date {
@@ -63,7 +63,7 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_days(738276);
-    /// assert_eq!(1_651_449_600, date.timestamp());
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
     /// ```
     pub fn from_days(days: i32) -> Self {
         Date(days)
@@ -71,14 +71,14 @@ impl Date {
 
     /// Creates a new [`Date`] instance from year, month and day (day of month).
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided date is invalid.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
     /// # Example
     /// ```rust
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_ymd(2022, 05, 02).unwrap();
-    /// assert_eq!(1_651_449_600, date.timestamp());
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
     /// ```
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
@@ -95,7 +95,7 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_timestamp(0).unwrap();
-    /// assert_eq!(0, date.timestamp());
+    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd").unwrap());
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
@@ -158,9 +158,9 @@ impl Date {
     /// ```
     pub fn get(&self, unit: DateUnit) -> i32 {
         match unit {
-            DateUnit::Year => days_to_d_units(self.0).0,
-            DateUnit::Month => days_to_d_units(self.0).1 as i32,
-            DateUnit::Day => days_to_d_units(self.0).2 as i32,
+            DateUnit::Year => days_to_date(self.0).0,
+            DateUnit::Month => days_to_date(self.0).1 as i32,
+            DateUnit::Day => days_to_date(self.0).2 as i32,
         }
     }
 
@@ -208,6 +208,8 @@ impl Date {
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
     ///
     /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat`) error if the provided format string can't be parsed.
+    ///
+    /// Please note that not all symbols are implemented. If you need something that is not implemented, please open an issue on [GitHub](https://github.com/GiyoMoon/astrolabe/issues) describing your need.
     ///
     /// # Available Symbols:
     ///
@@ -298,12 +300,6 @@ impl Date {
 
 impl From<&Date> for Date {
     fn from(date: &Date) -> Self {
-        Date::from_days(date.as_days())
-    }
-}
-
-impl Default for Date {
-    fn default() -> Self {
-        Self::from_days(0)
+        Self(date.0)
     }
 }

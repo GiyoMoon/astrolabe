@@ -1,16 +1,17 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::{
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64},
     util::{
-        convert::{date_to_days, days_to_d_units, dtu_to_tu, nanos_to_unit, time_to_day_seconds},
+        convert::{
+            date_to_days, days_to_date, dtu_to_du, dtu_to_tu, nanos_to_unit, time_to_day_seconds,
+        },
         format::{format_part, parse_format_string},
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
     },
-    AstrolabeError, DateUnit, TimeUnit,
+    AstrolabeError,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Date units for functions like [`DateTime::get`] or [`DateTime::apply`].
+/// Date and time units for functions like [`DateTime::get`] or [`DateTime::apply`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DateTimeUnit {
     #[allow(missing_docs)]
@@ -48,8 +49,8 @@ pub enum DateTimeUnit {
 /// Combined date and time.
 /// Date is in the proleptic Gregorian calendar and clock time is with nanosecond precision.
 ///
-/// Date ranges from `30. June -5879611` to `12. July 5879611`
-#[derive(Debug)]
+/// Date ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
+#[derive(Debug, Default)]
 pub struct DateTime(i32, u64);
 
 impl DateTime {
@@ -79,7 +80,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_days(738276);
-    /// assert_eq!(1_651_449_600, date_time.timestamp());
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());;
     /// ```
     pub fn from_days(days: i32) -> Self {
         DateTime(days, 0)
@@ -87,7 +88,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance from seconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds are invalid (over `86399`)
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds would result in an out of range datetime.
     ///
     /// # Example
     /// ```rust
@@ -111,7 +112,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance from nanoseconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nano seconds are invalid (over `86_399_999_999_999`
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds would result in an out of range datetime.
     ///
     /// # Example
     /// ```rust
@@ -135,14 +136,14 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance from year, month and day (day of month).
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided date is invalid.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
     /// # Example
     /// ```rust
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_ymd(2022, 05, 02).unwrap();
-    /// assert_eq!(1_651_449_600, date_time.timestamp());
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());
     /// ```
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
@@ -152,14 +153,14 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance from hour, minute and seconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided time is invalid.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
     /// # Example
     /// ```rust
-    /// use astrolabe::Time;
+    /// use astrolabe::DateTime;
     ///
-    /// let date_time = Time::from_hms(12, 32, 12).unwrap();
-    /// assert_eq!(45_132, date_time.as_seconds());
+    /// let date_time = DateTime::from_hms(12, 32, 12).unwrap();
+    /// assert_eq!("0001/01/01 12:32:12", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
     /// ```
     pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
         let seconds = time_to_day_seconds(hour, minute, second)? as u64;
@@ -169,14 +170,14 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance from year, month, day (day of month), hour, minute and seconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided time is invalid.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
     /// # Example
     /// ```rust
     /// use astrolabe::{DateTime, DateTimeUnit};
     ///
     /// let date_time = DateTime::from_ymdhms(2022, 05, 02, 12, 32, 1).unwrap();
-    /// assert_eq!(2022, date_time.get(DateTimeUnit::Year));
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
     /// ```
     pub fn from_ymdhms(
         year: i32,
@@ -201,7 +202,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_timestamp(0).unwrap();
-    /// assert_eq!(0, date_time.timestamp());
+    /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         DateTime::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
@@ -216,7 +217,7 @@ impl DateTime {
     /// use astrolabe::{DateTime, DateTimeUnit};
     ///
     /// let date_time = DateTime::from_days(738276).set_time(3_600_000_000_000).unwrap();
-    /// assert_eq!(1, date_time.get(DateTimeUnit::Hour));
+    /// assert_eq!("2022/05/02 01:00:00", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
     /// ```
     pub fn set_time(&self, nanoseconds: u64) -> Result<Self, AstrolabeError> {
         if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
@@ -238,7 +239,7 @@ impl DateTime {
         self.1
     }
 
-    /// Returns the number of days since January 1, 0001 (Negative if date is before)
+    /// Returns the number of days since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
     /// # Example
     /// ```rust
@@ -251,7 +252,7 @@ impl DateTime {
         self.0
     }
 
-    /// Returns the number of seconds since January 1, 0001 (Negative if date is before)
+    /// Returns the number of seconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
     /// # Example
     /// ```rust
@@ -269,7 +270,7 @@ impl DateTime {
         self.0 as i64 * SECS_PER_DAY_U64 as i64 + day_seconds
     }
 
-    /// Returns the number of nanoseconds since January 1, 0001 (Negative if date is before)
+    /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
     /// # Example
     /// ```rust
@@ -328,16 +329,16 @@ impl DateTime {
     /// ```
     pub fn get(&self, unit: DateTimeUnit) -> i64 {
         match unit {
-            DateTimeUnit::Year => days_to_d_units(self.0).0 as i64,
-            DateTimeUnit::Month => days_to_d_units(self.0).1 as i64,
-            DateTimeUnit::Day => days_to_d_units(self.0).2 as i64,
+            DateTimeUnit::Year => days_to_date(self.0).0 as i64,
+            DateTimeUnit::Month => days_to_date(self.0).1 as i64,
+            DateTimeUnit::Day => days_to_date(self.0).2 as i64,
             _ => nanos_to_unit(self.1, dtu_to_tu(unit)) as i64,
         }
     }
 
     /// Creates a new [`DateTime`] instance with a specified amount of time applied (added or subtracted).
     ///
-    /// **Note**: When using [`DateUnit::Month`], it adds calendar months and not 30 days. See it's [documentation](DateUnit::Month) for examples.
+    /// **Note**: When using [`DateTimeUnit::Month`], it adds calendar months and not 30 days. See it's [documentation](DateTimeUnit::Month) for examples.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
     ///
@@ -347,54 +348,20 @@ impl DateTime {
     ///
     /// let date_time = DateTime::from_ymdhms(1970, 1, 1, 12, 32, 1).unwrap();
     /// let applied = date_time.apply(1, DateTimeUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd kk:mm:ss").unwrap());
-    /// assert_eq!("1970-01-02 12:32:01", applied.format("yyyy-MM-dd kk:mm:ss").unwrap());
+    /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd HH:mm:ss").unwrap());
+    /// assert_eq!("1970-01-02 12:32:01", applied.format("yyyy-MM-dd HH:mm:ss").unwrap());
     /// let applied_2 = applied.apply(-1, DateTimeUnit::Hour).unwrap();
-    /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd kk:mm:ss").unwrap());
+    /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd HH:mm:ss").unwrap());
     /// ```
     pub fn apply(&self, amount: i64, unit: DateTimeUnit) -> Result<DateTime, AstrolabeError> {
         Ok(match unit {
-            DateTimeUnit::Year => {
-                DateTime(apply_date_unit(self.0, amount, DateUnit::Year)?, self.1)
+            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => {
+                DateTime(apply_date_unit(self.0, amount, dtu_to_du(unit))?, self.1)
             }
-            DateTimeUnit::Month => {
-                DateTime(apply_date_unit(self.0, amount, DateUnit::Month)?, self.1)
-            }
-            DateTimeUnit::Day => DateTime(apply_date_unit(self.0, amount, DateUnit::Day)?, self.1),
-            DateTimeUnit::Hour => DateTime::from_nanoseconds(apply_time_unit(
+            _ => DateTime::from_nanoseconds(apply_time_unit(
                 self.as_nanoseconds(),
                 amount,
-                TimeUnit::Hour,
-            )?)?,
-            DateTimeUnit::Min => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Min,
-            )?)?,
-            DateTimeUnit::Sec => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Sec,
-            )?)?,
-            DateTimeUnit::Centis => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Centis,
-            )?)?,
-            DateTimeUnit::Millis => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Millis,
-            )?)?,
-            DateTimeUnit::Micros => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Micros,
-            )?)?,
-            DateTimeUnit::Nanos => DateTime::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                TimeUnit::Nanos,
+                dtu_to_tu(unit),
             )?)?,
         })
     }
@@ -413,9 +380,9 @@ impl DateTime {
     /// ```
     pub fn set(&self, value: i32, unit: DateTimeUnit) -> Result<DateTime, AstrolabeError> {
         Ok(match unit {
-            DateTimeUnit::Year => DateTime(set_date_unit(self.0, value, DateUnit::Year)?, self.1),
-            DateTimeUnit::Month => DateTime(set_date_unit(self.0, value, DateUnit::Month)?, self.1),
-            DateTimeUnit::Day => DateTime(set_date_unit(self.0, value, DateUnit::Day)?, self.1),
+            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => {
+                DateTime(set_date_unit(self.0, value, dtu_to_du(unit))?, self.1)
+            }
             _ => {
                 if value.is_negative() {
                     return Err(AstrolabeError::OutOfRange);
@@ -502,10 +469,10 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd kk:mm:ss").unwrap());
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
     /// // Escape characters
-    /// assert_eq!("2022/MM/dd 12:32:01", date_time.format("yyyy/'MM/dd' kk:mm:ss").unwrap());
-    /// assert_eq!("2022/'05/02' 12:32:01", date_time.format("yyyy/''MM/dd'' kk:mm:ss").unwrap());
+    /// assert_eq!("2022/MM/dd 12:32:01", date_time.format("yyyy/'MM/dd' HH:mm:ss").unwrap());
+    /// assert_eq!("2022/'05/02' 12:32:01", date_time.format("yyyy/''MM/dd'' HH:mm:ss").unwrap());
     /// ```
     ///
     pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
@@ -534,7 +501,7 @@ impl DateTime {
             })
             .flat_map(|result| match result {
                 Ok(vec) => vec.into_iter().map(Ok).collect(),
-                Err(er) => vec![Err(er)],
+                Err(err) => vec![Err(err)],
             })
             .collect::<Result<String, AstrolabeError>>()
     }
@@ -542,15 +509,6 @@ impl DateTime {
 
 impl From<&DateTime> for DateTime {
     fn from(date_time: &DateTime) -> Self {
-        // Using unwrap because it's safe to assume that time is valid
-        DateTime::from_days(date_time.0)
-            .set_time(date_time.1)
-            .unwrap()
-    }
-}
-
-impl Default for DateTime {
-    fn default() -> Self {
-        Self::from_days(0)
+        Self(date_time.0, date_time.1)
     }
 }

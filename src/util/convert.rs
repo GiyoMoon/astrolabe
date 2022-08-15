@@ -4,12 +4,13 @@ use crate::{
         MAX_DATE, MIN_DATE, NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
         SECS_PER_MINUTE_U64,
     },
-    AstrolabeError, DateTimeUnit, TimeUnit,
+    AstrolabeError, DateTimeUnit, DateUnit, TimeUnit,
 };
 
-/// Converts days (since 01. January 0001) to date units (year, month, day of month)
+/// Converts days (since 01. January 0001) to a date (year, month, day of month). Days can be negative.
+///
 /// Logic originally released by the musl project (http://www.musl-libc.org/) under the MIT license. Taken from https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
-pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
+pub(crate) fn days_to_date(days: i32) -> (i32, u32, u32) {
     // 2000-03-01. Days since 0001-01-01
     const LEAPOCH: i64 = 730_179;
     const DAYS_PER_400Y: i64 = 365 * 400 + 97;
@@ -72,41 +73,6 @@ pub(crate) fn days_to_d_units(days: i32) -> (i32, u32, u32) {
     (year as i32, mon as u32, mday as u32)
 }
 
-/// Converts nano seconds to time units (hour, min, sec)
-pub(crate) fn nanos_to_t_units(nanos: u64) -> (u32, u32, u32) {
-    let as_seconds = (nanos / NANOS_PER_SEC) as u32;
-    let hour = as_seconds / SECS_PER_HOUR;
-    let min = as_seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
-    let sec = as_seconds % SECS_PER_MINUTE;
-    (hour, min, sec)
-}
-
-/// Returns a given time unit from nano seconds
-pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
-    match unit {
-        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
-        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64 % SECS_PER_MINUTE_U64,
-        TimeUnit::Sec => nanos / NANOS_PER_SEC % 60,
-        TimeUnit::Centis => nanos / 10_000_000 % 100,
-        TimeUnit::Millis => nanos / 1_000_000 % 1_000,
-        TimeUnit::Micros => nanos / 1_000 % 1_000_000,
-        TimeUnit::Nanos => nanos % NANOS_PER_SEC,
-    }
-}
-
-/// Converts nano seconds to a given time unit
-pub(crate) fn nanos_as_unit(nanos: u64, unit: TimeUnit) -> u64 {
-    match unit {
-        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
-        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64,
-        TimeUnit::Sec => nanos / NANOS_PER_SEC,
-        TimeUnit::Centis => nanos / 10_000_000,
-        TimeUnit::Millis => nanos / 1_000_000,
-        TimeUnit::Micros => nanos / 1_000,
-        TimeUnit::Nanos => nanos,
-    }
-}
-
 /// Converts a date (year, month and day of month) to days since 01. January 0001
 pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, AstrolabeError> {
     valid_range(year, month, day)?;
@@ -127,12 +93,47 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     })
 }
 
+/// Converts nano seconds to time values (hour, min, sec)
+pub(crate) fn nanos_to_time(nanos: u64) -> (u32, u32, u32) {
+    let as_seconds = (nanos / NANOS_PER_SEC) as u32;
+    let hour = as_seconds / SECS_PER_HOUR;
+    let min = as_seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
+    let sec = as_seconds % SECS_PER_MINUTE;
+    (hour, min, sec)
+}
+
 /// Converts time values (hour, minute and seconds) to day seconds
 pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
     if hour > 23 || min > 59 || sec > 59 {
         return Err(AstrolabeError::OutOfRange);
     }
     Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
+}
+
+/// Returns a given [`TimeUnit`] from nano seconds
+pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
+    match unit {
+        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
+        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64 % SECS_PER_MINUTE_U64,
+        TimeUnit::Sec => nanos / NANOS_PER_SEC % 60,
+        TimeUnit::Centis => nanos / 10_000_000 % 100,
+        TimeUnit::Millis => nanos / 1_000_000 % 1_000,
+        TimeUnit::Micros => nanos / 1_000 % 1_000_000,
+        TimeUnit::Nanos => nanos % NANOS_PER_SEC,
+    }
+}
+
+/// Converts nano seconds to a given [`TimeUnit`]
+pub(crate) fn nanos_as_unit(nanos: u64, unit: TimeUnit) -> u64 {
+    match unit {
+        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
+        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64,
+        TimeUnit::Sec => nanos / NANOS_PER_SEC,
+        TimeUnit::Centis => nanos / 10_000_000,
+        TimeUnit::Millis => nanos / 1_000_000,
+        TimeUnit::Micros => nanos / 1_000,
+        TimeUnit::Nanos => nanos,
+    }
 }
 
 /// Converts year and month to the days until this month and days in the current month
@@ -175,7 +176,7 @@ pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), Astro
 
 /// Converts days to day of year
 pub(crate) fn days_to_yday(days: i32) -> u32 {
-    let (year, month, day) = days_to_d_units(days);
+    let (year, month, day) = days_to_date(days);
     // Using unwrap because it's safe to assume that month is valid
     let (ydays, _) = month_to_ymdays(year, month).unwrap();
     ydays + day
@@ -189,7 +190,7 @@ pub(crate) fn days_to_wday(days: i32, monday_first: bool) -> u32 {
 /// Converts a timestamp to week of year
 /// Formula taken from https://tondering.dk/claus/cal/week.php#calcweekno
 pub(crate) fn days_to_wyear(days: i32) -> u32 {
-    let (year, month, day) = days_to_d_units(days);
+    let (year, month, day) = days_to_date(days);
     let month = month as i32;
     let day = day as i32;
 
@@ -213,6 +214,30 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
     }
 }
 
+/// Converts a [`DateTimeUnit`] to [`DateUnit`]. If there is no corresponding date unit, the default, [`DateUnit::Day`], will be used.
+pub(crate) fn dtu_to_du(unit: DateTimeUnit) -> DateUnit {
+    match unit {
+        DateTimeUnit::Year => DateUnit::Year,
+        DateTimeUnit::Month => DateUnit::Month,
+        DateTimeUnit::Day => DateUnit::Day,
+        _ => DateUnit::Day,
+    }
+}
+
+/// Converts a [`DateTimeUnit`] to [`TimeUnit`]. If there is no corresponding time unit, the default, [`TimeUnit::Sec`], will be used.
+pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
+    match unit {
+        DateTimeUnit::Hour => TimeUnit::Hour,
+        DateTimeUnit::Min => TimeUnit::Min,
+        DateTimeUnit::Sec => TimeUnit::Sec,
+        DateTimeUnit::Centis => TimeUnit::Centis,
+        DateTimeUnit::Millis => TimeUnit::Millis,
+        DateTimeUnit::Micros => TimeUnit::Micros,
+        DateTimeUnit::Nanos => TimeUnit::Nanos,
+        _ => TimeUnit::Sec,
+    }
+}
+
 /// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
 pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
     if year == 0 {
@@ -229,19 +254,6 @@ pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), Astrola
     {
         return Err(AstrolabeError::OutOfRange);
     }
-    Ok(())
-}
 
-/// Converts a [`DateTimeUnit`] to [`TimeUnit`]. If there is no corresponding time unit, the default, [`TimeUnit::Sec`], will be used.
-pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
-    match unit {
-        DateTimeUnit::Hour => TimeUnit::Hour,
-        DateTimeUnit::Min => TimeUnit::Min,
-        DateTimeUnit::Sec => TimeUnit::Sec,
-        DateTimeUnit::Centis => TimeUnit::Centis,
-        DateTimeUnit::Millis => TimeUnit::Millis,
-        DateTimeUnit::Micros => TimeUnit::Micros,
-        DateTimeUnit::Nanos => TimeUnit::Nanos,
-        _ => TimeUnit::Sec,
-    }
+    Ok(())
 }

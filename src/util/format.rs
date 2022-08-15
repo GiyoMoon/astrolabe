@@ -1,12 +1,12 @@
-use super::convert::{days_to_d_units, days_to_wyear, days_to_yday, nanos_to_t_units};
+use super::convert::{days_to_date, days_to_wyear, days_to_yday, nanos_to_time};
 use crate::{
     shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
     util::convert::days_to_wday,
     AstrolabeError,
 };
 
-// Parse a format string and return parts to format
-pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> {
+/// Parse a format string and return parts to format
+pub(crate) fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> {
     let escaped_format = format.replace("''", "\u{0000}");
 
     let mut parts: Vec<String> = Vec::new();
@@ -43,7 +43,7 @@ pub fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> 
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
-pub fn format_part(
+pub(crate) fn format_part(
     chars: &str,
     days: i32,
     nanoseconds: u64,
@@ -61,7 +61,7 @@ pub fn format_part(
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
-pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError> {
+pub(crate) fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
         'G' => match chars.len() {
@@ -89,7 +89,7 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
         },
         'y' => match chars.len() {
             2 => {
-                let mut year = days_to_d_units(days).0;
+                let mut year = days_to_date(days).0;
                 let year_string = year.to_string();
 
                 if year_string.len() > 2 {
@@ -98,10 +98,10 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
                 }
                 zero_padded_i(year, 2)
             }
-            _ => zero_padded_i(days_to_d_units(days).0, chars.len()),
+            _ => zero_padded_i(days_to_date(days).0, chars.len()),
         },
         'q' => {
-            let quarter = (days_to_d_units(days).1 - 1) / 3 + 1;
+            let quarter = (days_to_date(days).1 - 1) / 3 + 1;
             match chars.len() {
                 1 | 2 => zero_padded(quarter, chars.len()),
                 3 => format!("Q{}", quarter),
@@ -114,7 +114,7 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
         }
         'M' => format_month(chars.len(), days)?,
         'w' => zero_padded(days_to_wyear(days), get_length(chars.len(), 2, 2)),
-        'd' => zero_padded(days_to_d_units(days).2, get_length(chars.len(), 2, 2)),
+        'd' => zero_padded(days_to_date(days).2, get_length(chars.len(), 2, 2)),
         'D' => zero_padded(days_to_yday(days), get_length(chars.len(), 1, 3)),
         'e' => format_wday(days, chars.len())?,
         _ => chars.to_string(),
@@ -123,50 +123,42 @@ pub fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats time parts while ignoring date related parts (E.g. year, day)
-pub fn format_time_part(chars: &str, nanoseconds: u64) -> Result<String, AstrolabeError> {
+pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> Result<String, AstrolabeError> {
     let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
     Ok(match first_char {
         'a' => format_period(nanoseconds, get_length(chars.len(), 3, 5), false),
         'b' => format_period(nanoseconds, get_length(chars.len(), 3, 5), true),
         'h' => {
-            let hour = if nanos_to_t_units(nanoseconds).0 % 12 == 0 {
+            let hour = if nanos_to_time(nanoseconds).0 % 12 == 0 {
                 12
             } else {
-                nanos_to_t_units(nanoseconds).0 % 12
+                nanos_to_time(nanoseconds).0 % 12
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'H' => zero_padded(
-            nanos_to_t_units(nanoseconds).0,
-            get_length(chars.len(), 2, 2),
-        ),
+        'H' => zero_padded(nanos_to_time(nanoseconds).0, get_length(chars.len(), 2, 2)),
         'K' => zero_padded(
-            nanos_to_t_units(nanoseconds).0 % 12,
+            nanos_to_time(nanoseconds).0 % 12,
             get_length(chars.len(), 2, 2),
         ),
         'k' => {
-            let hour = if nanos_to_t_units(nanoseconds).0 == 0 {
+            let hour = if nanos_to_time(nanoseconds).0 == 0 {
                 24
             } else {
-                nanos_to_t_units(nanoseconds).0
+                nanos_to_time(nanoseconds).0
             };
             zero_padded(hour, get_length(chars.len(), 2, 2))
         }
-        'm' => zero_padded(
-            nanos_to_t_units(nanoseconds).1,
-            get_length(chars.len(), 2, 2),
-        ),
-        's' => zero_padded(
-            nanos_to_t_units(nanoseconds).2,
-            get_length(chars.len(), 2, 2),
-        ),
+        'm' => zero_padded(nanos_to_time(nanoseconds).1, get_length(chars.len(), 2, 2)),
+        's' => zero_padded(nanos_to_time(nanoseconds).2, get_length(chars.len(), 2, 2)),
         _ => chars.to_string(),
     })
 }
 
 /// Formats the month of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
 fn format_month(length: usize, days: i32) -> Result<String, AstrolabeError> {
-    let month = days_to_d_units(days).1;
+    let month = days_to_date(days).1;
+
     const MONTH_ABBREVIATED: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
