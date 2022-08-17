@@ -1,5 +1,6 @@
 name: checks
 on: [push, pull_request]
+
 jobs:
   test:
     name: Test Suite
@@ -9,13 +10,14 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: beta
           override: true
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all-features
+
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -24,12 +26,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: beta
           override: true
       - uses: actions-rs/cargo@v1
         with:
           command: check
           args: --all-features
+
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -38,13 +41,14 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: beta
           override: true
-      - run: rustup component add rustfmt
+          components: rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
@@ -53,10 +57,38 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: beta
           override: true
-      - run: rustup component add clippy
+          components: clippy
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all-features -- -D warnings
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: beta
+          override: true
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+      - name: Generate coverage report
+        run: |
+          cargo llvm-cov clean --workspace
+          cargo llvm-cov --no-report
+          cargo llvm-cov --no-run --lcov > lcov.txt
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v1
+        with:
+          files: ./lcov.txt
