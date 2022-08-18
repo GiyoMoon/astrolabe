@@ -1,12 +1,11 @@
 use super::convert::{days_to_date, days_to_wyear, days_to_yday, nanos_to_time};
 use crate::{
-    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
+    shared::{NANOS_PER_SEC, SECS_PER_DAY},
     util::convert::days_to_wday,
-    AstrolabeError,
 };
 
 /// Parse a format string and return parts to format
-pub(crate) fn parse_format_string(format: &str) -> Result<Vec<String>, AstrolabeError> {
+pub(crate) fn parse_format_string(format: &str) -> Vec<String> {
     let escaped_format = format.replace("''", "\u{0000}");
 
     let mut parts: Vec<String> = Vec::new();
@@ -17,28 +16,20 @@ pub(crate) fn parse_format_string(format: &str) -> Result<Vec<String>, Astrolabe
                 if !currently_escaped {
                     parts.push(char.to_string());
                 } else {
-                    parts
-                        .last_mut()
-                        .ok_or(AstrolabeError::InvalidFormat)?
-                        .push(char);
+                    parts.last_mut().unwrap().push(char);
                 }
                 currently_escaped = !currently_escaped;
             }
             _ => {
-                if (currently_escaped || parts.last().unwrap_or(&"".to_string()).starts_with(char))
-                    && parts.last().is_some()
-                {
-                    parts
-                        .last_mut()
-                        .ok_or(AstrolabeError::InvalidFormat)?
-                        .push(char);
+                if currently_escaped || parts.last().unwrap_or(&"".to_string()).starts_with(char) {
+                    parts.last_mut().unwrap().push(char);
                 } else {
                     parts.push(char.to_string());
                 }
             }
         };
     }
-    Ok(parts)
+    parts
 }
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
@@ -48,22 +39,22 @@ pub(crate) fn format_part(
     days: i32,
     nanoseconds: u64,
     // offset: i32,
-) -> Result<String, AstrolabeError> {
-    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
-    Ok(match first_char {
-        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days)?,
-        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nanoseconds)?,
+) -> String {
+    let first_char = chars.chars().next().unwrap();
+    match first_char {
+        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days),
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nanoseconds),
         // 'X' => format_zone(offset, chars.len(), true),
         // 'x' => format_zone(offset, chars.len(), false),
         _ => chars.to_string(),
-    })
+    }
 }
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
-pub(crate) fn format_date_part(chars: &str, days: i32) -> Result<String, AstrolabeError> {
-    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
-    Ok(match first_char {
+pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
+    let first_char = chars.chars().next().unwrap();
+    match first_char {
         'G' => match chars.len() {
             1 | 2 | 3 => {
                 if days.is_negative() {
@@ -112,20 +103,20 @@ pub(crate) fn format_date_part(chars: &str, days: i32) -> Result<String, Astrola
                 _ => zero_padded(quarter, 1),
             }
         }
-        'M' => format_month(chars.len(), days)?,
+        'M' => format_month(chars.len(), days),
         'w' => zero_padded(days_to_wyear(days), get_length(chars.len(), 2, 2)),
         'd' => zero_padded(days_to_date(days).2, get_length(chars.len(), 2, 2)),
         'D' => zero_padded(days_to_yday(days), get_length(chars.len(), 1, 3)),
-        'e' => format_wday(days, chars.len())?,
+        'e' => format_wday(days, chars.len()),
         _ => chars.to_string(),
-    })
+    }
 }
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats time parts while ignoring date related parts (E.g. year, day)
-pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> Result<String, AstrolabeError> {
-    let first_char = chars.chars().next().ok_or(AstrolabeError::InvalidFormat)?;
-    Ok(match first_char {
+pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> String {
+    let first_char = chars.chars().next().unwrap();
+    match first_char {
         'a' => format_period(nanoseconds, get_length(chars.len(), 3, 5), false),
         'b' => format_period(nanoseconds, get_length(chars.len(), 3, 5), true),
         'h' => {
@@ -152,11 +143,11 @@ pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> Result<String, 
         'm' => zero_padded(nanos_to_time(nanoseconds).1, get_length(chars.len(), 2, 2)),
         's' => zero_padded(nanos_to_time(nanoseconds).2, get_length(chars.len(), 2, 2)),
         _ => chars.to_string(),
-    })
+    }
 }
 
 /// Formats the month of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_month(length: usize, days: i32) -> Result<String, AstrolabeError> {
+fn format_month(length: usize, days: i32) -> String {
     let month = days_to_date(days).1;
 
     const MONTH_ABBREVIATED: [&str; 12] = [
@@ -178,28 +169,28 @@ fn format_month(length: usize, days: i32) -> Result<String, AstrolabeError> {
     ];
     const MONTH_NARROW: [&str; 12] = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
-    Ok(match length {
+    match length {
         1 | 2 => zero_padded(month, length),
         3 => MONTH_ABBREVIATED
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         5 => MONTH_NARROW
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         _ => MONTH_WIDE
             .into_iter()
             .nth((month - 1) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
-    })
+    }
 }
 
 /// Formats the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_wday(days: i32, length: usize) -> Result<String, AstrolabeError> {
+fn format_wday(days: i32, length: usize) -> String {
     const MONTH_ABBREVIATED: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_WIDE: [&str; 7] = [
         "Sunday",
@@ -213,34 +204,35 @@ fn format_wday(days: i32, length: usize) -> Result<String, AstrolabeError> {
     const MONTH_NARROW: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
     const MONTH_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-    Ok(match length {
+    match length {
         1 | 2 => zero_padded(days_to_wday(days, false) + 1, length),
         3 => MONTH_ABBREVIATED
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         4 => MONTH_WIDE
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         5 => MONTH_NARROW
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         6 => MONTH_SHORT
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
-            .ok_or(AstrolabeError::InvalidFormat)?
+            .unwrap()
             .to_string(),
         7 => zero_padded(days_to_wday(days, true) + 1, 1),
         8 => zero_padded(days_to_wday(days, true) + 1, 2),
         _ => zero_padded(days_to_wday(days, false) + 1, 1),
-    })
+    }
 }
 
+/// Formats the time period
 fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     const FORMATS: [[&str; 4]; 5] = [
         ["AM", "PM", "noon", "midnight"],
@@ -263,64 +255,63 @@ fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     }
 }
 
-#[allow(dead_code)]
-fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
-    if with_z && offset == 0 {
-        return "Z".to_string();
-    }
+// fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
+//     if with_z && offset == 0 {
+//         return "Z".to_string();
+//     }
 
-    let hour = offset.unsigned_abs() / SECS_PER_HOUR;
-    let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
-    let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
-    let prefix = if offset.is_negative() { "-" } else { "+" };
+//     let hour = offset.unsigned_abs() / SECS_PER_HOUR;
+//     let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
+//     let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
+//     let prefix = if offset.is_negative() { "-" } else { "+" };
 
-    match length {
-        1 => {
-            format!(
-                "{}{}{}",
-                prefix,
-                zero_padded(hour, 2),
-                if min != 0 {
-                    zero_padded(min, 2)
-                } else {
-                    "".to_string()
-                }
-            )
-        }
-        2 => {
-            format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
-        }
-        4 => {
-            format!(
-                "{}{}{}{}",
-                prefix,
-                zero_padded(hour, 2),
-                zero_padded(min, 2),
-                if sec != 0 {
-                    zero_padded(sec, 2)
-                } else {
-                    "".to_string()
-                }
-            )
-        }
-        5 => {
-            format!(
-                "{}{}:{}{}",
-                prefix,
-                zero_padded(hour, 2),
-                zero_padded(min, 2),
-                if sec != 0 {
-                    format!(":{}", zero_padded(sec, 2))
-                } else {
-                    "".to_string()
-                }
-            )
-        }
-        _ => {
-            format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
-        }
-    }
-}
+//     match length {
+//         1 => {
+//             format!(
+//                 "{}{}{}",
+//                 prefix,
+//                 zero_padded(hour, 2),
+//                 if min != 0 {
+//                     zero_padded(min, 2)
+//                 } else {
+//                     "".to_string()
+//                 }
+//             )
+//         }
+//         2 => {
+//             format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+//         }
+//         4 => {
+//             format!(
+//                 "{}{}{}{}",
+//                 prefix,
+//                 zero_padded(hour, 2),
+//                 zero_padded(min, 2),
+//                 if sec != 0 {
+//                     zero_padded(sec, 2)
+//                 } else {
+//                     "".to_string()
+//                 }
+//             )
+//         }
+//         5 => {
+//             format!(
+//                 "{}{}:{}{}",
+//                 prefix,
+//                 zero_padded(hour, 2),
+//                 zero_padded(min, 2),
+//                 if sec != 0 {
+//                     format!(":{}", zero_padded(sec, 2))
+//                 } else {
+//                     "".to_string()
+//                 }
+//             )
+//         }
+//         _ => {
+//             format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+//         }
+//     }
+// }
 
 /// Formats a number as a zero padded string
 pub(crate) fn zero_padded_i(number: i32, length: usize) -> String {

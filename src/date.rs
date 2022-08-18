@@ -7,7 +7,10 @@ use crate::{
     },
     AstrolabeError,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// Date units for functions like [`Date::get`] or [`Date::apply`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,9 +24,9 @@ pub enum DateUnit {
     /// use astrolabe::{Date, DateUnit};
     ///
     /// let date = Date::from_ymd(1970, 1, 31).unwrap();
-    /// assert_eq!("1970-02-28", date.apply(1, DateUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
-    /// assert_eq!("1970-03-31", date.apply(2, DateUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
-    /// assert_eq!("1970-04-30", date.apply(3, DateUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-02-28", date.apply(1, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
+    /// assert_eq!("1970-03-31", date.apply(2, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
+    /// assert_eq!("1970-04-30", date.apply(3, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
     /// ```
     Month,
     #[allow(missing_docs)]
@@ -63,7 +66,7 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_days(738276);
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_days(days: i32) -> Self {
         Date(days)
@@ -78,7 +81,7 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_ymd(2022, 05, 02).unwrap();
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
@@ -95,7 +98,7 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_timestamp(0).unwrap();
-    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
@@ -176,10 +179,10 @@ impl Date {
     ///
     /// let date = Date::from_ymd(1970, 1, 1).unwrap();
     /// let applied = date.apply(1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01", date.format("yyyy-MM-dd").unwrap());
-    /// assert_eq!("1970-01-02", applied.format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-01-01", date.format("yyyy-MM-dd"));
+    /// assert_eq!("1970-01-02", applied.format("yyyy-MM-dd"));
     /// let applied_2 = applied.apply(-1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01", applied_2.format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-01-01", applied_2.format("yyyy-MM-dd"));
     /// ```
     pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
         Ok(Date::from_days(apply_date_unit(
@@ -206,8 +209,6 @@ impl Date {
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
-    ///
-    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat`) error if the provided format string can't be parsed.
     ///
     /// Please note that not all symbols are implemented. If you need something that is not implemented, please open an issue on [GitHub](https://github.com/GiyoMoon/astrolabe/issues) describing your need.
     ///
@@ -261,45 +262,46 @@ impl Date {
     /// use astrolabe::Date;
     ///
     /// let date = Date::from_ymd(2022, 5, 2).unwrap();
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// // Escape characters
-    /// assert_eq!("2022/MM/dd", date.format("yyyy/'MM/dd'").unwrap());
-    /// assert_eq!("2022/'05/02'", date.format("yyyy/''MM/dd''").unwrap());
+    /// assert_eq!("2022/MM/dd", date.format("yyyy/'MM/dd'"));
+    /// assert_eq!("2022/'05/02'", date.format("yyyy/''MM/dd''"));
     /// ```
     ///
-    pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
-        let parts = parse_format_string(format)?;
-        let days = self.as_days();
+    pub fn format(&self, format: &str) -> String {
+        let parts = parse_format_string(format);
         parts
             .iter()
-            .map(|part| -> Result<Vec<char>, AstrolabeError> {
+            .flat_map(|part| -> Vec<char> {
                 // Escaped apostrophes
                 if part.starts_with('\u{0000}') {
-                    return Ok(part.replace('\u{0000}', "'").chars().collect::<Vec<char>>());
+                    return part.replace('\u{0000}', "'").chars().collect::<Vec<char>>();
                 }
 
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
                     let part = part.replace('\u{0000}', "'");
-                    return Ok(
-                        part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
-                            .chars()
-                            .collect::<Vec<char>>(),
-                    );
+                    return part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                        .chars()
+                        .collect::<Vec<char>>();
                 }
 
-                Ok(format_date_part(part, days)?.chars().collect::<Vec<char>>())
+                format_date_part(part, self.0)
+                    .chars()
+                    .collect::<Vec<char>>()
             })
-            .flat_map(|result| match result {
-                Ok(vec) => vec.into_iter().map(Ok).collect(),
-                Err(er) => vec![Err(er)],
-            })
-            .collect::<Result<String, AstrolabeError>>()
+            .collect::<String>()
     }
 }
 
 impl From<&Date> for Date {
     fn from(date: &Date) -> Self {
         Self(date.0)
+    }
+}
+
+impl Display for Date {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.format("yyyy/MM/dd"))
     }
 }

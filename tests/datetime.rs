@@ -3,6 +3,31 @@ mod datetime_tests {
     use astrolabe::{DateTime, DateTimeUnit};
 
     #[test]
+    fn derive() {
+        // Default
+        let date_time = DateTime::default();
+        // Debug
+        println!("{date_time:?}");
+        // Display
+        assert_eq!("0001/01/01 00:00:00", format!("{date_time}"));
+        // From<&DateTime>
+        let _ = DateTime::from(&date_time);
+
+        let unit = DateTimeUnit::Day;
+        // Debug
+        println!("{unit:?}");
+        // Clone
+        let clone = unit.clone();
+        // PartialEq
+        assert!(unit == clone);
+    }
+
+    #[test]
+    fn now() {
+        assert!(2021 < DateTime::now().get(DateTimeUnit::Year));
+    }
+
+    #[test]
     fn days() {
         assert_eq!(0, DateTime::from_days(0).as_days());
         assert_eq!(2147483647, DateTime::from_days(2147483647).as_days());
@@ -190,7 +215,6 @@ mod datetime_tests {
             DateTime::from_timestamp(185_480_451_504_000)
                 .unwrap()
                 .format("yyyy/MM/dd")
-                .unwrap()
         );
 
         assert_eq!(
@@ -204,7 +228,6 @@ mod datetime_tests {
             DateTime::from_timestamp(-185_604_722_784_000)
                 .unwrap()
                 .format("yyyy/MM/dd")
-                .unwrap()
         );
 
         assert!(DateTime::from_timestamp(185_480_451_590_400).is_err());
@@ -257,37 +280,43 @@ mod datetime_tests {
         let modified = date_time.apply(123, DateTimeUnit::Day).unwrap();
         assert_eq!(10627200, modified.timestamp());
         let modified = date_time.apply(11, DateTimeUnit::Month).unwrap();
-        assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
         let modified = date_time.apply(12, DateTimeUnit::Month).unwrap();
-        assert_eq!("1971-01-01", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1971-01-01", modified.format("yyyy-MM-dd"));
         let modified = date_time.apply(14, DateTimeUnit::Month).unwrap();
-        assert_eq!("1971-03-01", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1971-03-01", modified.format("yyyy-MM-dd"));
+
+        let date_time2 = DateTime::from_ymd(2020, 2, 29).unwrap();
+        let modified = date_time2.apply(4, DateTimeUnit::Year).unwrap();
+        assert_eq!("2024-02-29", modified.format("yyyy-MM-dd"));
+        let modified = date_time2.apply(1, DateTimeUnit::Year).unwrap();
+        assert_eq!("2021-02-28", modified.format("yyyy-MM-dd"));
 
         // Leap year cases
         let modified = date_time.apply(30, DateTimeUnit::Day).unwrap();
-        assert_eq!("1970-01-31", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1970-01-31", modified.format("yyyy-MM-dd"));
         let modified = modified.apply(1, DateTimeUnit::Month).unwrap();
-        assert_eq!("1970-02-28", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1970-02-28", modified.format("yyyy-MM-dd"));
         let modified = modified.apply(2, DateTimeUnit::Year).unwrap();
-        assert_eq!("1972-02-28", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1972-02-28", modified.format("yyyy-MM-dd"));
         let modified = date_time
             .apply(2, DateTimeUnit::Year)
             .unwrap()
             .apply(30, DateTimeUnit::Day)
             .unwrap();
-        assert_eq!("1972-01-31", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1972-01-31", modified.format("yyyy-MM-dd"));
         let modified = modified.apply(1, DateTimeUnit::Month).unwrap();
-        assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1971, 1, 1).unwrap();
         let modified = date_time.apply(-1, DateTimeUnit::Month).unwrap();
-        assert_eq!("1970-12-01", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1972, 3, 31).unwrap();
         let modified = date_time.apply(-1, DateTimeUnit::Month).unwrap();
-        assert_eq!("1972-02-29", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
         let modified = modified.apply(-1, DateTimeUnit::Month).unwrap();
-        assert_eq!("1972-01-29", modified.format("yyyy-MM-dd").unwrap());
+        assert_eq!("1972-01-29", modified.format("yyyy-MM-dd"));
 
         let mut date_time = DateTime::default().apply(1, DateTimeUnit::Hour).unwrap();
 
@@ -316,6 +345,17 @@ mod datetime_tests {
         date_time = date_time.apply(-7, DateTimeUnit::Nanos).unwrap();
 
         assert_eq!(0, date_time.as_nanoseconds());
+
+        let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
+        assert!(date_time.apply(2_147_483_648, DateTimeUnit::Year).is_err());
+        assert!(date_time.apply(5_879_611, DateTimeUnit::Year).is_err());
+
+        let date_time = DateTime::from_ymd(1, 1, 2).unwrap();
+        assert!(date_time.apply(2_147_483_647, DateTimeUnit::Day).is_err());
+
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59).unwrap();
+        assert!(date_time.apply(1, DateTimeUnit::Month).is_err());
+        assert!(date_time.apply(1, DateTimeUnit::Sec).is_err());
     }
 
     #[test]
@@ -362,6 +402,10 @@ mod datetime_tests {
         date_time = date_time.set(7, DateTimeUnit::Nanos).unwrap();
         assert_eq!(7, date_time.get(DateTimeUnit::Nanos));
 
+        assert!(date_time.set(0, DateTimeUnit::Month).is_err());
+        assert!(date_time.set(-1, DateTimeUnit::Month).is_err());
+        assert!(date_time.set(0, DateTimeUnit::Day).is_err());
+        assert!(date_time.set(-1, DateTimeUnit::Day).is_err());
         assert!(date_time.set(-1, DateTimeUnit::Hour).is_err());
         assert!(date_time.set(-1, DateTimeUnit::Min).is_err());
         assert!(date_time.set(-1, DateTimeUnit::Sec).is_err());
@@ -369,6 +413,14 @@ mod datetime_tests {
         assert!(date_time.set(-1, DateTimeUnit::Millis).is_err());
         assert!(date_time.set(-1, DateTimeUnit::Micros).is_err());
         assert!(date_time.set(-1, DateTimeUnit::Nanos).is_err());
+
+        assert!(date_time.set(24, DateTimeUnit::Hour).is_err());
+        assert!(date_time.set(60, DateTimeUnit::Min).is_err());
+        assert!(date_time.set(60, DateTimeUnit::Sec).is_err());
+        assert!(date_time.set(100, DateTimeUnit::Centis).is_err());
+        assert!(date_time.set(1_000, DateTimeUnit::Millis).is_err());
+        assert!(date_time.set(1_000_000, DateTimeUnit::Micros).is_err());
+        assert!(date_time.set(1_000_000_000, DateTimeUnit::Nanos).is_err());
     }
 
     #[test]
@@ -379,5 +431,25 @@ mod datetime_tests {
         let date_time_copy = DateTime::from(&date_time);
         assert_eq!(12345, date_time.as_nanoseconds());
         assert_eq!(12345, date_time_copy.as_nanoseconds());
+    }
+
+    #[test]
+    fn special_cases() {
+        assert_eq!(2400, DateTime::from_days(876_275).get(DateTimeUnit::Year));
+        assert_eq!(
+            -4,
+            DateTime::from_ymd(-4, 1, 1)
+                .unwrap()
+                .get(DateTimeUnit::Year)
+        );
+        assert_eq!(1186, DateTime::from_ymd(4, 4, 1).unwrap().as_days());
+        assert_eq!(1247, DateTime::from_ymd(4, 6, 1).unwrap().as_days());
+        assert_eq!(1277, DateTime::from_ymd(4, 7, 1).unwrap().as_days());
+        assert_eq!(1308, DateTime::from_ymd(4, 8, 1).unwrap().as_days());
+        assert_eq!(1339, DateTime::from_ymd(4, 9, 1).unwrap().as_days());
+        assert_eq!(1369, DateTime::from_ymd(4, 10, 1).unwrap().as_days());
+        assert_eq!(1400, DateTime::from_ymd(4, 11, 1).unwrap().as_days());
+        assert_eq!(212, DateTime::from_ymd(1, 8, 1).unwrap().as_days());
+        assert_eq!(304, DateTime::from_ymd(1, 11, 1).unwrap().as_days());
     }
 }

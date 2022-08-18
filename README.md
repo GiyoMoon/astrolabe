@@ -25,7 +25,7 @@
     alt="MSRV" />
   </a>
   <!-- Github Actions -->
-  <a href = "https://github.com/giyomoon/astrolabe/actions">
+  <a href="https://github.com/giyomoon/astrolabe/actions">
     <img src="https://img.shields.io/github/workflow/status/giyomoon/astrolabe/checks/main?style=flat" alt="actions status" />
   </a>
   <!-- Dependencies -->

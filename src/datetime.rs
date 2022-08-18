@@ -9,7 +9,10 @@ use crate::{
     },
     AstrolabeError,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// Date and time units for functions like [`DateTime::get`] or [`DateTime::apply`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,9 +26,9 @@ pub enum DateTimeUnit {
     /// use astrolabe::{DateTime, DateTimeUnit};
     ///
     /// let date_time = DateTime::from_ymd(1970, 1, 31).unwrap();
-    /// assert_eq!("1970-02-28", date_time.apply(1, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
-    /// assert_eq!("1970-03-31", date_time.apply(2, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
-    /// assert_eq!("1970-04-30", date_time.apply(3, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd").unwrap());
+    /// assert_eq!("1970-02-28", date_time.apply(1, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
+    /// assert_eq!("1970-03-31", date_time.apply(2, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
+    /// assert_eq!("1970-04-30", date_time.apply(3, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
     /// ```
     Month,
     #[allow(missing_docs)]
@@ -80,7 +83,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_days(738276);
-    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());;
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));;
     /// ```
     pub fn from_days(days: i32) -> Self {
         DateTime(days, 0)
@@ -95,7 +98,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_seconds(86400).unwrap();
-    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
     /// ```
     pub fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
         let days = (seconds / SECS_PER_DAY_U64 as i64)
@@ -119,7 +122,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_nanoseconds(86_400_000_000_000).unwrap();
-    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
     /// ```
     pub fn from_nanoseconds(nanoseconds: i128) -> Result<Self, AstrolabeError> {
         let days = (nanoseconds / NANOS_PER_DAY as i128)
@@ -143,7 +146,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_ymd(2022, 05, 02).unwrap();
-    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd").unwrap());
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));
     /// ```
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
@@ -160,7 +163,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_hms(12, 32, 12).unwrap();
-    /// assert_eq!("0001/01/01 12:32:12", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// assert_eq!("0001/01/01 12:32:12", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
         let seconds = time_to_day_seconds(hour, minute, second)? as u64;
@@ -177,7 +180,7 @@ impl DateTime {
     /// use astrolabe::{DateTime, DateTimeUnit};
     ///
     /// let date_time = DateTime::from_ymdhms(2022, 05, 02, 12, 32, 1).unwrap();
-    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn from_ymdhms(
         year: i32,
@@ -202,7 +205,7 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_timestamp(0).unwrap();
-    /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         DateTime::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
@@ -217,7 +220,7 @@ impl DateTime {
     /// use astrolabe::{DateTime, DateTimeUnit};
     ///
     /// let date_time = DateTime::from_days(738276).set_time(3_600_000_000_000).unwrap();
-    /// assert_eq!("2022/05/02 01:00:00", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// assert_eq!("2022/05/02 01:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn set_time(&self, nanoseconds: u64) -> Result<Self, AstrolabeError> {
         if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
@@ -348,10 +351,10 @@ impl DateTime {
     ///
     /// let date_time = DateTime::from_ymdhms(1970, 1, 1, 12, 32, 1).unwrap();
     /// let applied = date_time.apply(1, DateTimeUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd HH:mm:ss").unwrap());
-    /// assert_eq!("1970-01-02 12:32:01", applied.format("yyyy-MM-dd HH:mm:ss").unwrap());
+    /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd HH:mm:ss"));
+    /// assert_eq!("1970-01-02 12:32:01", applied.format("yyyy-MM-dd HH:mm:ss"));
     /// let applied_2 = applied.apply(-1, DateTimeUnit::Hour).unwrap();
-    /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd HH:mm:ss").unwrap());
+    /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd HH:mm:ss"));
     /// ```
     pub fn apply(&self, amount: i64, unit: DateTimeUnit) -> Result<DateTime, AstrolabeError> {
         Ok(match unit {
@@ -362,7 +365,7 @@ impl DateTime {
                 self.as_nanoseconds(),
                 amount,
                 dtu_to_tu(unit),
-            )?)?,
+            ))?,
         })
     }
 
@@ -396,8 +399,6 @@ impl DateTime {
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
-    ///
-    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat`) error if the provided format string can't be parsed.
     ///
     /// # Available Symbols:
     ///
@@ -469,46 +470,46 @@ impl DateTime {
     /// use astrolabe::DateTime;
     ///
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss").unwrap());
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// // Escape characters
-    /// assert_eq!("2022/MM/dd 12:32:01", date_time.format("yyyy/'MM/dd' HH:mm:ss").unwrap());
-    /// assert_eq!("2022/'05/02' 12:32:01", date_time.format("yyyy/''MM/dd'' HH:mm:ss").unwrap());
+    /// assert_eq!("2022/MM/dd 12:32:01", date_time.format("yyyy/'MM/dd' HH:mm:ss"));
+    /// assert_eq!("2022/'05/02' 12:32:01", date_time.format("yyyy/''MM/dd'' HH:mm:ss"));
     /// ```
     ///
-    pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
-        let parts = parse_format_string(format)?;
+    pub fn format(&self, format: &str) -> String {
+        let parts = parse_format_string(format);
         parts
             .iter()
-            .map(|part| -> Result<Vec<char>, AstrolabeError> {
+            .flat_map(|part| -> Vec<char> {
                 // Escaped apostrophes
                 if part.starts_with('\u{0000}') {
-                    return Ok(part.replace('\u{0000}', "'").chars().collect::<Vec<char>>());
+                    return part.replace('\u{0000}', "'").chars().collect::<Vec<char>>();
                 }
 
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
                     let part = part.replace('\u{0000}', "'");
-                    return Ok(
-                        part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
-                            .chars()
-                            .collect::<Vec<char>>(),
-                    );
+                    return part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                        .chars()
+                        .collect::<Vec<char>>();
                 }
 
-                Ok(format_part(part, self.0, self.1)?
+                format_part(part, self.0, self.1)
                     .chars()
-                    .collect::<Vec<char>>())
+                    .collect::<Vec<char>>()
             })
-            .flat_map(|result| match result {
-                Ok(vec) => vec.into_iter().map(Ok).collect(),
-                Err(err) => vec![Err(err)],
-            })
-            .collect::<Result<String, AstrolabeError>>()
+            .collect::<String>()
     }
 }
 
 impl From<&DateTime> for DateTime {
     fn from(date_time: &DateTime) -> Self {
         Self(date_time.0, date_time.1)
+    }
+}
+
+impl Display for DateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.format("yyyy/MM/dd HH:mm:ss"))
     }
 }

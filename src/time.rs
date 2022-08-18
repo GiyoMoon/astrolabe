@@ -7,7 +7,10 @@ use crate::{
     },
     AstrolabeError,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// Time units for functions like [`Time::get`] or [`Time::apply`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +61,7 @@ impl Time {
     /// use astrolabe::Time;
     ///
     /// let time = Time::from_hms(12, 32, 01).unwrap();
-    /// assert_eq!("12:32:01", time.format("HH:mm:ss").unwrap());
+    /// assert_eq!("12:32:01", time.format("HH:mm:ss"));
     /// ```
     pub fn from_hms(hour: u32, min: u32, sec: u32) -> Result<Self, AstrolabeError> {
         let seconds = time_to_day_seconds(hour, min, sec)? as u64;
@@ -75,7 +78,7 @@ impl Time {
     /// use astrolabe::Time;
     ///
     /// let time = Time::from_seconds(1_234).unwrap();
-    /// assert_eq!("00:20:34", time.format("HH:mm:ss").unwrap());
+    /// assert_eq!("00:20:34", time.format("HH:mm:ss"));
     /// ```
     pub fn from_seconds(seconds: u32) -> Result<Self, AstrolabeError> {
         if seconds > SECS_PER_DAY - 1 {
@@ -187,13 +190,17 @@ impl Time {
     ///
     /// let time = Time::from_hms(12, 32, 15).unwrap();
     /// let applied = time.apply(1, TimeUnit::Hour).unwrap();
-    /// assert_eq!("12:32:15", time.format("HH:mm:ss").unwrap());
-    /// assert_eq!("13:32:15", applied.format("HH:mm:ss").unwrap());
+    /// assert_eq!("12:32:15", time.format("HH:mm:ss"));
+    /// assert_eq!("13:32:15", applied.format("HH:mm:ss"));
     /// let applied_2 = applied.apply(-1, TimeUnit::Hour).unwrap();
-    /// assert_eq!("12:32:15", applied_2.format("HH:mm:ss").unwrap());
+    /// assert_eq!("12:32:15", applied_2.format("HH:mm:ss"));
     /// ```
     pub fn apply(&self, amount: i64, unit: TimeUnit) -> Result<Time, AstrolabeError> {
-        Time::from_nanoseconds(apply_time_unit(self.0 as i128, amount, unit)? as u64)
+        Time::from_nanoseconds(
+            apply_time_unit(self.0 as i128, amount, unit)
+                .try_into()
+                .map_err(|_| AstrolabeError::OutOfRange)?,
+        )
     }
 
     /// Creates a new [`Time`] instance with a specific [`TimeUnit`] set to the provided value.
@@ -213,8 +220,6 @@ impl Time {
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
-    ///
-    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat`) error if the provided format string can't be parsed.
     ///
     /// # Available Symbols:
     ///
@@ -253,47 +258,46 @@ impl Time {
     /// use astrolabe::Time;
     ///
     /// let time = Time::from_hms(12, 32, 1).unwrap();
-    /// assert_eq!("12:32:01", time.format("HH:mm:ss").unwrap());
+    /// assert_eq!("12:32:01", time.format("HH:mm:ss"));
     /// // Escape characters
-    /// assert_eq!("12:mm:ss", time.format("HH:'mm:ss'").unwrap());
-    /// assert_eq!("12:'32:01'", time.format("HH:''mm:ss''").unwrap());
+    /// assert_eq!("12:mm:ss", time.format("HH:'mm:ss'"));
+    /// assert_eq!("12:'32:01'", time.format("HH:''mm:ss''"));
     /// ```
     ///
-    pub fn format(&self, format: &str) -> Result<String, AstrolabeError> {
-        let parts = parse_format_string(format)?;
-        let nanoseconds = self.as_nanoseconds();
+    pub fn format(&self, format: &str) -> String {
+        let parts = parse_format_string(format);
         parts
             .iter()
-            .map(|part| -> Result<Vec<char>, AstrolabeError> {
+            .flat_map(|part| -> Vec<char> {
                 // Escaped apostrophes
                 if part.starts_with('\u{0000}') {
-                    return Ok(part.replace('\u{0000}', "'").chars().collect::<Vec<char>>());
+                    return part.replace('\u{0000}', "'").chars().collect::<Vec<char>>();
                 }
 
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
                     let part = part.replace('\u{0000}', "'");
-                    return Ok(
-                        part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
-                            .chars()
-                            .collect::<Vec<char>>(),
-                    );
+                    return part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                        .chars()
+                        .collect::<Vec<char>>();
                 }
 
-                Ok(format_time_part(part, nanoseconds)?
+                format_time_part(part, self.0)
                     .chars()
-                    .collect::<Vec<char>>())
+                    .collect::<Vec<char>>()
             })
-            .flat_map(|result| match result {
-                Ok(vec) => vec.into_iter().map(Ok).collect(),
-                Err(er) => vec![Err(er)],
-            })
-            .collect::<Result<String, AstrolabeError>>()
+            .collect::<String>()
     }
 }
 
 impl From<&Time> for Time {
     fn from(time: &Time) -> Self {
         Self(time.0)
+    }
+}
+
+impl Display for Time {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.format("HH:mm:ss"))
     }
 }

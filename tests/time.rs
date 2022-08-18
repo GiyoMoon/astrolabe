@@ -3,6 +3,31 @@ mod time_tests {
     use astrolabe::{Time, TimeUnit};
 
     #[test]
+    fn derive() {
+        // Default
+        let time = Time::default();
+        // Debug
+        println!("{time:?}");
+        // Display
+        assert_eq!("00:00:00", format!("{time}"));
+        // From<&DateTime>
+        let _ = Time::from(&time);
+
+        let unit = TimeUnit::Sec;
+        // Debug
+        println!("{unit:?}");
+        // Clone
+        let clone = unit.clone();
+        // PartialEq
+        assert!(unit == clone);
+    }
+
+    #[test]
+    fn now() {
+        let _ = Time::now();
+    }
+
+    #[test]
     fn from_hms() {
         // check allowed limits
         from_hms_ok(0, 0, 0, 0);
@@ -132,6 +157,8 @@ mod time_tests {
         assert_eq!(6, time.get(TimeUnit::Micros));
         time = time.set(7, TimeUnit::Nanos).unwrap();
         assert_eq!(7, time.get(TimeUnit::Nanos));
+
+        assert!(time.set(24, TimeUnit::Hour).is_err());
     }
 
     #[test]

@@ -34,10 +34,13 @@ pub(crate) fn days_to_date(days: i32) -> (i32, u32, u32) {
     }
     remdays -= c_cycles * DAYS_PER_100Y;
 
-    let mut q_cycles = remdays / DAYS_PER_4Y;
-    if q_cycles == 25 {
-        q_cycles -= 1;
-    }
+    let q_cycles = remdays / DAYS_PER_4Y;
+
+    // Doesn't seem to occur if days is of type i32
+    // if q_cycles == 25 {
+    //     q_cycles -= 1;
+    // }
+
     remdays -= q_cycles * DAYS_PER_4Y;
 
     let mut remyears = remdays / 365;
@@ -86,7 +89,7 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     ydays += day - 1;
 
     Ok(if year.is_negative() {
-        ydays = if is_leap_year(year) { 366 } else { 365 } - ydays;
+        ydays = 365 - if is_leap_year(year) { ydays + 1 } else { ydays };
         (year + 1) * 365 - leap_years as i32 - ydays as i32
     } else {
         (year.abs() - 1) * 365 + leap_years as i32 + ydays as i32
@@ -219,7 +222,6 @@ pub(crate) fn dtu_to_du(unit: DateTimeUnit) -> DateUnit {
     match unit {
         DateTimeUnit::Year => DateUnit::Year,
         DateTimeUnit::Month => DateUnit::Month,
-        DateTimeUnit::Day => DateUnit::Day,
         _ => DateUnit::Day,
     }
 }
@@ -229,7 +231,6 @@ pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
     match unit {
         DateTimeUnit::Hour => TimeUnit::Hour,
         DateTimeUnit::Min => TimeUnit::Min,
-        DateTimeUnit::Sec => TimeUnit::Sec,
         DateTimeUnit::Centis => TimeUnit::Centis,
         DateTimeUnit::Millis => TimeUnit::Millis,
         DateTimeUnit::Micros => TimeUnit::Micros,
