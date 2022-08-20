@@ -28,6 +28,10 @@
   <a href="https://github.com/giyomoon/astrolabe/actions">
     <img src="https://img.shields.io/github/workflow/status/giyomoon/astrolabe/checks/main?style=flat" alt="actions status" />
   </a>
+  <!-- Code coverage -->
+  <a href="https://app.codecov.io/gh/GiyoMoon/astrolabe">
+    <img src="https://img.shields.io/codecov/c/gh/giyomoon/astrolabe?style=flat" alt="code coverage" />
+  </a>
   <!-- Dependencies -->
   <a href="https://deps.rs/repo/github/giyomoon/astrolabe" target="_blank">
     <img src="https://deps.rs/repo/github/giyomoon/astrolabe/status.svg?style=flat"

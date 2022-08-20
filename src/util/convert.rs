@@ -1,8 +1,8 @@
 use super::leap::{is_leap_year, leap_years};
 use crate::{
     shared::{
-        MAX_DATE, MIN_DATE, NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
-        SECS_PER_MINUTE_U64,
+        MAX_DATE, MIN_DATE, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR,
+        SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
     AstrolabeError, DateTimeUnit, DateUnit, TimeUnit,
 };
@@ -257,4 +257,101 @@ pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), Astrola
     }
 
     Ok(())
+}
+
+/// Adds a given offest to nanoseconds
+pub(crate) fn add_offset_to_nanos(nanoseconds: u64, offset: i32) -> u64 {
+    (((nanoseconds as i64 + offset as i64 * NANOS_PER_SEC as i64) + NANOS_PER_DAY as i64)
+        % NANOS_PER_DAY as i64)
+        .unsigned_abs()
+}
+
+/// Removes a given offest from nanoseconds
+pub(crate) fn remove_offset_from_nanos(nanoseconds: u64, offset: i32) -> u64 {
+    (((nanoseconds as i64 - offset as i64 * NANOS_PER_SEC as i64) + NANOS_PER_DAY as i64)
+        % NANOS_PER_DAY as i64)
+        .unsigned_abs()
+}
+
+/// Adds a given offset to days and nanoseconds
+pub(crate) fn add_offset_to_dn(days: i32, nanoseconds: u64, offset: i32) -> (i32, u64) {
+    let mut nanos = days_nanos_to_nanos(days, nanoseconds);
+    nanos += offset as i128 * NANOS_PER_SEC as i128;
+    let (days, nanoseconds) = nanos_to_days_nanos(nanos).unwrap();
+    (days, nanoseconds)
+}
+
+/// Removes a given offset from days and nanoseconds
+pub(crate) fn remove_offset_from_dn(days: i32, nanoseconds: u64, offset: i32) -> (i32, u64) {
+    let mut nanos = days_nanos_to_nanos(days, nanoseconds);
+    nanos -= offset as i128 * NANOS_PER_SEC as i128;
+    nanos_to_days_nanos(nanos).unwrap()
+}
+
+/// Converts days and nanoseconds to seconds
+pub(crate) fn days_nanos_to_secs(mut days: i32, day_nanos: u64) -> i64 {
+    let adjusted_day_seconds = if days.is_negative() {
+        days += 1;
+        -(SECS_PER_DAY_U64 as i64 - day_nanos as i64 / NANOS_PER_SEC as i64)
+    } else {
+        (day_nanos / NANOS_PER_SEC) as i64
+    };
+    days as i64 * SECS_PER_DAY_U64 as i64 + adjusted_day_seconds
+}
+
+/// Converts seconds to days and nanoseconds
+pub(crate) fn secs_to_days_nanos(seconds: i64) -> Result<(i32, u64), AstrolabeError> {
+    let day_seconds = seconds.unsigned_abs() % SECS_PER_DAY_U64;
+
+    let days_i64 = if seconds.is_negative() && day_seconds != 0 {
+        seconds / SECS_PER_DAY_U64 as i64 - 1
+    } else {
+        seconds / SECS_PER_DAY_U64 as i64
+    };
+
+    let days = days_i64
+        .try_into()
+        .map_err(|_| AstrolabeError::OutOfRange)?;
+
+    let adjusted_day_seconds = if seconds.is_negative() && day_seconds != 0 {
+        SECS_PER_DAY_U64 - day_seconds
+    } else {
+        day_seconds
+    };
+
+    Ok((days, adjusted_day_seconds * NANOS_PER_SEC))
+}
+
+/// Converts days and nanoseconds to nanoseconds
+pub(crate) fn days_nanos_to_nanos(mut days: i32, day_nanos: u64) -> i128 {
+    let adjusted_day_nanos = if days.is_negative() {
+        days += 1;
+        -(NANOS_PER_DAY as i128 - day_nanos as i128)
+    } else {
+        day_nanos as i128
+    };
+    days as i128 * NANOS_PER_DAY as i128 + adjusted_day_nanos
+}
+
+/// Converts nanoseconds to days and nanoseconds
+pub(crate) fn nanos_to_days_nanos(nanoseconds: i128) -> Result<(i32, u64), AstrolabeError> {
+    let day_nanos = (nanoseconds.unsigned_abs() % NANOS_PER_DAY as u128) as u64;
+
+    let days_i128 = if nanoseconds.is_negative() && day_nanos != 0 {
+        nanoseconds / NANOS_PER_DAY as i128 - 1
+    } else {
+        nanoseconds / NANOS_PER_DAY as i128
+    };
+
+    let days = days_i128
+        .try_into()
+        .map_err(|_| AstrolabeError::OutOfRange)?;
+
+    let adjusted_day_nanos = if nanoseconds.is_negative() && day_nanos != 0 {
+        NANOS_PER_DAY - day_nanos
+    } else {
+        day_nanos
+    };
+
+    Ok((days, adjusted_day_nanos))
 }

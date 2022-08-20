@@ -1,10 +1,34 @@
-/// Error parsing or formatting [`DateTime`](crate::DateTime)/[`Date`](crate::Date)/[`Time`](crate::Time) struct.
+/// Error parsing [`DateTime`](crate::DateTime)/[`Date`](crate::Date)/[`Time`](crate::Time) struct.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstrolabeError {
-    /// Failed parsing the provided format string.
-    InvalidFormat,
     /// Numeric component is out of range.
     OutOfRange,
+    /// Input string could not be parsed.
+    InvalidFormat,
+}
+
+/// Used to define if an offset is `UTC+` or `UTC-` (eastern or western hemisphere).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Offset {
+    /// Offset in the eastern hemisphere (`UTC±00:00 - UTC+23:59:59`).
+    East,
+    /// Offset in the western hemisphere (`UTC±00:00 - UTC-23:59:59`).
+    West,
+}
+
+/// Used for specifing the precision for RFC3339 timestamps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Precision {
+    /// Only seconds -> `2022-05-02T15:30:20Z`
+    Seconds = 0,
+    /// 2 decimal places -> `2022-05-02T15:30:20.00Z`
+    Centis = 2,
+    /// 3 decimal places -> `2022-05-02T15:30:20.000Z`
+    Millis = 3,
+    /// 6 decimal places -> `2022-05-02T15:30:20.000000Z`
+    Micros = 6,
+    /// 9 decimal places -> `2022-05-02T15:30:20.000000000Z`
+    Nanos = 9,
 }
 
 pub(crate) const NANOS_PER_SEC: u64 = 1_000_000_000;

@@ -133,6 +133,7 @@ mod time_tests {
         assert_eq!(0, time.as_nanoseconds());
 
         assert!(time.apply(-1, TimeUnit::Nanos).is_err());
+        assert!(time.apply(24, TimeUnit::Hour).is_err());
     }
 
     #[test]

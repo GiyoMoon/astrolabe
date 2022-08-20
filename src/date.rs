@@ -37,7 +37,9 @@ pub enum DateUnit {
 ///
 /// Ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default)]
-pub struct Date(i32);
+pub struct Date {
+    days: i32,
+}
 
 impl Date {
     /// Creates a new [`Date`] instance with [`SystemTime::now()`].
@@ -52,11 +54,11 @@ impl Date {
     pub fn now() -> Self {
         let days = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("Time went backwards")
             .as_secs()
             / SECS_PER_DAY_U64
             + DAYS_TO_1970;
-        Date(days as i32)
+        Self { days: days as i32 }
     }
 
     /// Creates a new [`Date`] instance from days.
@@ -69,7 +71,7 @@ impl Date {
     /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_days(days: i32) -> Self {
-        Date(days)
+        Self { days }
     }
 
     /// Creates a new [`Date`] instance from year, month and day (day of month).
@@ -86,7 +88,7 @@ impl Date {
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
 
-        Ok(Date(days))
+        Ok(Self { days })
     }
 
     /// Creates a new [`Date`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
@@ -104,7 +106,7 @@ impl Date {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
             .try_into()
             .map_err(|_| AstrolabeError::OutOfRange)?;
-        Ok(Date(days))
+        Ok(Self { days })
     }
 
     /// Returns the number of days since January 1, 0001 (Negative if date is before)
@@ -117,7 +119,7 @@ impl Date {
     /// assert_eq!(0, date.as_days());
     /// ```
     pub fn as_days(&self) -> i32 {
-        self.0
+        self.days
     }
 
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
@@ -130,7 +132,7 @@ impl Date {
     /// assert_eq!(946_684_800, date.timestamp());
     /// ```
     pub fn timestamp(&self) -> i64 {
-        (self.0 as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
+        (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
     }
 
     /// Returns the number of days between two [`Date`] instances.
@@ -144,8 +146,8 @@ impl Date {
     /// assert_eq!(31, date.between(&date_2));
     /// assert_eq!(31, date_2.between(&date));
     /// ```
-    pub fn between(&self, compare: &Date) -> u32 {
-        (self.0 - compare.0).unsigned_abs()
+    pub fn between(&self, compare: &Self) -> u32 {
+        (self.days - compare.days).unsigned_abs()
     }
 
     /// Get a specific [`DateUnit`].
@@ -161,9 +163,9 @@ impl Date {
     /// ```
     pub fn get(&self, unit: DateUnit) -> i32 {
         match unit {
-            DateUnit::Year => days_to_date(self.0).0,
-            DateUnit::Month => days_to_date(self.0).1 as i32,
-            DateUnit::Day => days_to_date(self.0).2 as i32,
+            DateUnit::Year => days_to_date(self.days).0,
+            DateUnit::Month => days_to_date(self.days).1 as i32,
+            DateUnit::Day => days_to_date(self.days).2 as i32,
         }
     }
 
@@ -184,9 +186,9 @@ impl Date {
     /// let applied_2 = applied.apply(-1, DateUnit::Day).unwrap();
     /// assert_eq!("1970-01-01", applied_2.format("yyyy-MM-dd"));
     /// ```
-    pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
-        Ok(Date::from_days(apply_date_unit(
-            self.0,
+    pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
+        Ok(Self::from_days(apply_date_unit(
+            self.days,
             amount as i64,
             unit,
         )?))
@@ -204,8 +206,10 @@ impl Date {
     /// assert_eq!(2000, date.set(2000, DateUnit::Year).unwrap().get(DateUnit::Year));
     /// assert_eq!(10, date.set(10, DateUnit::Day).unwrap().get(DateUnit::Day));
     /// ```
-    pub fn set(&self, value: i32, unit: DateUnit) -> Result<Date, AstrolabeError> {
-        Ok(Date(set_date_unit(self.0, value, unit)?))
+    pub fn set(&self, value: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
+        Ok(Self {
+            days: set_date_unit(self.days, value, unit)?,
+        })
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
@@ -214,41 +218,41 @@ impl Date {
     ///
     /// # Available Symbols:
     ///
-    /// | Field Type                 | Pattern  | Examples                       | Hint                                     |
-    /// | -------------------------- | -------- | ------------------------------ | ---------------------------------------- |
-    /// | era                        | G..GGG   | AD                             |                                          |
-    /// |                            | GGGG     | Anno Domini                    | *                                        |
-    /// |                            | GGGGG    | A                              |                                          |
-    /// | year                       | y        | 2, 20, 201, 2017, 20173        |                                          |
-    /// |                            | yy       | 02, 20, 01, 17, 73             |                                          |
-    /// |                            | yyy      | 002, 020, 201, 2017, 20173     |                                          |
-    /// |                            | yyyy     | 0002, 0020, 0201, 2017, 20173  |                                          |
-    /// |                            | yyyyy+   | ...                            | Unlimited length,<br/>padded with zeros. |
-    /// | quarter                    | q        | 2                              | *                                        |
-    /// |                            | qq       | 02                             |                                          |
-    /// |                            | qqq      | Q2                             |                                          |
-    /// |                            | qqqq     | 2nd quarter                    |                                          |
-    /// |                            | qqqqq    | 2                              |                                          |
-    /// | month                      | M        | 9, 12                          |                                          |
-    /// |                            | MM       | 09, 12                         |                                          |
-    /// |                            | MMM      | Sep                            |                                          |
-    /// |                            | MMMM     | September                      | *                                        |
-    /// |                            | MMMMM    | S                              |                                          |
-    /// | week                       | w        | 8, 27                          | Week of year                             |
-    /// |                            | ww       | 08, 27                         | *                                        |
-    /// | days                       | d        | 1                              | Day of month                             |
-    /// |                            | dd       | 01                             | *                                        |
-    /// |                            | D        | 1, 24 135                      | Day of year, *                           |
-    /// |                            | DD       | 01, 24, 135                    |                                          |
-    /// |                            | DDD      | 001, 024, 135                  |                                          |
-    /// | week day                   | e        | 3                              | 1-7, 1 is Sunday, *                      |
-    /// |                            | ee       | 03                             | 1-7, 1 is Sunday                         |
-    /// |                            | eee      | Tue                            |                                          |
-    /// |                            | eeee     | Tuesday                        |                                          |
-    /// |                            | eeeee    | T                              |                                          |
-    /// |                            | eeeeee   | Tu                             |                                          |
-    /// |                            | eeeeeee  | 2                              | 1-7, 1 is Monday                         |
-    /// |                            | eeeeeeee | 02                             | 1-7, 1 is Monday                         |
+    /// | Field Type | Pattern  | Examples                      | Hint                                     |
+    /// | ---------- | -------- | ----------------------------- | ---------------------------------------- |
+    /// | era        | G..GGG   | AD                            |                                          |
+    /// |            | GGGG     | Anno Domini                   | *                                        |
+    /// |            | GGGGG    | A                             |                                          |
+    /// | year       | y        | 2, 20, 201, 2017, 20173       |                                          |
+    /// |            | yy       | 02, 20, 01, 17, 73            |                                          |
+    /// |            | yyy      | 002, 020, 201, 2017, 20173    |                                          |
+    /// |            | yyyy     | 0002, 0020, 0201, 2017, 20173 |                                          |
+    /// |            | yyyyy+   | ...                           | Unlimited length,<br/>padded with zeros. |
+    /// | quarter    | q        | 2                             | *                                        |
+    /// |            | qq       | 02                            |                                          |
+    /// |            | qqq      | Q2                            |                                          |
+    /// |            | qqqq     | 2nd quarter                   |                                          |
+    /// |            | qqqqq    | 2                             |                                          |
+    /// | month      | M        | 9, 12                         |                                          |
+    /// |            | MM       | 09, 12                        |                                          |
+    /// |            | MMM      | Sep                           |                                          |
+    /// |            | MMMM     | September                     | *                                        |
+    /// |            | MMMMM    | S                             |                                          |
+    /// | week       | w        | 8, 27                         | Week of year                             |
+    /// |            | ww       | 08, 27                        | *                                        |
+    /// | days       | d        | 1                             | Day of month                             |
+    /// |            | dd       | 01                            | *                                        |
+    /// |            | D        | 1, 24 135                     | Day of year, *                           |
+    /// |            | DD       | 01, 24, 135                   |                                          |
+    /// |            | DDD      | 001, 024, 135                 |                                          |
+    /// | week day   | e        | 3                             | 1-7, 1 is Sunday, *                      |
+    /// |            | ee       | 03                            | 1-7, 1 is Sunday                         |
+    /// |            | eee      | Tue                           |                                          |
+    /// |            | eeee     | Tuesday                       |                                          |
+    /// |            | eeeee    | T                             |                                          |
+    /// |            | eeeeee   | Tu                            |                                          |
+    /// |            | eeeeeee  | 2                             | 1-7, 1 is Monday                         |
+    /// |            | eeeeeeee | 02                            | 1-7, 1 is Monday                         |
     ///
     /// `*` = Default
     ///
@@ -286,7 +290,7 @@ impl Date {
                         .collect::<Vec<char>>();
                 }
 
-                format_date_part(part, self.0)
+                format_date_part(part, self.days)
                     .chars()
                     .collect::<Vec<char>>()
             })
@@ -296,7 +300,7 @@ impl Date {
 
 impl From<&Date> for Date {
     fn from(date: &Date) -> Self {
-        Self(date.0)
+        Self { days: date.days }
     }
 }
 

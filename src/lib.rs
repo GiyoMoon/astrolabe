@@ -20,5 +20,5 @@ mod util;
 
 pub use self::date::{Date, DateUnit};
 pub use self::datetime::{DateTime, DateTimeUnit};
-pub use self::shared::AstrolabeError;
+pub use self::shared::{AstrolabeError, Offset, Precision};
 pub use self::time::{Time, TimeUnit};

@@ -1,6 +1,6 @@
 use super::convert::{days_to_date, days_to_wyear, days_to_yday, nanos_to_time};
 use crate::{
-    shared::{NANOS_PER_SEC, SECS_PER_DAY},
+    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
     util::convert::days_to_wday,
 };
 
@@ -16,12 +16,14 @@ pub(crate) fn parse_format_string(format: &str) -> Vec<String> {
                 if !currently_escaped {
                     parts.push(char.to_string());
                 } else {
+                    // Using unwrap because it's safe to assume that parts has a length of at least 1
                     parts.last_mut().unwrap().push(char);
                 }
                 currently_escaped = !currently_escaped;
             }
             _ => {
                 if currently_escaped || parts.last().unwrap_or(&"".to_string()).starts_with(char) {
+                    // Using unwrap because it's safe to assume that parts has a length of at least 1
                     parts.last_mut().unwrap().push(char);
                 } else {
                     parts.push(char.to_string());
@@ -34,18 +36,14 @@ pub(crate) fn parse_format_string(format: &str) -> Vec<String> {
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
-pub(crate) fn format_part(
-    chars: &str,
-    days: i32,
-    nanoseconds: u64,
-    // offset: i32,
-) -> String {
+pub(crate) fn format_part(chars: &str, days: i32, nanoseconds: u64, offset: i32) -> String {
+    // Using unwrap because it's safe to assume that chars has a length of at least 1
     let first_char = chars.chars().next().unwrap();
     match first_char {
         'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days),
-        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' => format_time_part(chars, nanoseconds),
-        // 'X' => format_zone(offset, chars.len(), true),
-        // 'x' => format_zone(offset, chars.len(), false),
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' | 'X' | 'x' | 'n' => {
+            format_time_part(chars, nanoseconds, offset)
+        }
         _ => chars.to_string(),
     }
 }
@@ -53,6 +51,7 @@ pub(crate) fn format_part(
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
 pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
+    // Using unwrap because it's safe to assume that chars has a length of at least 1
     let first_char = chars.chars().next().unwrap();
     match first_char {
         'G' => match chars.len() {
@@ -85,6 +84,7 @@ pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
 
                 if year_string.len() > 2 {
                     let last_two = &year_string[year_string.len() - 2..];
+                    // Using unwrap because it's safe to assume that this string can be parsed
                     year = last_two.parse::<i32>().unwrap();
                 }
                 zero_padded_i(year, 2)
@@ -114,7 +114,8 @@ pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// This function only formats time parts while ignoring date related parts (E.g. year, day)
-pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> String {
+pub(crate) fn format_time_part(chars: &str, nanoseconds: u64, offset: i32) -> String {
+    // Using unwrap because it's safe to assume that chars has a length of at least 1
     let first_char = chars.chars().next().unwrap();
     match first_char {
         'a' => format_period(nanoseconds, get_length(chars.len(), 3, 5), false),
@@ -142,6 +143,20 @@ pub(crate) fn format_time_part(chars: &str, nanoseconds: u64) -> String {
         }
         'm' => zero_padded(nanos_to_time(nanoseconds).1, get_length(chars.len(), 2, 2)),
         's' => zero_padded(nanos_to_time(nanoseconds).2, get_length(chars.len(), 2, 2)),
+        'n' => {
+            let mut length = get_length(chars.len(), 3, 5);
+            if length == 4 {
+                length = 6;
+            } else if length == 5 {
+                length = 9;
+            }
+
+            let subsec_nanos = (nanoseconds % NANOS_PER_SEC) as u32;
+
+            zero_padded(subsec_nanos / 10_u32.pow(9 - length as u32), length)
+        }
+        'X' => format_zone(offset, chars.len(), true),
+        'x' => format_zone(offset, chars.len(), false),
         _ => chars.to_string(),
     }
 }
@@ -255,63 +270,63 @@ fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     }
 }
 
-// fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
-//     if with_z && offset == 0 {
-//         return "Z".to_string();
-//     }
+fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
+    if with_z && offset == 0 {
+        return "Z".to_string();
+    }
 
-//     let hour = offset.unsigned_abs() / SECS_PER_HOUR;
-//     let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
-//     let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
-//     let prefix = if offset.is_negative() { "-" } else { "+" };
+    let hour = offset.unsigned_abs() / SECS_PER_HOUR;
+    let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
+    let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
+    let prefix = if offset.is_negative() { "-" } else { "+" };
 
-//     match length {
-//         1 => {
-//             format!(
-//                 "{}{}{}",
-//                 prefix,
-//                 zero_padded(hour, 2),
-//                 if min != 0 {
-//                     zero_padded(min, 2)
-//                 } else {
-//                     "".to_string()
-//                 }
-//             )
-//         }
-//         2 => {
-//             format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
-//         }
-//         4 => {
-//             format!(
-//                 "{}{}{}{}",
-//                 prefix,
-//                 zero_padded(hour, 2),
-//                 zero_padded(min, 2),
-//                 if sec != 0 {
-//                     zero_padded(sec, 2)
-//                 } else {
-//                     "".to_string()
-//                 }
-//             )
-//         }
-//         5 => {
-//             format!(
-//                 "{}{}:{}{}",
-//                 prefix,
-//                 zero_padded(hour, 2),
-//                 zero_padded(min, 2),
-//                 if sec != 0 {
-//                     format!(":{}", zero_padded(sec, 2))
-//                 } else {
-//                     "".to_string()
-//                 }
-//             )
-//         }
-//         _ => {
-//             format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
-//         }
-//     }
-// }
+    match length {
+        1 => {
+            format!(
+                "{}{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                if min != 0 {
+                    zero_padded(min, 2)
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        2 => {
+            format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+        }
+        4 => {
+            format!(
+                "{}{}{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(min, 2),
+                if sec != 0 {
+                    zero_padded(sec, 2)
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        5 => {
+            format!(
+                "{}{}:{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(min, 2),
+                if sec != 0 {
+                    format!(":{}", zero_padded(sec, 2))
+                } else {
+                    "".to_string()
+                }
+            )
+        }
+        _ => {
+            format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+        }
+    }
+}
 
 /// Formats a number as a zero padded string
 pub(crate) fn zero_padded_i(number: i32, length: usize) -> String {

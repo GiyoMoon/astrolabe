@@ -30,8 +30,8 @@ mod date_tests {
     #[test]
     fn days() {
         assert_eq!(0, Date::from_days(0).as_days());
-        assert_eq!(2147483647, Date::from_days(2147483647).as_days());
-        assert_eq!(-2147483648, Date::from_days(-2147483648).as_days());
+        assert_eq!(i32::MAX, Date::from_days(i32::MAX).as_days());
+        assert_eq!(i32::MIN, Date::from_days(i32::MIN).as_days());
     }
 
     #[test]
@@ -43,8 +43,8 @@ mod date_tests {
         from_ymd_ok(58, 1, 2, 28);
         from_ymd_ok(1154, 4, 2, 29);
         from_ymd_ok(119, 1, 4, 30);
-        from_ymd_ok(2_147_483_647, 5_879_611, 7, 12);
-        from_ymd_ok(-2_147_483_648, -5_879_611, 6, 23);
+        from_ymd_ok(i32::MAX, 5_879_611, 7, 12);
+        from_ymd_ok(i32::MIN, -5_879_611, 6, 23);
 
         // check invalid limits
         from_ymd_err(1, 0, 1);

@@ -493,6 +493,70 @@ mod format_tests {
     }
 
     #[test]
+    fn offset() {
+        let time = Time::from_hms(0, 0, 0).unwrap();
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss X"));
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss XX"));
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss XXX"));
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss XXXX"));
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss XXXXX"));
+        assert_eq!("00:00:00 Z", time.format("HH:mm:ss XXXXXX"));
+        assert_eq!("00:00:00 +00", time.format("HH:mm:ss x"));
+        assert_eq!("00:00:00 +0000", time.format("HH:mm:ss xx"));
+        assert_eq!("00:00:00 +00:00", time.format("HH:mm:ss xxx"));
+        assert_eq!("00:00:00 +0000", time.format("HH:mm:ss xxxx"));
+        assert_eq!("00:00:00 +00:00", time.format("HH:mm:ss xxxxx"));
+        assert_eq!("00:00:00 +00:00", time.format("HH:mm:ss xxxxxx"));
+
+        let time = Time::from_hms(0, 0, 0).unwrap().set_offset(-3661).unwrap();
+        assert_eq!("22:58:59 -0101", time.format("HH:mm:ss X"));
+        assert_eq!("22:58:59 -0101", time.format("HH:mm:ss XX"));
+        assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss XXX"));
+        assert_eq!("22:58:59 -010101", time.format("HH:mm:ss XXXX"));
+        assert_eq!("22:58:59 -01:01:01", time.format("HH:mm:ss XXXXX"));
+        assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss XXXXXX"));
+        assert_eq!("22:58:59 -0101", time.format("HH:mm:ss x"));
+        assert_eq!("22:58:59 -0101", time.format("HH:mm:ss xx"));
+        assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss xxx"));
+        assert_eq!("22:58:59 -010101", time.format("HH:mm:ss xxxx"));
+        assert_eq!("22:58:59 -01:01:01", time.format("HH:mm:ss xxxxx"));
+        assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss xxxxxx"));
+
+        let time = Time::from_hms(0, 0, 0).unwrap().set_offset(3661).unwrap();
+        assert_eq!("01:01:01 +0101", time.format("HH:mm:ss X"));
+        assert_eq!("01:01:01 +0101", time.format("HH:mm:ss XX"));
+        assert_eq!("01:01:01 +01:01", time.format("HH:mm:ss XXX"));
+        assert_eq!("01:01:01 +010101", time.format("HH:mm:ss XXXX"));
+        assert_eq!("01:01:01 +01:01:01", time.format("HH:mm:ss XXXXX"));
+        assert_eq!("01:01:01 +01:01", time.format("HH:mm:ss XXXXXX"));
+        assert_eq!("01:01:01 +0101", time.format("HH:mm:ss x"));
+        assert_eq!("01:01:01 +0101", time.format("HH:mm:ss xx"));
+        assert_eq!("01:01:01 +01:01", time.format("HH:mm:ss xxx"));
+        assert_eq!("01:01:01 +010101", time.format("HH:mm:ss xxxx"));
+        assert_eq!("01:01:01 +01:01:01", time.format("HH:mm:ss xxxxx"));
+        assert_eq!("01:01:01 +01:01", time.format("HH:mm:ss xxxxxx"));
+    }
+
+    #[test]
+    fn subsecond_values() {
+        let time = Time::from_nanoseconds(1123456789).unwrap();
+        assert_eq!("1", time.format("n"));
+        assert_eq!("12", time.format("nn"));
+        assert_eq!("123", time.format("nnn"));
+        assert_eq!("123456", time.format("nnnn"));
+        assert_eq!("123456789", time.format("nnnnn"));
+        assert_eq!("123", time.format("nnnnnn"));
+
+        let time = Time::from_nanoseconds(1).unwrap();
+        assert_eq!("0", time.format("n"));
+        assert_eq!("00", time.format("nn"));
+        assert_eq!("000", time.format("nnn"));
+        assert_eq!("000000", time.format("nnnn"));
+        assert_eq!("000000001", time.format("nnnnn"));
+        assert_eq!("000", time.format("nnnnnn"));
+    }
+
+    #[test]
     fn format_escape() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!(

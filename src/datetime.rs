@@ -1,13 +1,16 @@
 use crate::{
-    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64},
+    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
     util::{
         convert::{
-            date_to_days, days_to_date, dtu_to_du, dtu_to_tu, nanos_to_unit, time_to_day_seconds,
+            add_offset_to_dn, date_to_days, days_nanos_to_nanos, days_nanos_to_secs, days_to_date,
+            dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_unit, remove_offset_from_dn,
+            secs_to_days_nanos, time_to_day_seconds,
         },
         format::{format_part, parse_format_string},
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
+        parse::parse_offset,
     },
-    AstrolabeError,
+    AstrolabeError, Offset, Precision,
 };
 use std::{
     fmt::Display,
@@ -54,7 +57,11 @@ pub enum DateTimeUnit {
 ///
 /// Date ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default)]
-pub struct DateTime(i32, u64);
+pub struct DateTime {
+    days: i32,
+    nanoseconds: u64,
+    offset: i32,
+}
 
 impl DateTime {
     /// Creates a new [`DateTime`] instance with [`SystemTime::now()`].
@@ -67,13 +74,19 @@ impl DateTime {
     /// assert!(2021 < date_time.get(DateTimeUnit::Year));
     /// ```
     pub fn now() -> Self {
-        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let duration = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
 
         let days = duration.as_secs() / SECS_PER_DAY_U64 + DAYS_TO_1970;
-        let nanos =
+        let nanoseconds =
             duration.as_secs() % SECS_PER_DAY_U64 * NANOS_PER_SEC + duration.subsec_nanos() as u64;
 
-        DateTime(days as i32, nanos)
+        Self {
+            days: days as i32,
+            nanoseconds,
+            offset: 0,
+        }
     }
 
     /// Creates a new [`DateTime`] instance from days.
@@ -86,12 +99,16 @@ impl DateTime {
     /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));;
     /// ```
     pub fn from_days(days: i32) -> Self {
-        DateTime(days, 0)
+        Self {
+            days,
+            nanoseconds: 0,
+            offset: 0,
+        }
     }
 
     /// Creates a new [`DateTime`] instance from seconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds would result in an out of range datetime.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds would result in an out of range date.
     ///
     /// # Example
     /// ```rust
@@ -101,21 +118,18 @@ impl DateTime {
     /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
     /// ```
     pub fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
-        let days = (seconds / SECS_PER_DAY_U64 as i64)
-            .try_into()
-            .map_err(|_| AstrolabeError::OutOfRange)?;
-        let day_seconds = if seconds.is_negative() {
-            SECS_PER_DAY_U64 - seconds.unsigned_abs() % SECS_PER_DAY_U64
-        } else {
-            seconds.unsigned_abs() % SECS_PER_DAY_U64
-        };
+        let (days, nanoseconds) = secs_to_days_nanos(seconds)?;
 
-        Ok(DateTime(days, day_seconds * NANOS_PER_SEC))
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: 0,
+        })
     }
 
     /// Creates a new [`DateTime`] instance from nanoseconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds would result in an out of range datetime.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds would result in an out of range date.
     ///
     /// # Example
     /// ```rust
@@ -125,16 +139,13 @@ impl DateTime {
     /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
     /// ```
     pub fn from_nanoseconds(nanoseconds: i128) -> Result<Self, AstrolabeError> {
-        let days = (nanoseconds / NANOS_PER_DAY as i128)
-            .try_into()
-            .map_err(|_| AstrolabeError::OutOfRange)?;
-        let day_nanos = if nanoseconds.is_negative() {
-            NANOS_PER_DAY - (nanoseconds.unsigned_abs() % NANOS_PER_DAY as u128) as u64
-        } else {
-            (nanoseconds.unsigned_abs() % NANOS_PER_DAY as u128) as u64
-        };
+        let (days, nanoseconds) = nanos_to_days_nanos(nanoseconds)?;
 
-        Ok(DateTime(days, day_nanos))
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: 0,
+        })
     }
 
     /// Creates a new [`DateTime`] instance from year, month and day (day of month).
@@ -151,7 +162,11 @@ impl DateTime {
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
 
-        Ok(DateTime(days, 0))
+        Ok(Self {
+            days,
+            nanoseconds: 0,
+            offset: 0,
+        })
     }
 
     /// Creates a new [`DateTime`] instance from hour, minute and seconds.
@@ -168,7 +183,11 @@ impl DateTime {
     pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
         let seconds = time_to_day_seconds(hour, minute, second)? as u64;
 
-        Ok(DateTime(0, seconds * NANOS_PER_SEC))
+        Ok(Self {
+            days: 0,
+            nanoseconds: seconds * NANOS_PER_SEC,
+            offset: 0,
+        })
     }
 
     /// Creates a new [`DateTime`] instance from year, month, day (day of month), hour, minute and seconds.
@@ -192,8 +211,11 @@ impl DateTime {
     ) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
         let seconds = time_to_day_seconds(hour, min, sec)? as u64;
-
-        Ok(DateTime(days, seconds * NANOS_PER_SEC))
+        Ok(Self {
+            days,
+            nanoseconds: seconds * NANOS_PER_SEC,
+            offset: 0,
+        })
     }
 
     /// Creates a new [`DateTime`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
@@ -208,7 +230,73 @@ impl DateTime {
     /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
-        DateTime::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
+        Self::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
+    }
+
+    /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string.
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20Z").unwrap();
+    /// assert_eq!("2022/05/02 15:30:20", date_time.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn parse_rfc3339(string: &str) -> Result<Self, AstrolabeError> {
+        if string.len() < 20 {
+            return Err(AstrolabeError::InvalidFormat);
+        }
+
+        let year = string[0..4]
+            .parse::<i32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+        let month = string[5..7]
+            .parse::<u32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+        let day = string[8..10]
+            .parse::<u32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+        let hour = string[11..13]
+            .parse::<u32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+        let min = string[14..16]
+            .parse::<u32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+        let sec = string[17..19]
+            .parse::<u32>()
+            .map_err(|_| AstrolabeError::InvalidFormat)?;
+
+        let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
+            let nanos_string = string[20..]
+                .chars()
+                .take_while(|&char| char != 'Z' && char != '+' && char != '-')
+                .collect::<String>();
+            let nanos = nanos_string
+                .parse::<u64>()
+                .map_err(|_| AstrolabeError::InvalidFormat)?
+                * (1000000000 / 10_u64.pow(nanos_string.len() as u32));
+
+            let offset_substring = string[20..]
+                .chars()
+                .position(|char| char == 'Z' || char == '+' || char == '-')
+                .ok_or(AstrolabeError::InvalidFormat)?;
+            let offset = parse_offset(&string[20 + offset_substring..])?;
+
+            (nanos, offset)
+        } else {
+            let offset = parse_offset(&string[19..])?;
+            (0, offset)
+        };
+
+        let days = date_to_days(year, month, day)?;
+        let seconds = time_to_day_seconds(hour, min, sec)? as u64;
+
+        Self {
+            days,
+            nanoseconds: seconds * NANOS_PER_SEC + nanos,
+            offset: 0,
+        }
+        .as_offset(offset)
     }
 
     /// Creates a new [`DateTime`] with the specified amount of nanoseconds set as clock time.
@@ -226,7 +314,11 @@ impl DateTime {
         if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
             return Err(AstrolabeError::OutOfRange);
         }
-        Ok(DateTime(self.0, nanoseconds))
+        Ok(Self {
+            days: self.days,
+            nanoseconds,
+            offset: 0,
+        })
     }
 
     /// Returns the clock time in nanoseconds.
@@ -239,7 +331,7 @@ impl DateTime {
     /// assert_eq!(3_600_000_000_000, date_time.get_time());
     /// ```
     pub fn get_time(&self) -> u64 {
-        self.1
+        self.nanoseconds
     }
 
     /// Returns the number of days since January 1, 0001 00:00:00 UTC. (Negative if date is before)
@@ -252,7 +344,7 @@ impl DateTime {
     /// assert_eq!(1, date_time.as_days());
     /// ```
     pub fn as_days(&self) -> i32 {
-        self.0
+        self.days
     }
 
     /// Returns the number of seconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
@@ -265,12 +357,7 @@ impl DateTime {
     /// assert_eq!(86400, date_time.as_seconds());
     /// ```
     pub fn as_seconds(&self) -> i64 {
-        let day_seconds = if self.0.is_negative() {
-            -(((NANOS_PER_DAY - self.1) / NANOS_PER_SEC) as i64)
-        } else {
-            (self.1 / NANOS_PER_SEC) as i64
-        };
-        self.0 as i64 * SECS_PER_DAY_U64 as i64 + day_seconds
+        days_nanos_to_secs(self.days, self.nanoseconds)
     }
 
     /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
@@ -283,12 +370,7 @@ impl DateTime {
     /// assert_eq!(86_400_000_000_000, date_time.as_nanoseconds());
     /// ```
     pub fn as_nanoseconds(&self) -> i128 {
-        let day_nanoseconds = if self.0.is_negative() {
-            -(NANOS_PER_DAY as i128 - self.1 as i128)
-        } else {
-            self.1 as i128
-        };
-        self.0 as i128 * NANOS_PER_DAY as i128 + day_nanoseconds
+        days_nanos_to_nanos(self.days, self.nanoseconds)
     }
 
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
@@ -315,11 +397,13 @@ impl DateTime {
     /// assert_eq!(86400, date_time1.between(&date_time2));
     /// assert_eq!(86400, date_time2.between(&date_time1));
     /// ```
-    pub fn between(&self, compare: &DateTime) -> u64 {
+    pub fn between(&self, compare: &Self) -> u64 {
         (self.as_seconds() - compare.as_seconds()).unsigned_abs()
     }
 
     /// Get a specific [`DateTimeUnit`].
+    ///
+    ///The set offset is considered in this function (Default is `UTC`).
     ///
     /// # Example
     /// ```rust
@@ -331,11 +415,12 @@ impl DateTime {
     /// assert_eq!(32, date_time.get(DateTimeUnit::Min));
     /// ```
     pub fn get(&self, unit: DateTimeUnit) -> i64 {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
         match unit {
-            DateTimeUnit::Year => days_to_date(self.0).0 as i64,
-            DateTimeUnit::Month => days_to_date(self.0).1 as i64,
-            DateTimeUnit::Day => days_to_date(self.0).2 as i64,
-            _ => nanos_to_unit(self.1, dtu_to_tu(unit)) as i64,
+            DateTimeUnit::Year => days_to_date(days).0 as i64,
+            DateTimeUnit::Month => days_to_date(days).1 as i64,
+            DateTimeUnit::Day => days_to_date(days).2 as i64,
+            _ => nanos_to_unit(nanoseconds, dtu_to_tu(unit)) as i64,
         }
     }
 
@@ -356,20 +441,26 @@ impl DateTime {
     /// let applied_2 = applied.apply(-1, DateTimeUnit::Hour).unwrap();
     /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd HH:mm:ss"));
     /// ```
-    pub fn apply(&self, amount: i64, unit: DateTimeUnit) -> Result<DateTime, AstrolabeError> {
+    pub fn apply(&self, amount: i64, unit: DateTimeUnit) -> Result<Self, AstrolabeError> {
         Ok(match unit {
-            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => {
-                DateTime(apply_date_unit(self.0, amount, dtu_to_du(unit))?, self.1)
-            }
-            _ => DateTime::from_nanoseconds(apply_time_unit(
+            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => Self {
+                days: apply_date_unit(self.days, amount, dtu_to_du(unit))?,
+                nanoseconds: self.nanoseconds,
+                offset: self.offset,
+            },
+            _ => Self::from_nanoseconds(apply_time_unit(
                 self.as_nanoseconds(),
                 amount,
                 dtu_to_tu(unit),
-            ))?,
+            ))?
+            .set_offset(self.offset)
+            .unwrap(),
         })
     }
 
     /// Creates a new [`DateTime`] instance with a specific [`DateTimeUnit`] set to the provided value.
+    ///
+    /// The set offset is considered in this function (Default is `UTC`).
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
     ///
@@ -381,24 +472,67 @@ impl DateTime {
     /// assert_eq!(2000, date_time.set(2000, DateTimeUnit::Year).unwrap().get(DateTimeUnit::Year));
     /// assert_eq!(10, date_time.set(10, DateTimeUnit::Min).unwrap().get(DateTimeUnit::Min));
     /// ```
-    pub fn set(&self, value: i32, unit: DateTimeUnit) -> Result<DateTime, AstrolabeError> {
+    pub fn set(&self, value: i32, unit: DateTimeUnit) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
         Ok(match unit {
             DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => {
-                DateTime(set_date_unit(self.0, value, dtu_to_du(unit))?, self.1)
+                let new_days = set_date_unit(self.days, value, dtu_to_du(unit))?;
+                let (days, nanoseconds) = remove_offset_from_dn(new_days, nanoseconds, self.offset);
+                Self {
+                    days,
+                    nanoseconds,
+                    offset: self.offset,
+                }
             }
             _ => {
                 if value.is_negative() {
                     return Err(AstrolabeError::OutOfRange);
                 }
-                DateTime(
-                    self.0,
-                    set_time_unit(self.1, value.unsigned_abs(), dtu_to_tu(unit))?,
-                )
+                let new_nanoseconds =
+                    set_time_unit(self.nanoseconds, value.unsigned_abs(), dtu_to_tu(unit))?;
+                let (days, nanoseconds) = remove_offset_from_dn(days, new_nanoseconds, self.offset);
+                Self {
+                    days,
+                    nanoseconds,
+                    offset: self.offset,
+                }
             }
         })
     }
 
+    /// Format as an RFC3339 timestamp (`2022-05-02T15:30:20Z`).
+    ///
+    /// The set offset is considered in this function (Default is `UTC`).
+    ///
+    /// Use the [`Precision`] enum to specify decimal places after seconds:
+    /// * [`Precision::Seconds`] -> `2022-05-02T15:30:20Z`
+    /// * [`Precision::Centis`] -> `2022-05-02T15:30:20.00Z`
+    /// * [`Precision::Millis`] -> `2022-05-02T15:30:20.000Z`
+    /// * [`Precision::Micros`] -> `2022-05-02T15:30:20.000000Z`
+    /// * [`Precision::Nanos`] -> `2022-05-02T15:30:20.000000000Z`
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::{DateTime, Precision};
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 15, 30, 20).unwrap();
+    /// assert_eq!("2022-05-02T15:30:20Z", date_time.format_rfc3339(Precision::Seconds));
+    /// // Equivalent to:
+    /// assert_eq!("2022-05-02T15:30:20Z", date_time.format("yyyy-MM-ddTHH:mm:ssXXX"));
+    /// ```
+    pub fn format_rfc3339(&self, precision: Precision) -> String {
+        match precision {
+            Precision::Seconds => self.format("yyyy-MM-ddTHH:mm:ssXXX"),
+            Precision::Centis => self.format("yyyy-MM-ddTHH:mm:ss.nnXXX"),
+            Precision::Millis => self.format("yyyy-MM-ddTHH:mm:ss.nnnXXX"),
+            Precision::Micros => self.format("yyyy-MM-ddTHH:mm:ss.nnnnXXX"),
+            Precision::Nanos => self.format("yyyy-MM-ddTHH:mm:ss.nnnnnXXX"),
+        }
+    }
+
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
+    ///
+    /// The set offset is considered in this function (Default is `UTC`).
     ///
     /// # Available Symbols:
     ///
@@ -457,6 +591,21 @@ impl DateTime {
     /// |                            | mm       | 00, 59                         | *                                        |
     /// | second                     | s        | 0, 59                          |                                          |
     /// |                            | ss       | 00, 59                         | *                                        |
+    /// | subsecond values           | n        | 1, 9                           | Deciseconds                              |
+    /// |                            | nn       | 01, 99                         | Centiseconds                             |
+    /// |                            | nnn      | 001, 999                       | Milliseconds, *                          |
+    /// |                            | nnnn     | 000001, 999999                 | Microseconds                             |
+    /// |                            | nnnnn    | 000000001, 999999999           | Nanoseconds                              |
+    /// | zone                       | X        | -08, +0530, Z                  |                                          |
+    /// |                            | XX       | -0800, Z                       |                                          |
+    /// |                            | XXX      | -08:00, Z                      | *                                        |
+    /// |                            | XXXX     | -0800, -075258, Z              |                                          |
+    /// |                            | XXXXX    | -08:00, -07:52:58, Z           |                                          |
+    /// |                            | x        | -08, +0530, +00                | Like X but without Z                     |
+    /// |                            | xx       | -0800, +0000                   |                                          |
+    /// |                            | xxx      | -08:00, +00:00                 | *                                        |
+    /// |                            | xxxx     | -0800, -075258, +0000          |                                          |
+    /// |                            | xxxxx    | -08:00, -07:52:58, +00:00      |                                          |
     ///
     /// `*` = Default
     ///
@@ -478,6 +627,8 @@ impl DateTime {
     ///
     pub fn format(&self, format: &str) -> String {
         let parts = parse_format_string(format);
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+
         parts
             .iter()
             .flat_map(|part| -> Vec<char> {
@@ -494,17 +645,158 @@ impl DateTime {
                         .collect::<Vec<char>>();
                 }
 
-                format_part(part, self.0, self.1)
+                format_part(part, days, nanoseconds, self.offset)
                     .chars()
                     .collect::<Vec<char>>()
             })
             .collect::<String>()
     }
+
+    /// Creates a new [`DateTime`] instance with a given timezone offset defined as time units (hour, minute and second). Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
+    ///
+    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    ///
+    ///  # Example
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
+    /// // Set offset to UTC+2
+    /// let with_offset = date_time.set_offset(7200).unwrap();
+    /// assert_eq!("2022/05/02 14:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn set_offset_time(
+        &self,
+        hour: u32,
+        minute: u32,
+        second: u32,
+        offset: Offset,
+    ) -> Result<Self, AstrolabeError> {
+        let mut seconds = time_to_day_seconds(hour, minute, second)? as i32;
+        seconds = if offset == Offset::West {
+            -seconds
+        } else {
+            seconds
+        };
+
+        self.set_offset(seconds)
+    }
+
+    /// Creates a new [`DateTime`] instance with a given timezone offset defined as seconds. Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
+    ///
+    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    ///
+    ///  # Example
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
+    /// // Set offset to UTC+2
+    /// let with_offset = date_time.set_offset(7200).unwrap();
+    /// assert_eq!("2022/05/02 14:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
+        if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
+            return Err(AstrolabeError::OutOfRange);
+        }
+
+        let offset_days = (self.as_seconds() + seconds as i64) / SECS_PER_DAY_U64 as i64;
+        let offset_nanos = (self.nanoseconds / NANOS_PER_SEC) as i64 + seconds as i64;
+        if offset_days < i32::MIN as i64
+            || offset_days > i32::MAX as i64
+            || (offset_days == i32::MIN as i64 && offset_nanos.is_negative())
+        {
+            return Err(AstrolabeError::OutOfRange);
+        }
+
+        Ok(Self {
+            days: self.days,
+            nanoseconds: self.nanoseconds,
+            offset: seconds as i32,
+        })
+    }
+
+    /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    ///
+    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    ///
+    ///  # Example
+    /// ```rust
+    /// use astrolabe::{DateTime, Offset};
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
+    /// // Set offset to UTC+2
+    /// let with_offset = date_time.as_offset_time(2, 0, 0, Offset::East).unwrap();
+    /// assert_eq!("2022/05/02 12:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn as_offset_time(
+        &self,
+        hour: u32,
+        minute: u32,
+        second: u32,
+        offset: Offset,
+    ) -> Result<Self, AstrolabeError> {
+        let mut seconds = time_to_day_seconds(hour, minute, second)? as i32;
+        seconds = if offset == Offset::West {
+            -seconds
+        } else {
+            seconds
+        };
+
+        let new_nanos = self.as_nanoseconds() - seconds as i128 * NANOS_PER_SEC as i128;
+
+        Ok(Self::from_nanoseconds(new_nanos)?
+            .set_offset(seconds)
+            .unwrap())
+    }
+
+    /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    ///
+    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    ///
+    ///  # Example
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
+    /// // Set offset to UTC+2
+    /// let with_offset = date_time.as_offset(7200).unwrap();
+    /// assert_eq!("2022/05/02 12:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
+        let new_nanos = self.as_nanoseconds() - seconds as i128 * NANOS_PER_SEC as i128;
+        Self::from_nanoseconds(new_nanos)?.set_offset(seconds)
+    }
+
+    /// Returns the set offset in seconds.
+    ///
+    /// # Example
+    /// ```rust
+    /// use astrolabe::DateTime;
+    ///
+    /// let date_time = DateTime::now().set_offset(3600).unwrap();
+    /// assert_eq!(3600, date_time.get_offset());
+    /// ```
+    pub fn get_offset(&self) -> i32 {
+        self.offset
+    }
 }
 
 impl From<&DateTime> for DateTime {
     fn from(date_time: &DateTime) -> Self {
-        Self(date_time.0, date_time.1)
+        Self {
+            days: date_time.days,
+            nanoseconds: date_time.nanoseconds,
+            offset: date_time.offset,
+        }
     }
 }
 

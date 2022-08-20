@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod datetime_tests {
-    use astrolabe::{DateTime, DateTimeUnit};
+    use astrolabe::{DateTime, DateTimeUnit, Precision};
 
     #[test]
     fn derive() {
@@ -30,13 +30,14 @@ mod datetime_tests {
     #[test]
     fn days() {
         assert_eq!(0, DateTime::from_days(0).as_days());
-        assert_eq!(2147483647, DateTime::from_days(2147483647).as_days());
-        assert_eq!(-2147483648, DateTime::from_days(-2147483648).as_days());
+        assert_eq!(i32::MAX, DateTime::from_days(i32::MAX).as_days());
+        assert_eq!(i32::MIN, DateTime::from_days(i32::MIN).as_days());
     }
 
     #[test]
     fn seconds() {
         assert_eq!(0, DateTime::from_seconds(0).unwrap().as_seconds());
+        assert_eq!(-1, DateTime::from_seconds(-1).unwrap().as_seconds());
         assert_eq!(
             185_542_587_187_199,
             DateTime::from_seconds(185_542_587_187_199)
@@ -45,8 +46,8 @@ mod datetime_tests {
         );
         assert!(DateTime::from_seconds(185_542_587_187_200).is_err());
         assert_eq!(
-            -185_542_587_273_599,
-            DateTime::from_seconds(-185_542_587_273_599)
+            -185_542_587_187_200,
+            DateTime::from_seconds(-185_542_587_187_200)
                 .unwrap()
                 .as_seconds()
         );
@@ -57,6 +58,19 @@ mod datetime_tests {
     fn nanoseconds() {
         assert_eq!(0, DateTime::from_nanoseconds(0).unwrap().as_nanoseconds());
         assert_eq!(
+            "0002/01/01 12:34:56",
+            DateTime::from_nanoseconds(31_581_296_000_000_000)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
+        );
+        //41'104
+        assert_eq!(
+            "-0001/01/01 00:00:00",
+            DateTime::from_nanoseconds(-31_622_400_000_000_000)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
+        );
+        assert_eq!(
             185_542_587_187_199_999_999_999,
             DateTime::from_nanoseconds(185_542_587_187_199_999_999_999)
                 .unwrap()
@@ -64,8 +78,8 @@ mod datetime_tests {
         );
         assert!(DateTime::from_nanoseconds(185_542_587_187_200_000_000_000).is_err());
         assert_eq!(
-            -185_542_587_273_599_999_999_999,
-            DateTime::from_nanoseconds(-185_542_587_273_599_999_999_999)
+            -185_542_587_187_200_000_000_000,
+            DateTime::from_nanoseconds(-185_542_587_187_200_000_000_000)
                 .unwrap()
                 .as_nanoseconds()
         );
@@ -81,8 +95,8 @@ mod datetime_tests {
         from_ymd_ok(58, 1, 2, 28);
         from_ymd_ok(1154, 4, 2, 29);
         from_ymd_ok(119, 1, 4, 30);
-        from_ymd_ok(2_147_483_647, 5_879_611, 7, 12);
-        from_ymd_ok(-2_147_483_648, -5_879_611, 6, 23);
+        from_ymd_ok(i32::MAX, 5_879_611, 7, 12);
+        from_ymd_ok(i32::MIN, -5_879_611, 6, 23);
 
         // check invalid limits
         from_ymd_err(1, 0, 1);
@@ -148,8 +162,8 @@ mod datetime_tests {
         from_ymdhms_ok(58 * SECS_PER_DAY, 1, 2, 28, 0, 0, 0);
         from_ymdhms_ok(1154 * SECS_PER_DAY, 4, 2, 29, 0, 0, 0);
         from_ymdhms_ok(119 * SECS_PER_DAY, 1, 4, 30, 0, 0, 0);
-        from_ymdhms_ok(2_147_483_647 * SECS_PER_DAY, 5_879_611, 7, 12, 0, 0, 0);
-        from_ymdhms_ok(-2_147_483_649 * SECS_PER_DAY, -5_879_611, 6, 23, 0, 0, 0);
+        from_ymdhms_ok(i32::MAX as i64 * SECS_PER_DAY, 5_879_611, 7, 12, 0, 0, 0);
+        from_ymdhms_ok(i32::MIN as i64 * SECS_PER_DAY, -5_879_611, 6, 23, 0, 0, 0);
 
         // check invalid limits
         from_ymdhms_err(1, 0, 1, 0, 0, 0);
@@ -232,6 +246,88 @@ mod datetime_tests {
 
         assert!(DateTime::from_timestamp(185_480_451_590_400).is_err());
         assert!(DateTime::from_timestamp(-185_604_722_870_400).is_err());
+    }
+
+    #[test]
+    fn parse_rfc3339() {
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20Z").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(0, date_time.get_offset());
+        assert_eq!(1651505420, date_time.timestamp());
+
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20+12:34").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20+12:34",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(45240, date_time.get_offset());
+        assert_eq!(1651460180, date_time.timestamp());
+
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20-12:34").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20-12:34",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(-45240, date_time.get_offset());
+        assert_eq!(1651550660, date_time.timestamp());
+
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20.1Z").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(0, date_time.get_offset());
+        assert_eq!(1651505420, date_time.timestamp());
+        assert_eq!(100000000, date_time.get(DateTimeUnit::Nanos));
+
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20.123456789Z").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(0, date_time.get_offset());
+        assert_eq!(1651505420, date_time.timestamp());
+        assert_eq!(123456789, date_time.get(DateTimeUnit::Nanos));
+
+        let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20.123456789+12:34").unwrap();
+        assert_eq!(
+            "2022-05-02T15:30:20+12:34",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(45240, date_time.get_offset());
+        assert_eq!(1651460180, date_time.timestamp());
+        assert_eq!(123456789, date_time.get(DateTimeUnit::Nanos));
+
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20").is_err());
+        assert!(DateTime::parse_rfc3339("2022-13-02T15:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-32T15:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T24:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:60:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:60Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20+").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20+1").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20+10").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20+10:").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20+10:0").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.Z").is_err());
+
+        assert!(DateTime::parse_rfc3339("test-05-02T15:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-ee-02T15:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-eeT15:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02Tee:30:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:ee:20Z").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:eeZ").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02+1").is_err());
+
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02+ee:00").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02+01:ee").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02+24:00").is_err());
+        assert!(DateTime::parse_rfc3339("2022-05-02T15:30:20.02+01:60").is_err());
     }
 
     #[test]
@@ -347,11 +443,13 @@ mod datetime_tests {
         assert_eq!(0, date_time.as_nanoseconds());
 
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
-        assert!(date_time.apply(2_147_483_648, DateTimeUnit::Year).is_err());
+        assert!(date_time
+            .apply(i32::MAX as i64 + 1, DateTimeUnit::Year)
+            .is_err());
         assert!(date_time.apply(5_879_611, DateTimeUnit::Year).is_err());
 
         let date_time = DateTime::from_ymd(1, 1, 2).unwrap();
-        assert!(date_time.apply(2_147_483_647, DateTimeUnit::Day).is_err());
+        assert!(date_time.apply(i32::MAX as i64, DateTimeUnit::Day).is_err());
 
         let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59).unwrap();
         assert!(date_time.apply(1, DateTimeUnit::Month).is_err());
@@ -421,6 +519,66 @@ mod datetime_tests {
         assert!(date_time.set(1_000, DateTimeUnit::Millis).is_err());
         assert!(date_time.set(1_000_000, DateTimeUnit::Micros).is_err());
         assert!(date_time.set(1_000_000_000, DateTimeUnit::Nanos).is_err());
+    }
+
+    #[test]
+    fn format_rfc3339() {
+        let date_time = DateTime::from_ymdhms(1970, 1, 1, 0, 0, 0).unwrap();
+        assert_eq!(
+            "1970-01-01T00:00:00Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.00Z",
+            date_time.format_rfc3339(Precision::Centis)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000Z",
+            date_time.format_rfc3339(Precision::Millis)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000000Z",
+            date_time.format_rfc3339(Precision::Micros)
+        );
+        assert_eq!(
+            "1970-01-01T00:00:00.000000000Z",
+            date_time.format_rfc3339(Precision::Nanos)
+        );
+        let date_time = DateTime::from_ymdhms(2000, 12, 31, 23, 59, 59).unwrap();
+        assert_eq!(
+            "2000-12-31T23:59:59Z",
+            date_time.format_rfc3339(Precision::Seconds)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.00Z",
+            date_time.format_rfc3339(Precision::Centis)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000Z",
+            date_time.format_rfc3339(Precision::Millis)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000000Z",
+            date_time.format_rfc3339(Precision::Micros)
+        );
+        assert_eq!(
+            "2000-12-31T23:59:59.000000000Z",
+            date_time.format_rfc3339(Precision::Nanos)
+        );
+
+        let with_offset = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
+            .unwrap()
+            .set_offset(3660)
+            .unwrap();
+        assert_eq!(
+            "1970-01-02T01:01:00+01:01",
+            with_offset.format_rfc3339(Precision::Seconds)
+        );
+        let with_offset = with_offset.set_offset(-3660).unwrap();
+        assert_eq!(
+            "1970-01-01T22:59:00-01:01",
+            with_offset.format_rfc3339(Precision::Seconds)
+        );
     }
 
     #[test]
