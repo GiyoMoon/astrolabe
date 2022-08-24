@@ -7,15 +7,15 @@ mod time_tests {
         // Default
         let time = Time::default();
         // Debug
-        println!("{time:?}");
+        println!("{:?}", time);
         // Display
-        assert_eq!("00:00:00", format!("{time}"));
+        assert_eq!("00:00:00", format!("{}", time));
         // From<&DateTime>
         let _ = Time::from(&time);
 
         let unit = TimeUnit::Sec;
         // Debug
-        println!("{unit:?}");
+        println!("{:?}", unit);
         // Clone
         let clone = unit.clone();
         // PartialEq
@@ -82,16 +82,8 @@ mod time_tests {
     }
 
     #[test]
-    fn unit() {
+    fn get() {
         let time = Time::from_nanoseconds(10_921_123_456_789).unwrap();
-
-        assert_eq!(3, time.as_unit(TimeUnit::Hour));
-        assert_eq!(182, time.as_unit(TimeUnit::Min));
-        assert_eq!(10_921, time.as_unit(TimeUnit::Sec));
-        assert_eq!(1_092_112, time.as_unit(TimeUnit::Centis));
-        assert_eq!(10_921_123, time.as_unit(TimeUnit::Millis));
-        assert_eq!(10_921_123_456, time.as_unit(TimeUnit::Micros));
-        assert_eq!(10_921_123_456_789, time.as_unit(TimeUnit::Nanos));
 
         assert_eq!(3, time.get(TimeUnit::Hour));
         assert_eq!(2, time.get(TimeUnit::Min));

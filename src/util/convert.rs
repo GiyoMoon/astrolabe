@@ -1,10 +1,14 @@
 use super::leap::{is_leap_year, leap_years};
 use crate::{
+    errors::{
+        out_of_range::{create_conditional_oor, create_simple_oor, OutOfRange},
+        AstrolabeError,
+    },
     shared::{
         MAX_DATE, MIN_DATE, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR,
         SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
-    AstrolabeError, DateTimeUnit, DateUnit, TimeUnit,
+    DateTimeUnit, DateUnit, TimeUnit,
 };
 
 /// Converts days (since 01. January 0001) to a date (year, month, day of month). Days can be negative.
@@ -84,7 +88,13 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     let (mut ydays, mdays) = month_to_ymdays(year, month)?;
 
     if day > mdays || day == 0 {
-        return Err(AstrolabeError::OutOfRange);
+        return Err(create_conditional_oor(
+            "day",
+            1,
+            mdays as i128,
+            day as i128,
+            format!("because month is {}", month),
+        ));
     }
     ydays += day - 1;
 
@@ -96,7 +106,7 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     })
 }
 
-/// Converts nano seconds to time values (hour, min, sec)
+/// Converts nanoseconds to time values (hour, min, sec)
 pub(crate) fn nanos_to_time(nanos: u64) -> (u32, u32, u32) {
     let as_seconds = (nanos / NANOS_PER_SEC) as u32;
     let hour = as_seconds / SECS_PER_HOUR;
@@ -107,13 +117,12 @@ pub(crate) fn nanos_to_time(nanos: u64) -> (u32, u32, u32) {
 
 /// Converts time values (hour, minute and seconds) to day seconds
 pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
-    if hour > 23 || min > 59 || sec > 59 {
-        return Err(AstrolabeError::OutOfRange);
-    }
+    valid_time(hour, min, sec)?;
+
     Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
 }
 
-/// Returns a given [`TimeUnit`] from nano seconds
+/// Returns a given [`TimeUnit`] from nanoseconds
 pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
     match unit {
         TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
@@ -123,19 +132,6 @@ pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
         TimeUnit::Millis => nanos / 1_000_000 % 1_000,
         TimeUnit::Micros => nanos / 1_000 % 1_000_000,
         TimeUnit::Nanos => nanos % NANOS_PER_SEC,
-    }
-}
-
-/// Converts nano seconds to a given [`TimeUnit`]
-pub(crate) fn nanos_as_unit(nanos: u64, unit: TimeUnit) -> u64 {
-    match unit {
-        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
-        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64,
-        TimeUnit::Sec => nanos / NANOS_PER_SEC,
-        TimeUnit::Centis => nanos / 10_000_000,
-        TimeUnit::Millis => nanos / 1_000_000,
-        TimeUnit::Micros => nanos / 1_000,
-        TimeUnit::Nanos => nanos,
     }
 }
 
@@ -156,7 +152,7 @@ pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), Astro
             10 => (274, 31),
             11 => (305, 30),
             12 => (335, 31),
-            _ => return Err(AstrolabeError::OutOfRange),
+            _ => return Err(create_simple_oor("month", 1, 12, month as i128)),
         })
     } else {
         Ok(match month {
@@ -172,7 +168,7 @@ pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), Astro
             10 => (273, 31),
             11 => (304, 30),
             12 => (334, 31),
-            _ => return Err(AstrolabeError::OutOfRange),
+            _ => return Err(create_simple_oor("month", 1, 12, month as i128)),
         })
     }
 }
@@ -242,19 +238,77 @@ pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
 /// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
 pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
     if year == 0 {
-        return Err(AstrolabeError::OutOfRange);
+        return Err(AstrolabeError::OutOfRange(OutOfRange {
+            name: "year",
+            min: MIN_DATE.0 as i128,
+            max: MAX_DATE.0 as i128,
+            value: year as i128,
+            custom: Some("Year cannot be 0. After the year -1 comes 1.".to_string()),
+            conditional: None,
+        }));
+    } else if year < MIN_DATE.0 {
+        return Err(create_simple_oor(
+            "year",
+            MIN_DATE.0 as i128,
+            MAX_DATE.0 as i128,
+            year as i128,
+        ));
+    } else if year == MIN_DATE.0 && month < MIN_DATE.1 {
+        return Err(create_conditional_oor(
+            "month",
+            MIN_DATE.1 as i128,
+            12,
+            month as i128,
+            format!("because year is {}", year),
+        ));
+    } else if year == MIN_DATE.0 && month == MIN_DATE.1 && day < MIN_DATE.2 {
+        return Err(create_conditional_oor(
+            "day",
+            MIN_DATE.2 as i128,
+            30,
+            day as i128,
+            format!("because year is {} and month is {}", year, month),
+        ));
+    } else if year > MAX_DATE.0 {
+        return Err(create_simple_oor(
+            "year",
+            MIN_DATE.0 as i128,
+            MAX_DATE.0 as i128,
+            year as i128,
+        ));
+    } else if year == MAX_DATE.0 && month > MAX_DATE.1 {
+        return Err(create_conditional_oor(
+            "month",
+            1,
+            MAX_DATE.1 as i128,
+            month as i128,
+            format!("because year is {}", year),
+        ));
+    } else if year == MAX_DATE.0 && month == MAX_DATE.1 && day > MAX_DATE.2 {
+        return Err(create_conditional_oor(
+            "day",
+            1,
+            MAX_DATE.2 as i128,
+            day as i128,
+            format!("because year is {} and month is {}", year, month),
+        ));
     }
 
-    if year < MIN_DATE.0
-        || (year == MIN_DATE.0 && (month < MIN_DATE.1 || month == MIN_DATE.1 && day < MIN_DATE.2))
-    {
-        return Err(AstrolabeError::OutOfRange);
+    Ok(())
+}
+
+pub(crate) fn valid_time(hour: u32, min: u32, sec: u32) -> Result<(), AstrolabeError> {
+    if hour > 23 {
+        return Err(create_simple_oor("hour", 0, 23, hour as i128));
     }
-    if year > MAX_DATE.0
-        || (year == MAX_DATE.0 && (month > MAX_DATE.1 || month == MAX_DATE.1 && day > MAX_DATE.2))
-    {
-        return Err(AstrolabeError::OutOfRange);
+
+    if min > 59 {
+        return Err(create_simple_oor("min", 0, 59, min as i128));
     }
+
+    if sec > 59 {
+        return Err(create_simple_oor("sec", 0, 59, sec as i128));
+    };
 
     Ok(())
 }
@@ -309,9 +363,14 @@ pub(crate) fn secs_to_days_nanos(seconds: i64) -> Result<(i32, u64), AstrolabeEr
         seconds / SECS_PER_DAY_U64 as i64
     };
 
-    let days = days_i64
-        .try_into()
-        .map_err(|_| AstrolabeError::OutOfRange)?;
+    let days = days_i64.try_into().map_err(|_| {
+        create_simple_oor(
+            "seconds",
+            i32::MIN as i128 * SECS_PER_DAY_U64 as i128,
+            i32::MAX as i128 * SECS_PER_DAY_U64 as i128 + SECS_PER_DAY_U64 as i128 - 1,
+            seconds as i128,
+        )
+    })?;
 
     let adjusted_day_seconds = if seconds.is_negative() && day_seconds != 0 {
         SECS_PER_DAY_U64 - day_seconds
@@ -343,9 +402,14 @@ pub(crate) fn nanos_to_days_nanos(nanoseconds: i128) -> Result<(i32, u64), Astro
         nanoseconds / NANOS_PER_DAY as i128
     };
 
-    let days = days_i128
-        .try_into()
-        .map_err(|_| AstrolabeError::OutOfRange)?;
+    let days = days_i128.try_into().map_err(|_| {
+        create_simple_oor(
+            "nanoseconds",
+            i32::MIN as i128 * NANOS_PER_DAY as i128,
+            i32::MAX as i128 * NANOS_PER_DAY as i128 + NANOS_PER_DAY as i128 - 1,
+            nanoseconds,
+        )
+    })?;
 
     let adjusted_day_nanos = if nanoseconds.is_negative() && day_nanos != 0 {
         NANOS_PER_DAY - day_nanos

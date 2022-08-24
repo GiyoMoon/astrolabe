@@ -7,15 +7,15 @@ mod datetime_tests {
         // Default
         let date_time = DateTime::default();
         // Debug
-        println!("{date_time:?}");
+        println!("{:?}", date_time);
         // Display
-        assert_eq!("0001/01/01 00:00:00", format!("{date_time}"));
+        assert_eq!("0001/01/01 00:00:00", format!("{}", date_time));
         // From<&DateTime>
         let _ = DateTime::from(&date_time);
 
         let unit = DateTimeUnit::Day;
         // Debug
-        println!("{unit:?}");
+        println!("{:?}", unit);
         // Clone
         let clone = unit.clone();
         // PartialEq
@@ -144,7 +144,11 @@ mod datetime_tests {
     fn from_hms_ok(expected: u64, hour: u32, minute: u32, second: u32) {
         assert_eq!(
             expected,
-            DateTime::from_hms(hour, minute, second).unwrap().get_time() / 1_000_000_000
+            DateTime::from_hms(hour, minute, second)
+                .unwrap()
+                .time()
+                .as_nanoseconds()
+                / 1_000_000_000
         );
     }
 
@@ -332,15 +336,32 @@ mod datetime_tests {
 
     #[test]
     fn time() {
-        assert_eq!(0, DateTime::default().set_time(0).unwrap().get_time());
+        assert_eq!(
+            0,
+            DateTime::default()
+                .set_time(0)
+                .unwrap()
+                .time()
+                .as_nanoseconds()
+        );
         assert_eq!(
             86_399_999_999_999,
             DateTime::default()
                 .set_time(86_399_999_999_999)
                 .unwrap()
-                .get_time()
+                .time()
+                .as_nanoseconds()
         );
         assert!(DateTime::default().set_time(86_400_000_000_000).is_err());
+    }
+
+    #[test]
+    fn date_and_time() {
+        let date_time = DateTime::from_ymdhms(2022, 05, 02, 12, 32, 01).unwrap();
+        let date = date_time.date();
+        let time = date_time.time();
+        assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
+        assert_eq!("12:32:01", time.format("HH:mm:ss"));
     }
 
     #[test]

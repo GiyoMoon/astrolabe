@@ -1,23 +1,12 @@
 #[cfg(test)]
 mod shared_tests {
-    use astrolabe::{AstrolabeError, Offset, Precision};
-
-    #[test]
-    fn astrolabe_error() {
-        let error = AstrolabeError::OutOfRange;
-        // Debug
-        println!("{error:?}");
-        // Clone
-        let clone = error.clone();
-        // PartialEq
-        assert!(error == clone);
-    }
+    use astrolabe::{Offset, Precision};
 
     #[test]
     fn offset() {
         let offset = Offset::East;
         // Debug
-        println!("{offset:?}");
+        println!("{:?}", offset);
         // Clone
         let clone = offset.clone();
         // PartialEq
@@ -28,7 +17,7 @@ mod shared_tests {
     fn precision() {
         let precision = Precision::Seconds;
         // Debug
-        println!("{precision:?}");
+        println!("{:?}", precision);
         // Clone
         let clone = precision.clone();
         // PartialEq

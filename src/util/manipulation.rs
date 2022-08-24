@@ -1,15 +1,18 @@
 use super::{
     convert::{
-        date_to_days, days_to_date, month_to_ymdays, nanos_as_unit, nanos_to_time, nanos_to_unit,
-        valid_range,
+        date_to_days, days_to_date, month_to_ymdays, nanos_to_time, nanos_to_unit, valid_range,
     },
     leap::is_leap_year,
 };
 use crate::{
+    errors::{
+        out_of_range::{create_conditional_oor, create_custom_oor},
+        AstrolabeError,
+    },
     shared::{
         NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
-    AstrolabeError, DateUnit, TimeUnit,
+    DateUnit, TimeUnit,
 };
 
 /// Applies (add/subtract) a specified [`DateUnit`] to days
@@ -18,7 +21,12 @@ pub(crate) fn apply_date_unit(
     amount: i64,
     unit: DateUnit,
 ) -> Result<i32, AstrolabeError> {
-    let amount_i32: i32 = amount.try_into().map_err(|_| AstrolabeError::OutOfRange)?;
+    let amount_i32: i32 = amount.try_into().map_err(|_| {
+        create_custom_oor(format!(
+            "Amount has to fit into an i32 integer when using unit \"{:?}\"",
+            unit,
+        ))
+    })?;
     Ok(match unit {
         DateUnit::Year => {
             let (year, month, mut day) = days_to_date(old_days);
@@ -54,9 +62,12 @@ pub(crate) fn apply_date_unit(
             // Using unwrap because it's safe to assume that month and day is valid
             date_to_days(target_year, target_month, target_day).unwrap()
         }
-        DateUnit::Day => old_days
-            .checked_add(amount_i32)
-            .ok_or(AstrolabeError::OutOfRange)?,
+        DateUnit::Day => old_days.checked_add(amount_i32).ok_or_else(|| {
+            create_custom_oor(format!(
+                "Instance would result into an overflow if {} days were added.",
+                amount_i32,
+            ))
+        })?,
     })
 }
 
@@ -114,18 +125,24 @@ pub(crate) fn set_date_unit(
             date_to_days(value, month, day)?
         }
         DateUnit::Month => {
-            let (year, _, day) = days_to_date(old_days);
             if value.is_negative() {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_custom_oor(
+                    "Value cannot be negative because unit is \"Month\"".to_string(),
+                ));
             }
+
+            let (year, _, day) = days_to_date(old_days);
 
             date_to_days(year, value.unsigned_abs(), day)?
         }
         DateUnit::Day => {
-            let (year, month, _) = days_to_date(old_days);
             if value.is_negative() {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_custom_oor(
+                    "Value cannot be negative because unit is \"Day\"".to_string(),
+                ));
             }
+
+            let (year, month, _) = days_to_date(old_days);
 
             date_to_days(year, month, value.unsigned_abs())?
         }
@@ -141,7 +158,13 @@ pub(crate) fn set_time_unit(
     Ok(match unit {
         TimeUnit::Hour => {
             if value > 23 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    23,
+                    value as i128,
+                    "because unit is \"Hour\"".to_string(),
+                ));
             }
             let (_, min, sec) = nanos_to_time(old_nanos);
 
@@ -150,7 +173,13 @@ pub(crate) fn set_time_unit(
         }
         TimeUnit::Min => {
             if value > 59 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    59,
+                    value as i128,
+                    "because unit is \"Min\"".to_string(),
+                ));
             }
             let (hour, _, sec) = nanos_to_time(old_nanos);
 
@@ -159,7 +188,13 @@ pub(crate) fn set_time_unit(
         }
         TimeUnit::Sec => {
             if value > 59 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    59,
+                    value as i128,
+                    "because unit is \"Sec\"".to_string(),
+                ));
             }
             let (hour, min, _) = nanos_to_time(old_nanos);
 
@@ -168,37 +203,59 @@ pub(crate) fn set_time_unit(
         }
         TimeUnit::Centis => {
             if value > 99 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    99,
+                    value as i128,
+                    "because unit is \"Centis\"".to_string(),
+                ));
             }
 
-            nanos_as_unit(old_nanos, TimeUnit::Sec) * NANOS_PER_SEC
+            old_nanos / NANOS_PER_SEC * NANOS_PER_SEC
                 + value as u64 * 10_000_000
                 + old_nanos % 10_000_000
         }
         TimeUnit::Millis => {
             if value > 999 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    999,
+                    value as i128,
+                    "because unit is \"Millis\"".to_string(),
+                ));
             }
 
-            nanos_as_unit(old_nanos, TimeUnit::Sec) * NANOS_PER_SEC
+            old_nanos / NANOS_PER_SEC * NANOS_PER_SEC
                 + value as u64 * 1_000_000
                 + old_nanos % 1_000_000
         }
         TimeUnit::Micros => {
             if value > 999_999 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    999_999,
+                    value as i128,
+                    "because unit is \"Micros\"".to_string(),
+                ));
             }
 
-            nanos_as_unit(old_nanos, TimeUnit::Sec) * NANOS_PER_SEC
-                + value as u64 * 1_000
-                + old_nanos % 1_000
+            old_nanos / NANOS_PER_SEC * NANOS_PER_SEC + value as u64 * 1_000 + old_nanos % 1_000
         }
         TimeUnit::Nanos => {
             if value > 999_999_999 {
-                return Err(AstrolabeError::OutOfRange);
+                return Err(create_conditional_oor(
+                    "value",
+                    0,
+                    999_999_999,
+                    value as i128,
+                    "because unit is \"Nanos\"".to_string(),
+                ));
             }
 
-            nanos_as_unit(old_nanos, TimeUnit::Sec) * NANOS_PER_SEC + value as u64
+            old_nanos / NANOS_PER_SEC * NANOS_PER_SEC + value as u64
         }
     })
 }

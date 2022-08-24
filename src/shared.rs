@@ -1,12 +1,3 @@
-/// Error parsing [`DateTime`](crate::DateTime)/[`Date`](crate::Date)/[`Time`](crate::Time) struct.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AstrolabeError {
-    /// Numeric component is out of range.
-    OutOfRange,
-    /// Input string could not be parsed.
-    InvalidFormat,
-}
-
 /// Used to define if an offset is `UTC+` or `UTC-` (eastern or western hemisphere).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Offset {

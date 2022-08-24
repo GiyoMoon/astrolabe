@@ -1,4 +1,9 @@
 use crate::{
+    errors::{
+        invalid_format::create_invalid_format,
+        out_of_range::{create_custom_oor, create_simple_oor},
+        AstrolabeError,
+    },
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
     util::{
         convert::{
@@ -10,7 +15,7 @@ use crate::{
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
         parse::parse_offset,
     },
-    AstrolabeError, Offset, Precision,
+    Date, Offset, Precision, Time,
 };
 use std::{
     fmt::Display,
@@ -24,10 +29,8 @@ pub enum DateTimeUnit {
     Year,
     /// **Note**: When used in the [`DateTime::apply`] function, this unit adds or removes calendar months, not 30 days.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_ymd(1970, 1, 31).unwrap();
     /// assert_eq!("1970-02-28", date_time.apply(1, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
     /// assert_eq!("1970-03-31", date_time.apply(2, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
@@ -66,10 +69,8 @@ pub struct DateTime {
 impl DateTime {
     /// Creates a new [`DateTime`] instance with [`SystemTime::now()`].
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::now();
     /// assert!(2021 < date_time.get(DateTimeUnit::Year));
     /// ```
@@ -89,115 +90,12 @@ impl DateTime {
         }
     }
 
-    /// Creates a new [`DateTime`] instance from days.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::DateTime;
-    ///
-    /// let date_time = DateTime::from_days(738276);
-    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));;
-    /// ```
-    pub fn from_days(days: i32) -> Self {
-        Self {
-            days,
-            nanoseconds: 0,
-            offset: 0,
-        }
-    }
-
-    /// Creates a new [`DateTime`] instance from seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds would result in an out of range date.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::DateTime;
-    ///
-    /// let date_time = DateTime::from_seconds(86400).unwrap();
-    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
-        let (days, nanoseconds) = secs_to_days_nanos(seconds)?;
-
-        Ok(Self {
-            days,
-            nanoseconds,
-            offset: 0,
-        })
-    }
-
-    /// Creates a new [`DateTime`] instance from nanoseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds would result in an out of range date.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::DateTime;
-    ///
-    /// let date_time = DateTime::from_nanoseconds(86_400_000_000_000).unwrap();
-    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_nanoseconds(nanoseconds: i128) -> Result<Self, AstrolabeError> {
-        let (days, nanoseconds) = nanos_to_days_nanos(nanoseconds)?;
-
-        Ok(Self {
-            days,
-            nanoseconds,
-            offset: 0,
-        })
-    }
-
-    /// Creates a new [`DateTime`] instance from year, month and day (day of month).
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::DateTime;
-    ///
-    /// let date_time = DateTime::from_ymd(2022, 05, 02).unwrap();
-    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
-        let days = date_to_days(year, month, day)?;
-
-        Ok(Self {
-            days,
-            nanoseconds: 0,
-            offset: 0,
-        })
-    }
-
-    /// Creates a new [`DateTime`] instance from hour, minute and seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::DateTime;
-    ///
-    /// let date_time = DateTime::from_hms(12, 32, 12).unwrap();
-    /// assert_eq!("0001/01/01 12:32:12", date_time.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
-        let seconds = time_to_day_seconds(hour, minute, second)? as u64;
-
-        Ok(Self {
-            days: 0,
-            nanoseconds: seconds * NANOS_PER_SEC,
-            offset: 0,
-        })
-    }
-
     /// Creates a new [`DateTime`] instance from year, month, day (day of month), hour, minute and seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_ymdhms(2022, 05, 02, 12, 32, 1).unwrap();
     /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
@@ -218,14 +116,50 @@ impl DateTime {
         })
     }
 
+    /// Creates a new [`DateTime`] instance from year, month and day (day of month).
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::from_ymd(2022, 05, 02).unwrap();
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));
+    /// ```
+    pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, AstrolabeError> {
+        let days = date_to_days(year, month, day)?;
+
+        Ok(Self {
+            days,
+            nanoseconds: 0,
+            offset: 0,
+        })
+    }
+
+    /// Creates a new [`DateTime`] instance from hour, minute and seconds.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::from_hms(12, 32, 12).unwrap();
+    /// assert_eq!("0001/01/01 12:32:12", date_time.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn from_hms(hour: u32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
+        let seconds = time_to_day_seconds(hour, minute, second)? as u64;
+
+        Ok(Self {
+            days: 0,
+            nanoseconds: seconds * NANOS_PER_SEC,
+            offset: 0,
+        })
+    }
+
     /// Creates a new [`DateTime`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_timestamp(0).unwrap();
     /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
@@ -233,53 +167,107 @@ impl DateTime {
         Self::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
     }
 
+    /// Creates a new [`DateTime`] instance from days.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::from_days(738276);
+    /// assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));;
+    /// ```
+    pub fn from_days(days: i32) -> Self {
+        Self {
+            days,
+            nanoseconds: 0,
+            offset: 0,
+        }
+    }
+
+    /// Creates a new [`DateTime`] instance from seconds.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds would result in an out of range date.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::from_seconds(86400).unwrap();
+    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
+    /// ```
+    pub fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = secs_to_days_nanos(seconds)?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: 0,
+        })
+    }
+
+    /// Creates a new [`DateTime`] instance from nanoseconds.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds would result in an out of range date.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::from_nanoseconds(86_400_000_000_000).unwrap();
+    /// assert_eq!("0001/01/02", date_time.format("yyyy/MM/dd"));
+    /// ```
+    pub fn from_nanoseconds(nanoseconds: i128) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = nanos_to_days_nanos(nanoseconds)?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: 0,
+        })
+    }
+
     /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20Z").unwrap();
     /// assert_eq!("2022/05/02 15:30:20", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn parse_rfc3339(string: &str) -> Result<Self, AstrolabeError> {
         if string.len() < 20 {
-            return Err(AstrolabeError::InvalidFormat);
+            return Err(create_invalid_format(
+                "RFC3339 string cannot be shorter than 20 chars",
+            ));
         }
 
         let year = string[0..4]
             .parse::<i32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing year from RFC3339 string"))?;
         let month = string[5..7]
             .parse::<u32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing month from RFC3339 string"))?;
         let day = string[8..10]
             .parse::<u32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing day from RFC3339 string"))?;
         let hour = string[11..13]
             .parse::<u32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing hour from RFC3339 string"))?;
         let min = string[14..16]
             .parse::<u32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing minute from RFC3339 string"))?;
         let sec = string[17..19]
             .parse::<u32>()
-            .map_err(|_| AstrolabeError::InvalidFormat)?;
+            .map_err(|_| create_invalid_format("Failed parsing second from RFC3339 string"))?;
 
         let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
             let nanos_string = string[20..]
                 .chars()
                 .take_while(|&char| char != 'Z' && char != '+' && char != '-')
                 .collect::<String>();
-            let nanos = nanos_string
-                .parse::<u64>()
-                .map_err(|_| AstrolabeError::InvalidFormat)?
-                * (1000000000 / 10_u64.pow(nanos_string.len() as u32));
+            let nanos = nanos_string.parse::<u64>().map_err(|_| {
+                create_invalid_format("Failed parsing subseconds from RFC3339 string")
+            })? * (1000000000 / 10_u64.pow(nanos_string.len() as u32));
 
             let offset_substring = string[20..]
                 .chars()
                 .position(|char| char == 'Z' || char == '+' || char == '-')
-                .ok_or(AstrolabeError::InvalidFormat)?;
+                .ok_or_else(|| {
+                    create_invalid_format("Failed parsing offset from RFC3339 string")
+                })?;
             let offset = parse_offset(&string[20 + offset_substring..])?;
 
             (nanos, offset)
@@ -303,16 +291,19 @@ impl DateTime {
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds are invalid (over `86_399_999_999_999`)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_days(738276).set_time(3_600_000_000_000).unwrap();
     /// assert_eq!("2022/05/02 01:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn set_time(&self, nanoseconds: u64) -> Result<Self, AstrolabeError> {
-        if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
-            return Err(AstrolabeError::OutOfRange);
+        if nanoseconds >= SECS_PER_DAY_U64 * NANOS_PER_SEC {
+            return Err(create_simple_oor(
+                "nanoseconds",
+                0,
+                (SECS_PER_DAY_U64 * NANOS_PER_SEC - 1) as i128,
+                nanoseconds as i128,
+            ));
         }
         Ok(Self {
             days: self.days,
@@ -321,25 +312,37 @@ impl DateTime {
         })
     }
 
-    /// Returns the clock time in nanoseconds.
+    /// Returns the date.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
-    /// let date_time = DateTime::from_days(0).set_time(3_600_000_000_000).unwrap();
-    /// assert_eq!(3_600_000_000_000, date_time.get_time());
+    /// # use astrolabe::{DateTime, DateTimeUnit};
+    /// let date_time = DateTime::from_days(123);
+    /// let date = date_time.date();
+    /// assert_eq!(123, date.as_days());
     /// ```
-    pub fn get_time(&self) -> u64 {
-        self.nanoseconds
+    pub fn date(&self) -> Date {
+        Date::from_days(self.days)
+    }
+
+    /// Returns the clock time.
+    ///
+    /// ```rust
+    /// # use astrolabe::{DateTime, DateTimeUnit};
+    /// let date_time = DateTime::from_days(0).set_time(3_600_000_000_000).unwrap();
+    /// let time = date_time.time();
+    /// assert_eq!(3_600_000_000_000, time.as_nanoseconds());
+    /// ```
+    pub fn time(&self) -> Time {
+        Time::from_nanoseconds(self.nanoseconds)
+            .unwrap()
+            .set_offset(self.offset)
+            .unwrap()
     }
 
     /// Returns the number of days since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymd(1, 1, 2).unwrap();
     /// assert_eq!(1, date_time.as_days());
     /// ```
@@ -349,10 +352,8 @@ impl DateTime {
 
     /// Returns the number of seconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymd(1, 1, 2).unwrap();
     /// assert_eq!(86400, date_time.as_seconds());
     /// ```
@@ -362,10 +363,8 @@ impl DateTime {
 
     /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymd(1, 1, 2).unwrap();
     /// assert_eq!(86_400_000_000_000, date_time.as_nanoseconds());
     /// ```
@@ -375,10 +374,8 @@ impl DateTime {
 
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymd(2000, 1, 1).unwrap();
     /// assert_eq!(946_684_800, date_time.timestamp());
     /// ```
@@ -388,10 +385,8 @@ impl DateTime {
 
     /// Returns the number of seconds between two [`DateTime`] instances.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time1 = DateTime::from_ymd(1970, 1, 1).unwrap();
     /// let date_time2 = DateTime::from_ymd(1970, 1, 2).unwrap();
     /// assert_eq!(86400, date_time1.between(&date_time2));
@@ -403,12 +398,8 @@ impl DateTime {
 
     /// Get a specific [`DateTimeUnit`].
     ///
-    ///The set offset is considered in this function (Default is `UTC`).
-    ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// assert_eq!(2022, date_time.get(DateTimeUnit::Year));
     /// assert_eq!(5, date_time.get(DateTimeUnit::Month));
@@ -430,10 +421,8 @@ impl DateTime {
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_ymdhms(1970, 1, 1, 12, 32, 1).unwrap();
     /// let applied = date_time.apply(1, DateTimeUnit::Day).unwrap();
     /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd HH:mm:ss"));
@@ -460,14 +449,10 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance with a specific [`DateTimeUnit`] set to the provided value.
     ///
-    /// The set offset is considered in this function (Default is `UTC`).
-    ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, DateTimeUnit};
-    ///
+    /// # use astrolabe::{DateTime, DateTimeUnit};
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// assert_eq!(2000, date_time.set(2000, DateTimeUnit::Year).unwrap().get(DateTimeUnit::Year));
     /// assert_eq!(10, date_time.set(10, DateTimeUnit::Min).unwrap().get(DateTimeUnit::Min));
@@ -486,7 +471,10 @@ impl DateTime {
             }
             _ => {
                 if value.is_negative() {
-                    return Err(AstrolabeError::OutOfRange);
+                    return Err(create_custom_oor(format!(
+                        "Value cannot be negative because unit is \"{:?}\"",
+                        unit
+                    )));
                 }
                 let new_nanoseconds =
                     set_time_unit(self.nanoseconds, value.unsigned_abs(), dtu_to_tu(unit))?;
@@ -502,8 +490,6 @@ impl DateTime {
 
     /// Format as an RFC3339 timestamp (`2022-05-02T15:30:20Z`).
     ///
-    /// The set offset is considered in this function (Default is `UTC`).
-    ///
     /// Use the [`Precision`] enum to specify decimal places after seconds:
     /// * [`Precision::Seconds`] -> `2022-05-02T15:30:20Z`
     /// * [`Precision::Centis`] -> `2022-05-02T15:30:20.00Z`
@@ -511,10 +497,8 @@ impl DateTime {
     /// * [`Precision::Micros`] -> `2022-05-02T15:30:20.000000Z`
     /// * [`Precision::Nanos`] -> `2022-05-02T15:30:20.000000000Z`
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{DateTime, Precision};
-    ///
+    /// # use astrolabe::{DateTime, Precision};
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 15, 30, 20).unwrap();
     /// assert_eq!("2022-05-02T15:30:20Z", date_time.format_rfc3339(Precision::Seconds));
     /// // Equivalent to:
@@ -532,7 +516,7 @@ impl DateTime {
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
     ///
-    /// The set offset is considered in this function (Default is `UTC`).
+    /// Please note that not all symbols are implemented. If you need something that is not implemented, please open an issue on [GitHub](https://github.com/GiyoMoon/astrolabe/issues) describing your need.
     ///
     /// # Available Symbols:
     ///
@@ -614,10 +598,8 @@ impl DateTime {
     /// Surround any character with apostrophes (`'`) to escape them.
     /// If you want escape `'`, write `''`.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
     /// // Escape characters
@@ -656,12 +638,10 @@ impl DateTime {
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = date_time.set_offset(7200).unwrap();
@@ -688,12 +668,10 @@ impl DateTime {
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = date_time.set_offset(7200).unwrap();
@@ -701,7 +679,12 @@ impl DateTime {
     /// ```
     pub fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
         if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
-            return Err(AstrolabeError::OutOfRange);
+            return Err(create_simple_oor(
+                "seconds",
+                -(SECS_PER_DAY as i128) + 1,
+                SECS_PER_DAY as i128 - 1,
+                seconds as i128,
+            ));
         }
 
         let offset_days = (self.as_seconds() + seconds as i64) / SECS_PER_DAY_U64 as i64;
@@ -710,7 +693,9 @@ impl DateTime {
             || offset_days > i32::MAX as i64
             || (offset_days == i32::MIN as i64 && offset_nanos.is_negative())
         {
-            return Err(AstrolabeError::OutOfRange);
+            return Err(create_custom_oor(
+                "Offset would result in an out of range date".to_string(),
+            ));
         }
 
         Ok(Self {
@@ -724,12 +709,10 @@ impl DateTime {
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::{DateTime, Offset};
-    ///
+    /// # use astrolabe::{DateTime, Offset};
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = date_time.as_offset_time(2, 0, 0, Offset::East).unwrap();
@@ -760,12 +743,10 @@ impl DateTime {
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = date_time.as_offset(7200).unwrap();
@@ -778,10 +759,8 @@ impl DateTime {
 
     /// Returns the set offset in seconds.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::DateTime;
-    ///
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::now().set_offset(3600).unwrap();
     /// assert_eq!(3600, date_time.get_offset());
     /// ```

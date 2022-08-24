@@ -1,14 +1,17 @@
 use crate::{
+    errors::{
+        out_of_range::{create_custom_oor, create_simple_oor},
+        AstrolabeError,
+    },
     shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
     util::{
         convert::{
-            add_offset_to_nanos, nanos_as_unit, nanos_to_unit, remove_offset_from_nanos,
-            time_to_day_seconds,
+            add_offset_to_nanos, nanos_to_unit, remove_offset_from_nanos, time_to_day_seconds,
         },
         format::{format_time_part, parse_format_string},
         manipulation::{apply_time_unit, set_time_unit},
     },
-    AstrolabeError, Offset,
+    Offset,
 };
 use std::{
     fmt::Display,
@@ -44,12 +47,10 @@ pub struct Time {
 impl Time {
     /// Creates a new [`Time`] instance with [`SystemTime::now()`].
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
+    /// # use astrolabe::{Time, TimeUnit};
     /// let time = Time::now();
-    /// assert!(24 > time.get(TimeUnit::Hour));
+    /// println!("{}", time);
     /// ```
     pub fn now() -> Self {
         let duration = SystemTime::now()
@@ -67,10 +68,8 @@ impl Time {
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided time is invalid.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 32, 01).unwrap();
     /// assert_eq!("12:32:01", time.format("HH:mm:ss"));
     /// ```
@@ -87,16 +86,19 @@ impl Time {
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided seconds are invalid (over `86399`)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::from_seconds(1_234).unwrap();
     /// assert_eq!("00:20:34", time.format("HH:mm:ss"));
     /// ```
     pub fn from_seconds(seconds: u32) -> Result<Self, AstrolabeError> {
-        if seconds > SECS_PER_DAY - 1 {
-            return Err(AstrolabeError::OutOfRange);
+        if seconds >= SECS_PER_DAY {
+            return Err(create_simple_oor(
+                "seconds",
+                0,
+                SECS_PER_DAY as i128 - 1,
+                seconds as i128,
+            ));
         }
         Ok(Self {
             nanoseconds: seconds as u64 * NANOS_PER_SEC,
@@ -106,18 +108,21 @@ impl Time {
 
     /// Creates a new [`Time`] instance from seconds.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nano seconds are invalid (over `86_399_999_999_999`)
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds are invalid (over `86_399_999_999_999`)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
+    /// # use astrolabe::{Time, TimeUnit};
     /// let time = Time::from_nanoseconds(1_234).unwrap();
     /// assert_eq!(1_234, time.as_nanoseconds());
     /// ```
     pub fn from_nanoseconds(nanoseconds: u64) -> Result<Self, AstrolabeError> {
-        if nanoseconds > SECS_PER_DAY_U64 * NANOS_PER_SEC - 1 {
-            return Err(AstrolabeError::OutOfRange);
+        if nanoseconds >= SECS_PER_DAY_U64 * NANOS_PER_SEC {
+            return Err(create_simple_oor(
+                "nanoseconds",
+                0,
+                SECS_PER_DAY_U64 as i128 * NANOS_PER_SEC as i128 - 1,
+                nanoseconds as i128,
+            ));
         }
         Ok(Self {
             nanoseconds,
@@ -125,12 +130,32 @@ impl Time {
         })
     }
 
-    /// Returns the number of nano seconds between two [`Time`] instances.
+    /// Returns the time as seconds.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Time;
+    /// # use astrolabe::{Time, TimeUnit};
+    /// let time = Time::from_hms(12, 12, 12).unwrap();
+    /// assert_eq!(43932, time.as_seconds());
+    /// ```
+    pub fn as_seconds(&self) -> u64 {
+        self.nanoseconds / NANOS_PER_SEC
+    }
+
+    /// Returns the time as nanoseconds.
     ///
+    /// ```rust
+    /// # use astrolabe::{Time, TimeUnit};
+    /// let time = Time::from_hms(12, 12, 12).unwrap();
+    /// assert_eq!(43_932_000_000_000, time.as_nanoseconds());
+    /// ```
+    pub fn as_nanoseconds(&self) -> u64 {
+        self.nanoseconds
+    }
+
+    /// Returns the number of nanoseconds between two [`Time`] instances.
+    ///
+    /// ```rust
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 0, 0).unwrap();
     /// let time_2 = Time::from_hms(12, 0, 1).unwrap();
     /// assert_eq!(1_000_000_000, time.between(&time_2));
@@ -140,51 +165,10 @@ impl Time {
         (self.nanoseconds as i64 - compare.nanoseconds as i64).unsigned_abs()
     }
 
-    /// Returns the time as seconds
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
-    /// let time = Time::from_hms(12, 12, 12).unwrap();
-    /// assert_eq!(43932, time.as_seconds());
-    /// ```
-    pub fn as_seconds(&self) -> u64 {
-        self.nanoseconds / NANOS_PER_SEC
-    }
-
-    /// Returns the time as nano seconds
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
-    /// let time = Time::from_hms(12, 12, 12).unwrap();
-    /// assert_eq!(43_932_000_000_000, time.as_nanoseconds());
-    /// ```
-    pub fn as_nanoseconds(&self) -> u64 {
-        self.nanoseconds
-    }
-
-    /// Returns the time as the specified [`TimeUnit`]
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
-    /// let time = Time::from_hms(12, 12, 12).unwrap();
-    /// assert_eq!(732, time.as_unit(TimeUnit::Min));
-    /// ```
-    pub fn as_unit(&self, unit: TimeUnit) -> u64 {
-        nanos_as_unit(self.nanoseconds, unit)
-    }
-
     /// Get a specific [`TimeUnit`].
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
+    /// # use astrolabe::{Time, TimeUnit};
     /// let time = Time::from_hms(12, 32, 15).unwrap();
     /// assert_eq!(12, time.get(TimeUnit::Hour));
     /// assert_eq!(32, time.get(TimeUnit::Min));
@@ -200,42 +184,16 @@ impl Time {
         nanos_to_unit(add_offset_to_nanos(self.nanoseconds, self.offset), unit)
     }
 
-    /// Creates a new [`Time`] instance with a specified amount of time applied (added or subtracted).
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
-    /// let time = Time::from_hms(12, 32, 15).unwrap();
-    /// let applied = time.apply(1, TimeUnit::Hour).unwrap();
-    /// assert_eq!("12:32:15", time.format("HH:mm:ss"));
-    /// assert_eq!("13:32:15", applied.format("HH:mm:ss"));
-    /// let applied_2 = applied.apply(-1, TimeUnit::Hour).unwrap();
-    /// assert_eq!("12:32:15", applied_2.format("HH:mm:ss"));
-    /// ```
-    pub fn apply(&self, amount: i64, unit: TimeUnit) -> Result<Self, AstrolabeError> {
-        Ok(Self::from_nanoseconds(
-            apply_time_unit(self.nanoseconds as i128, amount, unit)
-                .try_into()
-                .map_err(|_| AstrolabeError::OutOfRange)?,
-        )?
-        .set_offset(self.offset)
-        .unwrap())
-    }
-
     /// Creates a new [`Time`] instance with a specific [`TimeUnit`] set to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Time, TimeUnit};
-    ///
-    /// let time = Time::from_hms(12, 32, 15).unwrap();
-    /// assert_eq!(15, time.set(15, TimeUnit::Hour).unwrap().get(TimeUnit::Hour));
-    /// assert_eq!(10, time.set(10, TimeUnit::Min).unwrap().get(TimeUnit::Min));
+    /// # use astrolabe::{Time, TimeUnit};
+    /// let mut time = Time::from_hms(12, 32, 15).unwrap();
+    /// time = time.set(15, TimeUnit::Hour).unwrap();
+    /// time = time.set(10, TimeUnit::Min).unwrap();
+    /// assert_eq!("15:10:15", time.format("HH:mm:ss"));
     /// ```
     pub fn set(&self, value: u32, unit: TimeUnit) -> Result<Self, AstrolabeError> {
         Ok(Self {
@@ -251,7 +209,39 @@ impl Time {
         })
     }
 
+    /// Creates a new [`Time`] instance with a specified amount of time applied (added or subtracted).
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
+    ///
+    /// ```rust
+    /// # use astrolabe::{Time, TimeUnit};
+    /// let time = Time::from_hms(12, 32, 15).unwrap();
+    ///
+    /// let applied = time.apply(1, TimeUnit::Hour).unwrap();
+    /// assert_eq!("12:32:15", time.format("HH:mm:ss"));
+    /// assert_eq!("13:32:15", applied.format("HH:mm:ss"));
+    ///
+    /// let applied_2 = applied.apply(-1, TimeUnit::Hour).unwrap();
+    /// assert_eq!("12:32:15", applied_2.format("HH:mm:ss"));
+    /// ```
+    pub fn apply(&self, amount: i64, unit: TimeUnit) -> Result<Self, AstrolabeError> {
+        Ok(Self::from_nanoseconds(
+            apply_time_unit(self.nanoseconds as i128, amount, unit)
+                .try_into()
+                .map_err(|_| {
+                    create_custom_oor(format!(
+                        "Appling {} would result into an out of range time",
+                        amount
+                    ))
+                })?,
+        )?
+        .set_offset(self.offset)
+        .unwrap())
+    }
+
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
+    ///
+    /// Please note that not all symbols are implemented. If you need something that is not implemented, please open an issue on [GitHub](https://github.com/GiyoMoon/astrolabe/issues) describing your need.
     ///
     /// # Available Symbols:
     ///
@@ -300,10 +290,8 @@ impl Time {
     /// Surround any character with apostrophes (`'`) to escape them.
     /// If you want escape `'`, write `''`.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 32, 1).unwrap();
     /// assert_eq!("12:32:01", time.format("HH:mm:ss"));
     /// // Escape characters
@@ -344,12 +332,10 @@ impl Time {
     ///
     /// The offset affects all format functions and the [`get`](Time::get) and [`set`](Time::set) functions but does not change the time itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::{Time, Offset};
-    ///
+    /// # use astrolabe::{Time, Offset};
     /// let time = Time::from_hms(12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = time.set_offset_time(2, 0, 0, Offset::East).unwrap();
@@ -376,12 +362,10 @@ impl Time {
     ///
     /// The offset affects all format functions and the [`get`](Time::get) and [`set`](Time::set) functions but does not change the time itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = time.set_offset(7200).unwrap();
@@ -389,7 +373,12 @@ impl Time {
     /// ```
     pub fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
         if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
-            return Err(AstrolabeError::OutOfRange);
+            return Err(create_simple_oor(
+                "seconds",
+                -(SECS_PER_DAY as i128) + 1,
+                SECS_PER_DAY as i128 - 1,
+                seconds as i128,
+            ));
         }
 
         Ok(Self {
@@ -402,12 +391,10 @@ impl Time {
     ///
     /// The offset affects all format functions and the [`get`](Time::get) and [`set`](Time::set) functions but does not change the time itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::{Time, Offset};
-    ///
+    /// # use astrolabe::{Time, Offset};
     /// let time = Time::from_hms(12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = time.as_offset_time(2, 0, 0, Offset::East).unwrap();
@@ -439,12 +426,10 @@ impl Time {
     ///
     /// The offset affects all format functions and the [`get`](Time::get) and [`set`](Time::set) functions but does not change the time itself which always represents UTC.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and UTC+23:59:59 or if it would lead to an out of range date.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
-    ///  # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 32, 1).unwrap();
     /// // Set offset to UTC+2
     /// let with_offset = time.as_offset(7200).unwrap();
@@ -459,10 +444,8 @@ impl Time {
 
     /// Returns the set offset in seconds.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Time;
-    ///
+    /// # use astrolabe::Time;
     /// let time = Time::now().set_offset(3600).unwrap();
     /// assert_eq!(3600, time.get_offset());
     /// ```

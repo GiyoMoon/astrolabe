@@ -7,15 +7,15 @@ mod date_tests {
         // Default
         let date = Date::default();
         // Debug
-        println!("{date:?}");
+        println!("{:?}", date);
         // Display
-        assert_eq!("0001/01/01", format!("{date}"));
+        assert_eq!("0001/01/01", format!("{}", date));
         // From<&Date>
         let _ = Date::from(&date);
 
         let unit = DateUnit::Day;
         // Debug
-        println!("{unit:?}");
+        println!("{:?}", unit);
         // Clone
         let clone = unit.clone();
         // PartialEq
@@ -77,27 +77,27 @@ mod date_tests {
     fn timestamp() {
         assert_eq!(0, Date::from_timestamp(0).unwrap().timestamp());
         assert_eq!(
-            185480451504000,
-            Date::from_timestamp(185_480_451_504_000)
+            185_480_451_504_000,
+            Date::from_timestamp(185_480_451_590_399)
                 .unwrap()
                 .timestamp()
         );
         assert_eq!(
             "5879611/07/12",
-            Date::from_timestamp(185_480_451_504_000)
+            Date::from_timestamp(185_480_451_590_399)
                 .unwrap()
                 .format("yyyy/MM/dd")
         );
 
         assert_eq!(
-            -185604722784000,
-            Date::from_timestamp(-185_604_722_784_000)
+            -185_604_722_784_000,
+            Date::from_timestamp(-185_604_722_870_399)
                 .unwrap()
                 .timestamp()
         );
         assert_eq!(
             "-5879611/06/23",
-            Date::from_timestamp(-185_604_722_784_000)
+            Date::from_timestamp(-185_604_722_870_399)
                 .unwrap()
                 .format("yyyy/MM/dd")
         );

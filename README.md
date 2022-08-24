@@ -26,21 +26,21 @@
   </a>
   <!-- Github Actions -->
   <a href="https://github.com/giyomoon/astrolabe/actions">
-    <img src="https://img.shields.io/github/workflow/status/giyomoon/astrolabe/checks/main?style=flat" alt="actions status" />
+    <img src="https://img.shields.io/github/workflow/status/giyomoon/astrolabe/checks/main?style=flat" alt="Actions Status" />
   </a>
   <!-- Code coverage -->
   <a href="https://app.codecov.io/gh/GiyoMoon/astrolabe">
-    <img src="https://img.shields.io/codecov/c/gh/giyomoon/astrolabe?style=flat" alt="code coverage" />
+    <img src="https://img.shields.io/codecov/c/gh/giyomoon/astrolabe?style=flat" alt="Code Coverage" />
   </a>
   <!-- Dependencies -->
   <a href="https://deps.rs/repo/github/giyomoon/astrolabe" target="_blank">
     <img src="https://deps.rs/repo/github/giyomoon/astrolabe/status.svg?style=flat"
-    alt="Crates.io version" />
+    alt="Dependencies" />
   </a>
   <br/>
   <!-- License -->
   <a href="https://github.com/giyomoon/astrolabe#License" target="_blank">
-    <img src="https://img.shields.io/badge/License-APACHE--2.0%2FMIT-blue?style=flat" alt="License">
+    <img src="https://img.shields.io/crates/l/astrolabe?style=flat" alt="License">
   </a>
 </div>
 
@@ -68,10 +68,34 @@
 Astrolabe is a date and time library for Rust which aims to be feature rich, lightweight (zero dependencies) and easy-to-use. It implements formatting and manipulating functions for date and time values.
 
 ### Features
-// TODO
+- **Formatting** with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
+- **RFC3339** timestamp parsing/formatting
+- **Manipulation** functions to easily add, remove or set date units
+- **Timezone** offset
+- **Zero** dependencies
 
 ## Example
-// TODO
+A basic example which demonstrates creating, formatting and manipulating a `DateTime` instance.
+
+```rust
+use astrolabe::{DateTime, Precision, DateTimeUnit};
+
+// Create a DateTime instance from year, month, and days (day of month)
+let date_time = DateTime::from_ymd(2022, 5, 2).unwrap();
+
+// Use the format function to freely format your DateTime instance
+assert_eq!("2022/05/02", date_time.format("yyyy/MM/dd"));
+
+// Create a new instance with a modified DateTime
+// The previous instance is not modified and is still in scope
+let modified_dt = date_time
+    .apply(11, DateTimeUnit::Hour).unwrap()
+    .apply(23, DateTimeUnit::Min).unwrap();
+
+assert_eq!("2022/05/02 11:23:00", modified_dt.format("yyyy/MM/dd HH:mm:ss"));
+assert_eq!("2022-05-02T11:23:00Z", modified_dt.format_rfc3339(Precision::Seconds));
+```
+To see all implementations for the `DateTime` struct, check out it's [documentation](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html).
 
 ## MSRV
 This crate uses the Rust 2021 Edition and requires at least version `1.56`.

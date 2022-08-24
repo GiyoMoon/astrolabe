@@ -1,11 +1,11 @@
 use crate::{
+    errors::{out_of_range::create_simple_oor, AstrolabeError},
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
         convert::{date_to_days, days_to_date},
         format::{format_date_part, parse_format_string},
         manipulation::{apply_date_unit, set_date_unit},
     },
-    AstrolabeError,
 };
 use std::{
     fmt::Display,
@@ -19,10 +19,8 @@ pub enum DateUnit {
     Year,
     /// **Note**: When used in the [`Date::apply`] function, this unit adds or removes calendar months, not 30 days.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Date, DateUnit};
-    ///
+    /// # use astrolabe::{Date, DateUnit};
     /// let date = Date::from_ymd(1970, 1, 31).unwrap();
     /// assert_eq!("1970-02-28", date.apply(1, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
     /// assert_eq!("1970-03-31", date.apply(2, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
@@ -44,10 +42,8 @@ pub struct Date {
 impl Date {
     /// Creates a new [`Date`] instance with [`SystemTime::now()`].
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Date, DateUnit};
-    ///
+    /// # use astrolabe::{Date, DateUnit};
     /// let date = Date::now();
     /// assert!(2021 < date.get(DateUnit::Year));
     /// ```
@@ -61,27 +57,12 @@ impl Date {
         Self { days: days as i32 }
     }
 
-    /// Creates a new [`Date`] instance from days.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::Date;
-    ///
-    /// let date = Date::from_days(738276);
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_days(days: i32) -> Self {
-        Self { days }
-    }
-
     /// Creates a new [`Date`] instance from year, month and day (day of month).
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided values are invalid.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
-    ///
+    /// # use astrolabe::Date;
     /// let date = Date::from_ymd(2022, 05, 02).unwrap();
     /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// ```
@@ -95,26 +76,44 @@ impl Date {
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
-    ///
+    /// # use astrolabe::Date;
     /// let date = Date::from_timestamp(0).unwrap();
     /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
             .try_into()
-            .map_err(|_| AstrolabeError::OutOfRange)?;
+            .map_err(|_| {
+                create_simple_oor(
+                    "timestamp",
+                    (i32::MIN as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
+                        - SECS_PER_DAY_U64 as i128
+                        + 1,
+                    (i32::MAX as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
+                        + SECS_PER_DAY_U64 as i128
+                        - 1,
+                    timestamp as i128,
+                )
+            })?;
         Ok(Self { days })
     }
 
-    /// Returns the number of days since January 1, 0001 (Negative if date is before)
+    /// Creates a new [`Date`] instance from days since January 1, 0001.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
+    /// # use astrolabe::Date;
+    /// let date = Date::from_days(738276);
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
+    /// ```
+    pub fn from_days(days: i32) -> Self {
+        Self { days }
+    }
+
+    /// Returns the number of days since January 1, 0001. (Negative if date is before)
     ///
+    /// ```rust
+    /// # use astrolabe::Date;
     /// let date = Date::from_ymd(1, 1, 1).unwrap();
     /// assert_eq!(0, date.as_days());
     /// ```
@@ -124,10 +123,8 @@ impl Date {
 
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
-    ///
+    /// # use astrolabe::Date;
     /// let date = Date::from_ymd(2000, 1, 1).unwrap();
     /// assert_eq!(946_684_800, date.timestamp());
     /// ```
@@ -137,10 +134,8 @@ impl Date {
 
     /// Returns the number of days between two [`Date`] instances.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
-    ///
+    /// # use astrolabe::Date;
     /// let date = Date::from_ymd(1970, 1, 1).unwrap();
     /// let date_2 = Date::from_ymd(1970, 2, 1).unwrap();
     /// assert_eq!(31, date.between(&date_2));
@@ -152,10 +147,8 @@ impl Date {
 
     /// Get a specific [`DateUnit`].
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Date, DateUnit};
-    ///
+    /// # use astrolabe::{Date, DateUnit};
     /// let date = Date::from_ymd(2022, 5, 2).unwrap();
     /// assert_eq!(2022, date.get(DateUnit::Year));
     /// assert_eq!(5, date.get(DateUnit::Month));
@@ -169,22 +162,39 @@ impl Date {
         }
     }
 
+    /// Creates a new [`Date`] instance with a specific [`DateUnit`] set to the provided value.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
+    ///
+    /// ```rust
+    /// # use astrolabe::{Date, DateUnit};
+    /// let mut date = Date::from_ymd(2022, 5, 2).unwrap();
+    /// date = date.set(2000, DateUnit::Year).unwrap();
+    /// date = date.set(10, DateUnit::Day).unwrap();
+    /// assert_eq!("2000/05/10", date.format("yyyy/MM/dd"));
+    /// ```
+    pub fn set(&self, value: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
+        Ok(Self {
+            days: set_date_unit(self.days, value, unit)?,
+        })
+    }
+
     /// Creates a new [`Date`] instance with a specified amount of time applied (added or subtracted).
     ///
     /// **Note**: When using [`DateUnit::Month`], it adds calendar months and not 30 days. See it's [documentation](DateUnit::Month) for examples.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::{Date, DateUnit};
-    ///
+    /// # use astrolabe::{Date, DateUnit};
     /// let date = Date::from_ymd(1970, 1, 1).unwrap();
+    ///
     /// let applied = date.apply(1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01", date.format("yyyy-MM-dd"));
-    /// assert_eq!("1970-01-02", applied.format("yyyy-MM-dd"));
+    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
+    /// assert_eq!("1970/01/02", applied.format("yyyy/MM/dd"));
+    ///
     /// let applied_2 = applied.apply(-1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01", applied_2.format("yyyy-MM-dd"));
+    /// assert_eq!("1970/01/01", applied_2.format("yyyy/MM/dd"));
     /// ```
     pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
         Ok(Self::from_days(apply_date_unit(
@@ -192,24 +202,6 @@ impl Date {
             amount as i64,
             unit,
         )?))
-    }
-
-    /// Creates a new [`Date`] instance with a specific [`DateUnit`] set to the provided value.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
-    ///
-    /// # Example
-    /// ```rust
-    /// use astrolabe::{Date, DateUnit};
-    ///
-    /// let date = Date::from_ymd(2022, 5, 2).unwrap();
-    /// assert_eq!(2000, date.set(2000, DateUnit::Year).unwrap().get(DateUnit::Year));
-    /// assert_eq!(10, date.set(10, DateUnit::Day).unwrap().get(DateUnit::Day));
-    /// ```
-    pub fn set(&self, value: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
-        Ok(Self {
-            days: set_date_unit(self.days, value, unit)?,
-        })
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
@@ -261,10 +253,8 @@ impl Date {
     /// Surround any character with apostrophes (`'`) to escape them.
     /// If you want escape `'`, write `''`.
     ///
-    /// # Example
     /// ```rust
-    /// use astrolabe::Date;
-    ///
+    /// # use astrolabe::Date;
     /// let date = Date::from_ymd(2022, 5, 2).unwrap();
     /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
     /// // Escape characters
