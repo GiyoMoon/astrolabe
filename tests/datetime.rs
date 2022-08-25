@@ -12,6 +12,14 @@ mod datetime_tests {
         assert_eq!("0001/01/01 00:00:00", format!("{}", date_time));
         // From<&DateTime>
         let _ = DateTime::from(&date_time);
+        // Clone
+        let clone = date_time.clone();
+        // PartialEq
+        assert!(date_time == clone);
+
+        let clone = date_time.apply(1, DateTimeUnit::Nanos).unwrap();
+        // PartialEq
+        assert!(date_time != clone);
 
         let unit = DateTimeUnit::Day;
         // Debug

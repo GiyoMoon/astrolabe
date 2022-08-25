@@ -59,7 +59,7 @@ pub enum DateTimeUnit {
 /// Date is in the proleptic Gregorian calendar and clock time is with nanosecond precision.
 ///
 /// Date ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct DateTime {
     days: i32,
     nanoseconds: u64,
@@ -782,5 +782,11 @@ impl From<&DateTime> for DateTime {
 impl Display for DateTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.format("yyyy/MM/dd HH:mm:ss"))
+    }
+}
+
+impl PartialEq for DateTime {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.as_nanoseconds() == rhs.as_nanoseconds()
     }
 }

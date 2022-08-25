@@ -12,6 +12,14 @@ mod time_tests {
         assert_eq!("00:00:00", format!("{}", time));
         // From<&DateTime>
         let _ = Time::from(&time);
+        // Clone
+        let clone = time.clone();
+        // PartialEq
+        assert!(time == clone);
+
+        let clone = time.apply(1, TimeUnit::Nanos).unwrap();
+        // PartialEq
+        assert!(time != clone);
 
         let unit = TimeUnit::Sec;
         // Debug

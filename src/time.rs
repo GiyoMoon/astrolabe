@@ -38,7 +38,7 @@ pub enum TimeUnit {
 }
 
 /// Clock time with nanosecond precision.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct Time {
     nanoseconds: u64,
     offset: i32,
@@ -466,5 +466,11 @@ impl From<&Time> for Time {
 impl Display for Time {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.format("HH:mm:ss"))
+    }
+}
+
+impl PartialEq for Time {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.as_nanoseconds() == rhs.as_nanoseconds()
     }
 }

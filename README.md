@@ -69,7 +69,7 @@ Astrolabe is a date and time library for Rust which aims to be feature rich, lig
 
 ### Features
 - **Formatting** with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
-- **RFC3339** timestamp parsing/formatting
+- **RFC3339** timestamp parsing and formatting
 - **Manipulation** functions to easily add, remove or set date units
 - **Timezone** offset
 - **Zero** dependencies

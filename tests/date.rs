@@ -12,6 +12,14 @@ mod date_tests {
         assert_eq!("0001/01/01", format!("{}", date));
         // From<&Date>
         let _ = Date::from(&date);
+        // Clone
+        let clone = date.clone();
+        // PartialEq
+        assert!(date == clone);
+
+        let clone = date.apply(1, DateUnit::Day).unwrap();
+        // PartialEq
+        assert!(date != clone);
 
         let unit = DateUnit::Day;
         // Debug

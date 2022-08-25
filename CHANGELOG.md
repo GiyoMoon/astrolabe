@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More detailed error messages. See [errors module](https://docs.rs/astrolabe/0.2.0/astrolabe/errors/index.html).
 - Combined `DateTime::add` and `DateTime::sub` to `DateTime::apply`
 - `DateTime::as_offset` now accepts `i32` (was `i64`)
-- `DateTime::as_offset_time` now accepts `u32` (was `u32`)
+- `DateTime::as_offset_time` now accepts `u32` (was `u64`)
 - `DateTime::between` now returns `u64` (was `Duration`)
 - `DateTime::format` now returns `String` (was `Result`)
 - `DateTime::from_timestamp` now accepts `i64` (was `u64`)
