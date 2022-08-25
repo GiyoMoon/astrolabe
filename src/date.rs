@@ -33,7 +33,7 @@ pub enum DateUnit {
 
 /// Date in the proleptic Gregorian calendar.
 ///
-/// Ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
+/// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct Date {
     days: i32,
@@ -82,20 +82,24 @@ impl Date {
     /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
-        let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64)
-            .try_into()
-            .map_err(|_| {
-                create_simple_oor(
-                    "timestamp",
-                    (i32::MIN as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
-                        - SECS_PER_DAY_U64 as i128
-                        + 1,
-                    (i32::MAX as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
-                        + SECS_PER_DAY_U64 as i128
-                        - 1,
-                    timestamp as i128,
-                )
-            })?;
+        let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64
+            - if timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0 {
+                1
+            } else {
+                0
+            })
+        .try_into()
+        .map_err(|_| {
+            create_simple_oor(
+                "timestamp",
+                (i32::MIN as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128,
+                (i32::MAX as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
+                    + SECS_PER_DAY_U64 as i128
+                    - 1,
+                timestamp as i128,
+            )
+        })?;
+
         Ok(Self { days })
     }
 

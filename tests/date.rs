@@ -85,6 +85,14 @@ mod date_tests {
     fn timestamp() {
         assert_eq!(0, Date::from_timestamp(0).unwrap().timestamp());
         assert_eq!(
+            "1970/01/01",
+            Date::from_timestamp(0).unwrap().format("yyyy/MM/dd")
+        );
+        assert_eq!(
+            "1969/12/31",
+            Date::from_timestamp(-1).unwrap().format("yyyy/MM/dd")
+        );
+        assert_eq!(
             185_480_451_504_000,
             Date::from_timestamp(185_480_451_590_399)
                 .unwrap()
@@ -99,19 +107,19 @@ mod date_tests {
 
         assert_eq!(
             -185_604_722_784_000,
-            Date::from_timestamp(-185_604_722_870_399)
+            Date::from_timestamp(-185_604_722_784_000)
                 .unwrap()
                 .timestamp()
         );
         assert_eq!(
             "-5879611/06/23",
-            Date::from_timestamp(-185_604_722_870_399)
+            Date::from_timestamp(-185_604_722_784_000)
                 .unwrap()
                 .format("yyyy/MM/dd")
         );
 
         assert!(Date::from_timestamp(185_480_451_590_400).is_err());
-        assert!(Date::from_timestamp(-185_604_722_870_400).is_err());
+        assert!(Date::from_timestamp(-185_604_722_784_001).is_err());
     }
 
     #[test]

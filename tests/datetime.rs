@@ -52,6 +52,12 @@ mod datetime_tests {
                 .unwrap()
                 .as_seconds()
         );
+        assert_eq!(
+            "5879611/07/12 23:59:59",
+            DateTime::from_seconds(185_542_587_187_199)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
+        );
         assert!(DateTime::from_seconds(185_542_587_187_200).is_err());
         assert_eq!(
             -185_542_587_187_200,
@@ -59,7 +65,13 @@ mod datetime_tests {
                 .unwrap()
                 .as_seconds()
         );
-        assert!(DateTime::from_seconds(-185_542_587_273_600).is_err());
+        assert_eq!(
+            "-5879611/06/23 00:00:00",
+            DateTime::from_seconds(-185_542_587_187_200)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
+        );
+        assert!(DateTime::from_seconds(-185_542_587_187_201).is_err());
     }
 
     #[test]
@@ -84,12 +96,24 @@ mod datetime_tests {
                 .unwrap()
                 .as_nanoseconds()
         );
+        assert_eq!(
+            "5879611/07/12 23:59:59",
+            DateTime::from_nanoseconds(185_542_587_187_199_999_999_999)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
+        );
         assert!(DateTime::from_nanoseconds(185_542_587_187_200_000_000_000).is_err());
         assert_eq!(
             -185_542_587_187_200_000_000_000,
             DateTime::from_nanoseconds(-185_542_587_187_200_000_000_000)
                 .unwrap()
                 .as_nanoseconds()
+        );
+        assert_eq!(
+            "-5879611/06/23 00:00:00",
+            DateTime::from_nanoseconds(-185_542_587_187_200_000_000_000)
+                .unwrap()
+                .format("yyyy/MM/dd HH:mm:ss")
         );
         assert!(DateTime::from_nanoseconds(-185_542_587_273_600_000_000_000).is_err());
     }
@@ -231,33 +255,33 @@ mod datetime_tests {
     fn timestamp() {
         assert_eq!(0, DateTime::from_timestamp(0).unwrap().timestamp());
         assert_eq!(
-            185480451504000,
-            DateTime::from_timestamp(185_480_451_504_000)
+            185_480_451_590_399,
+            DateTime::from_timestamp(185_480_451_590_399)
                 .unwrap()
                 .timestamp()
         );
         assert_eq!(
-            "5879611/07/12",
-            DateTime::from_timestamp(185_480_451_504_000)
+            "5879611/07/12 23:59:59",
+            DateTime::from_timestamp(185_480_451_590_399)
                 .unwrap()
-                .format("yyyy/MM/dd")
+                .format("yyyy/MM/dd HH:mm:ss")
         );
 
         assert_eq!(
-            -185604722784000,
+            -185_604_722_784_000,
             DateTime::from_timestamp(-185_604_722_784_000)
                 .unwrap()
                 .timestamp()
         );
         assert_eq!(
-            "-5879611/06/23",
+            "-5879611/06/23 00:00:00",
             DateTime::from_timestamp(-185_604_722_784_000)
                 .unwrap()
-                .format("yyyy/MM/dd")
+                .format("yyyy/MM/dd HH:mm:ss")
         );
 
         assert!(DateTime::from_timestamp(185_480_451_590_400).is_err());
-        assert!(DateTime::from_timestamp(-185_604_722_870_400).is_err());
+        assert!(DateTime::from_timestamp(-185_604_722_784_001).is_err());
     }
 
     #[test]

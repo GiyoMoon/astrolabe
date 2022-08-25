@@ -58,7 +58,7 @@ pub enum DateTimeUnit {
 /// Combined date and time.
 /// Date is in the proleptic Gregorian calendar and clock time is with nanosecond precision.
 ///
-/// Date ranges from `30. June -5879611` to `12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
+/// Range: `30. June -5879611 00:00:00`..=`12. July 5879611 23:59:59`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct DateTime {
     days: i32,
