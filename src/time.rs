@@ -14,6 +14,7 @@ use crate::{
     Offset,
 };
 use std::{
+    cmp,
     fmt::Display,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -472,5 +473,17 @@ impl Display for Time {
 impl PartialEq for Time {
     fn eq(&self, rhs: &Self) -> bool {
         self.as_nanoseconds() == rhs.as_nanoseconds()
+    }
+}
+
+impl PartialOrd for Time {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.nanoseconds.partial_cmp(&other.nanoseconds)
+    }
+}
+
+impl Ord for Time {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.nanoseconds.cmp(&other.nanoseconds)
     }
 }

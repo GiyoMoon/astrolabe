@@ -21,6 +21,12 @@ mod date_tests {
         // PartialEq
         assert!(date != clone);
 
+        // Ord
+        assert!(date < clone);
+
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Less, date.cmp(&clone));
+
         let unit = DateUnit::Day;
         // Debug
         println!("{:?}", unit);

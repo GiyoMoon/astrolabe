@@ -18,6 +18,7 @@ use crate::{
     Date, Offset, Precision, Time,
 };
 use std::{
+    cmp,
     fmt::Display,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -380,7 +381,7 @@ impl DateTime {
     /// assert_eq!(946_684_800, date_time.timestamp());
     /// ```
     pub fn timestamp(&self) -> i64 {
-        self.as_seconds() - DAYS_TO_1970 as i64 * SECS_PER_DAY_U64 as i64
+        self.as_seconds() - DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64
     }
 
     /// Returns the number of seconds between two [`DateTime`] instances.
@@ -788,5 +789,17 @@ impl Display for DateTime {
 impl PartialEq for DateTime {
     fn eq(&self, rhs: &Self) -> bool {
         self.as_nanoseconds() == rhs.as_nanoseconds()
+    }
+}
+
+impl PartialOrd for DateTime {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.as_nanoseconds().partial_cmp(&other.as_nanoseconds())
+    }
+}
+
+impl Ord for DateTime {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.as_nanoseconds().cmp(&other.as_nanoseconds())
     }
 }

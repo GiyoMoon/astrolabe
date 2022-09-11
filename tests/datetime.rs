@@ -16,10 +16,30 @@ mod datetime_tests {
         let clone = date_time.clone();
         // PartialEq
         assert!(date_time == clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Equal, date_time.cmp(&clone));
 
         let clone = date_time.apply(1, DateTimeUnit::Nanos).unwrap();
         // PartialEq
         assert!(date_time != clone);
+
+        // Ord
+        assert!(date_time < clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Less, date_time.cmp(&clone));
+
+        let clone = date_time.apply(-1, DateTimeUnit::Nanos).unwrap();
+        // Ord
+        assert!(date_time > clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Greater, date_time.cmp(&clone));
+
+        // Check that offset doesn't affect Eq and Ord
+        let clone = date_time.set_offset(1).unwrap();
+        // PartialEq
+        assert!(date_time == clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Equal, date_time.cmp(&clone));
 
         let unit = DateTimeUnit::Day;
         // Debug

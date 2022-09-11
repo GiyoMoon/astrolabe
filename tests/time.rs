@@ -16,10 +16,30 @@ mod time_tests {
         let clone = time.clone();
         // PartialEq
         assert!(time == clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Equal, time.cmp(&clone));
 
         let clone = time.apply(1, TimeUnit::Nanos).unwrap();
         // PartialEq
         assert!(time != clone);
+
+        // Ord
+        assert!(time < clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Less, time.cmp(&clone));
+
+        let clone2 = clone.apply(-1, TimeUnit::Nanos).unwrap();
+        // Ord
+        assert!(clone > clone2);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Greater, clone.cmp(&clone2));
+
+        // Check that offset doesn't affect Eq and Ord
+        let clone = time.set_offset(1).unwrap();
+        // PartialEq
+        assert!(time == clone);
+        // PartialOrd
+        assert_eq!(std::cmp::Ordering::Equal, time.cmp(&clone));
 
         let unit = TimeUnit::Sec;
         // Debug

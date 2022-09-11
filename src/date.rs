@@ -34,7 +34,7 @@ pub enum DateUnit {
 /// Date in the proleptic Gregorian calendar.
 ///
 /// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
-#[derive(Debug, Default, Copy, Clone, Eq)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Date {
     days: i32,
 }
@@ -301,11 +301,5 @@ impl From<&Date> for Date {
 impl Display for Date {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.format("yyyy/MM/dd"))
-    }
-}
-
-impl PartialEq for Date {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.as_days() == rhs.as_days()
     }
 }
