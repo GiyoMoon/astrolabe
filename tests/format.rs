@@ -3,7 +3,7 @@ mod format_tests {
     use astrolabe::{Date, DateTime, Time};
 
     #[test]
-    fn format_era() {
+    fn era() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("AD", date.format("G"));
         assert_eq!("AD", date.format("GG"));
@@ -23,7 +23,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_year() {
+    fn year() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1970", date.format("y"));
         assert_eq!("70", date.format("yy"));
@@ -68,7 +68,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_quarter() {
+    fn quarter() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date.format("q"));
         assert_eq!("01", date.format("qq"));
@@ -114,7 +114,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_month() {
+    fn month() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date.format("M"));
         assert_eq!("01", date.format("MM"));
@@ -141,7 +141,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_week() {
+    fn week() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date.format("w"));
         assert_eq!("01", date.format("ww"));
@@ -234,7 +234,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_day() {
+    fn day() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date.format("d"));
         assert_eq!("01", date.format("dd"));
@@ -252,7 +252,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_year_day() {
+    fn year_day() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("1", date.format("D"));
         assert_eq!("01", date.format("DD"));
@@ -285,7 +285,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_wday() {
+    fn wday() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!("5", date.format("e"));
         assert_eq!("05", date.format("ee"));
@@ -332,7 +332,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_period() {
+    fn period() {
         let time = Time::from_hms(0, 0, 0).unwrap();
         assert_eq!("AM", time.format("a"));
         assert_eq!("AM", time.format("aa"));
@@ -557,7 +557,7 @@ mod format_tests {
     }
 
     #[test]
-    fn format_escape() {
+    fn escape() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
         assert_eq!(
             "yyyMMdd19700101yyyMMdd",

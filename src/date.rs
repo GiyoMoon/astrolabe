@@ -1,10 +1,13 @@
 use crate::{
-    errors::{out_of_range::create_simple_oor, AstrolabeError},
+    errors::{
+        invalid_format::create_invalid_format, out_of_range::create_simple_oor, AstrolabeError,
+    },
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
-        convert::{date_to_days, days_to_date},
-        format::{format_date_part, parse_format_string},
+        convert::{date_to_days, days_to_date, year_doy_to_days},
+        format::format_date_part,
         manipulation::{apply_date_unit, set_date_unit},
+        parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
     },
 };
 use std::{
@@ -208,6 +211,64 @@ impl Date {
         )?))
     }
 
+    /// Parses a custom string with a given format and creates a new [`Date`] instance from it.
+    ///
+    /// **Note**: To successfully parse a string, you need to either provide `year`, `month` and `day of month` or `year` and `day of year`.
+    ///
+    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given string could not be parsed with the given format.
+    ///
+    /// ```rust
+    /// # use astrolabe::Date;
+    /// let date = Date::parse("2022-05-02", "yyyy-MM-dd").unwrap();
+    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
+    /// ```
+    pub fn parse(string: &str, format: &str) -> Result<Self, AstrolabeError> {
+        let parts = parse_format_string(format);
+
+        let mut date = ParsedDate::default();
+        let mut string = string.to_string();
+
+        for part in parts {
+            // Escaped apostrophes
+            if part.starts_with('\u{0000}') {
+                string.replace_range(0..part.len(), "");
+                continue;
+            }
+
+            // Escaped parts
+            if part.starts_with('\'') {
+                string.replace_range(0..part.len() - if part.ends_with('\'') { 2 } else { 1 }, "");
+                continue;
+            }
+
+            let parsed_part = parse_date_part(&part, &mut string)?;
+            if let Some(parsed_part) = parsed_part {
+                match parsed_part.unit {
+                    ParseUnit::Year => date.year = Some(parsed_part.value as i32),
+                    ParseUnit::Month => date.month = Some(parsed_part.value as u32),
+                    ParseUnit::DayOfMonth => date.day_of_month = Some(parsed_part.value as u32),
+                    // Can't be any other variant than `ParseUnit::DayOfYear`
+                    _ => date.day_of_year = Some(parsed_part.value as u32),
+                };
+            };
+        }
+
+        Ok(
+            if date.year.is_some() && date.month.is_some() && date.day_of_month.is_some() {
+                Date::from_ymd(
+                    date.year.unwrap() as i32,
+                    date.month.unwrap() as u32,
+                    date.day_of_month.unwrap() as u32,
+                )?
+            } else if date.year.is_some() && date.day_of_year.is_some() {
+                let days = year_doy_to_days(date.year.unwrap(), date.day_of_year.unwrap())?;
+                Date::from_days(days)
+            } else {
+                return Err(create_invalid_format("Not enough data to create a Date instance from this string. Please include year and either month and day of month or day of year".to_string()));
+            },
+        )
+    }
+
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
     ///
     /// Please note that not all symbols are implemented. If you need something that is not implemented, please open an issue on [GitHub](https://github.com/GiyoMoon/astrolabe/issues) describing your need.
@@ -238,7 +299,7 @@ impl Date {
     /// |            | ww       | 08, 27                        | *                                        |
     /// | days       | d        | 1                             | Day of month                             |
     /// |            | dd       | 01                            | *                                        |
-    /// |            | D        | 1, 24 135                     | Day of year, *                           |
+    /// |            | D        | 1, 24, 135                     | Day of year, *                           |
     /// |            | DD       | 01, 24, 135                   |                                          |
     /// |            | DDD      | 001, 024, 135                 |                                          |
     /// | week day   | e        | 3                             | 1-7, 1 is Sunday, *                      |

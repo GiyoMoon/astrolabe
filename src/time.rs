@@ -8,8 +8,9 @@ use crate::{
         convert::{
             add_offset_to_nanos, nanos_to_unit, remove_offset_from_nanos, time_to_day_seconds,
         },
-        format::{format_time_part, parse_format_string},
+        format::format_time_part,
         manipulation::{apply_time_unit, set_time_unit},
+        parse::parse_format_string,
     },
     Offset,
 };

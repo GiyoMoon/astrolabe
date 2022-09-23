@@ -11,9 +11,9 @@ use crate::{
             dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_unit, remove_offset_from_dn,
             secs_to_days_nanos, time_to_day_seconds,
         },
-        format::{format_part, parse_format_string},
+        format::format_part,
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
-        parse::parse_offset,
+        parse::{parse_format_string, parse_offset},
     },
     Date, Offset, Precision, Time,
 };
@@ -231,28 +231,28 @@ impl DateTime {
     pub fn parse_rfc3339(string: &str) -> Result<Self, AstrolabeError> {
         if string.len() < 20 {
             return Err(create_invalid_format(
-                "RFC3339 string cannot be shorter than 20 chars",
+                "RFC3339 string cannot be shorter than 20 chars".to_string(),
             ));
         }
 
-        let year = string[0..4]
-            .parse::<i32>()
-            .map_err(|_| create_invalid_format("Failed parsing year from RFC3339 string"))?;
-        let month = string[5..7]
-            .parse::<u32>()
-            .map_err(|_| create_invalid_format("Failed parsing month from RFC3339 string"))?;
-        let day = string[8..10]
-            .parse::<u32>()
-            .map_err(|_| create_invalid_format("Failed parsing day from RFC3339 string"))?;
-        let hour = string[11..13]
-            .parse::<u32>()
-            .map_err(|_| create_invalid_format("Failed parsing hour from RFC3339 string"))?;
-        let min = string[14..16]
-            .parse::<u32>()
-            .map_err(|_| create_invalid_format("Failed parsing minute from RFC3339 string"))?;
-        let sec = string[17..19]
-            .parse::<u32>()
-            .map_err(|_| create_invalid_format("Failed parsing second from RFC3339 string"))?;
+        let year = string[0..4].parse::<i32>().map_err(|_| {
+            create_invalid_format("Failed parsing year from RFC3339 string".to_string())
+        })?;
+        let month = string[5..7].parse::<u32>().map_err(|_| {
+            create_invalid_format("Failed parsing month from RFC3339 string".to_string())
+        })?;
+        let day = string[8..10].parse::<u32>().map_err(|_| {
+            create_invalid_format("Failed parsing day from RFC3339 string".to_string())
+        })?;
+        let hour = string[11..13].parse::<u32>().map_err(|_| {
+            create_invalid_format("Failed parsing hour from RFC3339 string".to_string())
+        })?;
+        let min = string[14..16].parse::<u32>().map_err(|_| {
+            create_invalid_format("Failed parsing minute from RFC3339 string".to_string())
+        })?;
+        let sec = string[17..19].parse::<u32>().map_err(|_| {
+            create_invalid_format("Failed parsing second from RFC3339 string".to_string())
+        })?;
 
         let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
             let nanos_string = string[20..]
@@ -260,14 +260,14 @@ impl DateTime {
                 .take_while(|&char| char != 'Z' && char != '+' && char != '-')
                 .collect::<String>();
             let nanos = nanos_string.parse::<u64>().map_err(|_| {
-                create_invalid_format("Failed parsing subseconds from RFC3339 string")
+                create_invalid_format("Failed parsing subseconds from RFC3339 string".to_string())
             })? * (1000000000 / 10_u64.pow(nanos_string.len() as u32));
 
             let offset_substring = string[20..]
                 .chars()
                 .position(|char| char == 'Z' || char == '+' || char == '-')
                 .ok_or_else(|| {
-                    create_invalid_format("Failed parsing offset from RFC3339 string")
+                    create_invalid_format("Failed parsing offset from RFC3339 string".to_string())
                 })?;
             let offset = parse_offset(&string[20 + offset_substring..])?;
 
@@ -545,7 +545,7 @@ impl DateTime {
     /// |                            | ww       | 08, 27                         | *                                        |
     /// | days                       | d        | 1                              | Day of month                             |
     /// |                            | dd       | 01                             | *                                        |
-    /// |                            | D        | 1, 24 135                      | Day of year, *                           |
+    /// |                            | D        | 1, 24, 135                      | Day of year, *                           |
     /// |                            | DD       | 01, 24, 135                    |                                          |
     /// |                            | DDD      | 001, 024, 135                  |                                          |
     /// | week day                   | e        | 3                              | 1-7, 1 is Sunday, *                      |

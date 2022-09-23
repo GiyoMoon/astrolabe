@@ -1,6 +1,6 @@
 use super::{
     convert::{
-        date_to_days, days_to_date, month_to_ymdays, nanos_to_time, nanos_to_unit, valid_range,
+        date_to_days, days_to_date, nanos_to_time, nanos_to_unit, valid_range, year_month_to_doy,
     },
     leap::is_leap_year,
 };
@@ -50,7 +50,7 @@ pub(crate) fn apply_date_unit(
                 day if day < 29 => day,
                 _ => {
                     // Using unwrap because it's safe to assume that month is valid
-                    let (_, mdays) = month_to_ymdays(target_year, target_month).unwrap();
+                    let (_, mdays) = year_month_to_doy(target_year, target_month).unwrap();
                     if day > mdays {
                         mdays
                     } else {

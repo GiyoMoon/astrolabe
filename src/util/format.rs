@@ -1,38 +1,11 @@
-use super::convert::{days_to_date, days_to_wyear, days_to_yday, nanos_to_time};
+use super::convert::{days_to_date, days_to_doy, days_to_wyear, nanos_to_time};
 use crate::{
-    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_MINUTE},
+    shared::{
+        MONTH_ABBREVIATED, MONTH_NARROW, MONTH_WIDE, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_HOUR,
+        SECS_PER_MINUTE, WDAY_ABBREVIATED, WDAY_NARROW, WDAY_SHORT, WDAY_WIDE,
+    },
     util::convert::days_to_wday,
 };
-
-/// Parse a format string and return parts to format
-pub(crate) fn parse_format_string(format: &str) -> Vec<String> {
-    let escaped_format = format.replace("''", "\u{0000}");
-
-    let mut parts: Vec<String> = Vec::new();
-    let mut currently_escaped = false;
-    for char in escaped_format.chars() {
-        match char {
-            '\'' => {
-                if !currently_escaped {
-                    parts.push(char.to_string());
-                } else {
-                    // Using unwrap because it's safe to assume that parts has a length of at least 1
-                    parts.last_mut().unwrap().push(char);
-                }
-                currently_escaped = !currently_escaped;
-            }
-            _ => {
-                if currently_escaped || parts.last().unwrap_or(&"".to_string()).starts_with(char) {
-                    // Using unwrap because it's safe to assume that parts has a length of at least 1
-                    parts.last_mut().unwrap().push(char);
-                } else {
-                    parts.push(char.to_string());
-                }
-            }
-        };
-    }
-    parts
-}
 
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
@@ -106,8 +79,8 @@ pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
         'M' => format_month(chars.len(), days),
         'w' => zero_padded(days_to_wyear(days), get_length(chars.len(), 2, 2)),
         'd' => zero_padded(days_to_date(days).2, get_length(chars.len(), 2, 2)),
-        'D' => zero_padded(days_to_yday(days), get_length(chars.len(), 1, 3)),
-        'e' => format_wday(days, chars.len()),
+        'D' => zero_padded(days_to_doy(days), get_length(chars.len(), 1, 3)),
+        'e' => format_wday(chars.len(), days),
         _ => chars.to_string(),
     }
 }
@@ -165,25 +138,6 @@ pub(crate) fn format_time_part(chars: &str, nanoseconds: u64, offset: i32) -> St
 fn format_month(length: usize, days: i32) -> String {
     let month = days_to_date(days).1;
 
-    const MONTH_ABBREVIATED: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    const MONTH_WIDE: [&str; 12] = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-    const MONTH_NARROW: [&str; 12] = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-
     match length {
         1 | 2 => zero_padded(month, length),
         3 => MONTH_ABBREVIATED
@@ -205,38 +159,25 @@ fn format_month(length: usize, days: i32) -> String {
 }
 
 /// Formats the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
-fn format_wday(days: i32, length: usize) -> String {
-    const MONTH_ABBREVIATED: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const MONTH_WIDE: [&str; 7] = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-    ];
-    const MONTH_NARROW: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
-    const MONTH_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
+fn format_wday(length: usize, days: i32) -> String {
     match length {
         1 | 2 => zero_padded(days_to_wday(days, false) + 1, length),
-        3 => MONTH_ABBREVIATED
+        3 => WDAY_ABBREVIATED
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
             .unwrap()
             .to_string(),
-        4 => MONTH_WIDE
+        4 => WDAY_WIDE
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
             .unwrap()
             .to_string(),
-        5 => MONTH_NARROW
+        5 => WDAY_NARROW
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
             .unwrap()
             .to_string(),
-        6 => MONTH_SHORT
+        6 => WDAY_SHORT
             .into_iter()
             .nth(days_to_wday(days, false) as usize)
             .unwrap()

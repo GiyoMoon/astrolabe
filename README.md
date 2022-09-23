@@ -37,7 +37,6 @@
     <img src="https://deps.rs/repo/github/giyomoon/astrolabe/status.svg?style=flat"
     alt="Dependencies" />
   </a>
-  <br/>
   <!-- License -->
   <a href="https://github.com/giyomoon/astrolabe#License" target="_blank">
     <img src="https://img.shields.io/crates/l/astrolabe?style=flat" alt="License">

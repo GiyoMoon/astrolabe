@@ -10,7 +10,7 @@ use std::fmt;
 pub enum AstrolabeError {
     /// An error indicating that some given parameter is out of range or resulted in an out of range date/time value.
     OutOfRange(OutOfRange),
-    /// An error indicating that some given parameter is out of range or resulted in an out of range date/time value.
+    /// An error indicating that the string to be parsed is invalid.
     InvalidFormat(InvalidFormat),
 }
 

@@ -85,7 +85,7 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     valid_range(year, month, day)?;
 
     let leap_years = leap_years(year);
-    let (mut ydays, mdays) = month_to_ymdays(year, month)?;
+    let (mut doy, mdays) = year_month_to_doy(year, month)?;
 
     if day > mdays || day == 0 {
         return Err(create_conditional_oor(
@@ -96,13 +96,28 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
             format!("because month is {}", month),
         ));
     }
-    ydays += day - 1;
+    doy += day - 1;
 
     Ok(if year.is_negative() {
-        ydays = 365 - if is_leap_year(year) { ydays + 1 } else { ydays };
-        (year + 1) * 365 - leap_years as i32 - ydays as i32
+        doy = 365 - if is_leap_year(year) { doy + 1 } else { doy };
+        (year + 1) * 365 - leap_years as i32 - doy as i32
     } else {
-        (year.abs() - 1) * 365 + leap_years as i32 + ydays as i32
+        (year.abs() - 1) * 365 + leap_years as i32 + doy as i32
+    })
+}
+
+/// Converts year and day of year to days since 01. January 0001
+pub(crate) fn year_doy_to_days(year: i32, mut doy: u32) -> Result<i32, AstrolabeError> {
+    valid_range_doy(year, doy)?;
+    let leap_years = leap_years(year);
+
+    doy -= 1;
+
+    Ok(if year.is_negative() {
+        doy = 365 - if is_leap_year(year) { doy + 1 } else { doy };
+        (year + 1) * 365 - leap_years as i32 - doy as i32
+    } else {
+        (year.abs() - 1) * 365 + leap_years as i32 + doy as i32
     })
 }
 
@@ -136,7 +151,7 @@ pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
 }
 
 /// Converts year and month to the days until this month and days in the current month
-pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), AstrolabeError> {
+pub(crate) fn year_month_to_doy(year: i32, month: u32) -> Result<(u32, u32), AstrolabeError> {
     let is_leap_year = is_leap_year(year);
     if is_leap_year {
         Ok(match month {
@@ -174,11 +189,11 @@ pub(crate) fn month_to_ymdays(year: i32, month: u32) -> Result<(u32, u32), Astro
 }
 
 /// Converts days to day of year
-pub(crate) fn days_to_yday(days: i32) -> u32 {
+pub(crate) fn days_to_doy(days: i32) -> u32 {
     let (year, month, day) = days_to_date(days);
     // Using unwrap because it's safe to assume that month is valid
-    let (ydays, _) = month_to_ymdays(year, month).unwrap();
-    ydays + day
+    let (doy, _) = year_month_to_doy(year, month).unwrap();
+    doy + day
 }
 
 /// Converts days to day of week
@@ -235,7 +250,7 @@ pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
     }
 }
 
-/// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`] struct
+/// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`]/[`DateTime`] struct
 pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), AstrolabeError> {
     if year == 0 {
         return Err(AstrolabeError::OutOfRange(OutOfRange {
@@ -291,6 +306,76 @@ pub(crate) fn valid_range(year: i32, month: u32, day: u32) -> Result<(), Astrola
             MAX_DATE.2 as i128,
             day as i128,
             format!("because year is {} and month is {}", year, month),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Checks if the given year and day of year is in the valid range for the [`Date`]/[`DateTime`] struct
+pub(crate) fn valid_range_doy(year: i32, doy: u32) -> Result<(), AstrolabeError> {
+    if year == 0 {
+        return Err(AstrolabeError::OutOfRange(OutOfRange {
+            name: "year",
+            min: MIN_DATE.0 as i128,
+            max: MAX_DATE.0 as i128,
+            value: year as i128,
+            custom: Some("Year cannot be 0. After the year -1 comes 1.".to_string()),
+            conditional: None,
+        }));
+    } else if year < MIN_DATE.0 {
+        return Err(create_simple_oor(
+            "year",
+            MIN_DATE.0 as i128,
+            MAX_DATE.0 as i128,
+            year as i128,
+        ));
+    } else if year == MIN_DATE.0 && doy < MIN_DATE.3 {
+        return Err(create_conditional_oor(
+            "day of year",
+            MIN_DATE.3 as i128,
+            365,
+            doy as i128,
+            format!("because year is {}", year),
+        ));
+    } else if year > MAX_DATE.0 {
+        return Err(create_simple_oor(
+            "year",
+            MIN_DATE.0 as i128,
+            MAX_DATE.0 as i128,
+            year as i128,
+        ));
+    } else if year == MAX_DATE.0 && doy > MAX_DATE.3 {
+        return Err(create_conditional_oor(
+            "day of year",
+            1,
+            MAX_DATE.3 as i128,
+            doy as i128,
+            format!("because year is {}", year),
+        ));
+    } else if is_leap_year(year) && doy > 366 {
+        return Err(create_conditional_oor(
+            "day of year",
+            1,
+            366,
+            doy as i128,
+            format!("because year is {}", year),
+        ));
+    } else if !is_leap_year(year) && doy > 365 {
+        return Err(create_conditional_oor(
+            "day of year",
+            1,
+            365,
+            doy as i128,
+            format!("because year is {}", year),
+        ));
+    } else if doy < 1 {
+        return Err(create_conditional_oor(
+            "day of year",
+            1,
+            if is_leap_year(year) { 366 } else { 365 },
+            doy as i128,
+            format!("because year is {}", year),
         ));
     }
 
