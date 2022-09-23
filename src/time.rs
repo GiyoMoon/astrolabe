@@ -314,7 +314,7 @@ impl Time {
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
                     let part = part.replace('\u{0000}', "'");
-                    return part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                    return part[1..part.len() - usize::from(part.ends_with('\''))]
                         .chars()
                         .collect::<Vec<char>>();
                 }

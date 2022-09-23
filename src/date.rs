@@ -86,11 +86,9 @@ impl Date {
     /// ```
     pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64
-            - if timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0 {
-                1
-            } else {
-                0
-            })
+            - i64::from(
+                timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0,
+            ))
         .try_into()
         .map_err(|_| {
             create_simple_oor(
@@ -340,7 +338,7 @@ impl Date {
                 // Escape parts starting with apostrophe
                 if part.starts_with('\'') {
                     let part = part.replace('\u{0000}', "'");
-                    return part[1..part.len() - if part.ends_with('\'') { 1 } else { 0 }]
+                    return part[1..part.len() - usize::from(part.ends_with('\''))]
                         .chars()
                         .collect::<Vec<char>>();
                 }

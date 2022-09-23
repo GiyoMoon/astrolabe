@@ -409,7 +409,7 @@ mod datetime_tests {
 
     #[test]
     fn date_and_time() {
-        let date_time = DateTime::from_ymdhms(2022, 05, 02, 12, 32, 01).unwrap();
+        let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
         let date = date_time.date();
         let time = date_time.time();
         assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));

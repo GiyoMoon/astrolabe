@@ -192,7 +192,7 @@ pub(crate) fn parse_date_part(
                 }
             }
             1 | 3 | 4 => {
-                let mut year_length = if string.starts_with('-') { 1 } else { 0 };
+                let mut year_length = usize::from(string.starts_with('-'));
                 let string_length = string.chars().count();
                 while string_length > year_length
                     && string.chars().nth(year_length).unwrap().is_ascii_digit()
