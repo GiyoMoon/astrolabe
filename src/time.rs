@@ -1,16 +1,19 @@
 use crate::{
     errors::{
+        invalid_format::create_invalid_format,
         out_of_range::{create_custom_oor, create_simple_oor},
         AstrolabeError,
     },
-    shared::{NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
+    shared::{
+        NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+    },
     util::{
         convert::{
             add_offset_to_nanos, nanos_to_unit, remove_offset_from_nanos, time_to_day_seconds,
         },
         format::format_time_part,
         manipulation::{apply_time_unit, set_time_unit},
-        parse::parse_format_string,
+        parse::{parse_format_string, parse_time_part, ParseUnit, ParsedTime, Period},
     },
     Offset,
 };
@@ -239,6 +242,90 @@ impl Time {
         )?
         .set_offset(self.offset)
         .unwrap())
+    }
+
+    /// Parses a custom string with a given format and creates a new [`Time`] instance from it. See [`Time::format`] for a list of available symbols.
+    ///
+    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given string could not be parsed with the given format.
+    ///
+    /// ```rust
+    /// # use astrolabe::Time;
+    /// let date = Time::parse("12:32:01", "HH:mm:ss").unwrap();
+    /// assert_eq!("12:32:01", date.format("HH:mm:ss"));
+    /// ```
+    pub fn parse(string: &str, format: &str) -> Result<Self, AstrolabeError> {
+        let parts = parse_format_string(format);
+
+        let mut time = ParsedTime::default();
+        let mut string = string.to_string();
+
+        for part in parts {
+            // Escaped apostrophes
+            if part.starts_with('\u{0000}') {
+                string.replace_range(0..part.len(), "");
+                continue;
+            }
+
+            // Escaped parts
+            if part.starts_with('\'') {
+                string.replace_range(0..part.len() - if part.ends_with('\'') { 2 } else { 1 }, "");
+                continue;
+            }
+
+            let parsed_part = parse_time_part(&part, &mut string)?;
+            if let Some(parsed_part) = parsed_part {
+                match parsed_part.unit {
+                    ParseUnit::Hour => time.hour = Some(parsed_part.value as u64),
+                    ParseUnit::PeriodHour => time.period_hour = Some(parsed_part.value as u64),
+                    ParseUnit::Period => {
+                        time.period = Some(if parsed_part.value == 0 {
+                            Period::AM
+                        } else {
+                            Period::PM
+                        })
+                    }
+                    ParseUnit::Min => time.min = Some(parsed_part.value as u64),
+                    ParseUnit::Sec => time.sec = Some(parsed_part.value as u64),
+                    ParseUnit::Decis => time.decis = Some(parsed_part.value as u64),
+                    ParseUnit::Centis => time.centis = Some(parsed_part.value as u64),
+                    ParseUnit::Millis => time.millis = Some(parsed_part.value as u64),
+                    ParseUnit::Micros => time.micros = Some(parsed_part.value as u64),
+                    ParseUnit::Nanos => time.nanos = Some(parsed_part.value as u64),
+                    // Can't be any other variant than `ParseUnit::Offset`
+                    _ => time.offset = Some(parsed_part.value as i32),
+                };
+            };
+        }
+
+        if time.is_empty() {
+            return Err(create_invalid_format(
+                "No values parsed from string.".to_string(),
+            ));
+        }
+
+        let mut nanoseconds = 0;
+
+        if time.hour.is_some() {
+            nanoseconds += time.hour.unwrap_or(0) * SECS_PER_HOUR_U64 * NANOS_PER_SEC;
+        } else {
+            nanoseconds += (time.period_hour.unwrap_or(0)
+                + time.period.unwrap_or(Period::AM) as u64)
+                * SECS_PER_HOUR_U64
+                * NANOS_PER_SEC;
+        }
+        nanoseconds += time.min.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
+        nanoseconds += time.sec.unwrap_or(0) * NANOS_PER_SEC;
+        nanoseconds += time.decis.unwrap_or(0) * 100_000_000;
+        nanoseconds += time.centis.unwrap_or(0) * 10_000_000;
+        nanoseconds += time.millis.unwrap_or(0) * 1_000_000;
+        nanoseconds += time.micros.unwrap_or(0) * 1_000;
+        nanoseconds += time.nanos.unwrap_or(0);
+
+        Ok(if let Some(offset) = time.offset {
+            Time::from_nanoseconds(nanoseconds)?.set_offset(offset)?
+        } else {
+            Time::from_nanoseconds(nanoseconds)?
+        })
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).

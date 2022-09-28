@@ -14,7 +14,7 @@ pub(crate) fn format_part(chars: &str, days: i32, nanoseconds: u64, offset: i32)
     let first_char = chars.chars().next().unwrap();
     match first_char {
         'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => format_date_part(chars, days),
-        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' | 'X' | 'x' | 'n' => {
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' | 'n' | 'X' | 'x' => {
             format_time_part(chars, nanoseconds, offset)
         }
         _ => chars.to_string(),
@@ -128,8 +128,8 @@ pub(crate) fn format_time_part(chars: &str, nanoseconds: u64, offset: i32) -> St
 
             zero_padded(subsec_nanos / 10_u32.pow(9 - length as u32), length)
         }
-        'X' => format_zone(offset, chars.len(), true),
-        'x' => format_zone(offset, chars.len(), false),
+        'X' => format_zone(chars.len(), offset, true),
+        'x' => format_zone(chars.len(), offset, false),
         _ => chars.to_string(),
     }
 }
@@ -211,7 +211,8 @@ fn format_period(nanos: u64, length: usize, seperate_12: bool) -> String {
     }
 }
 
-fn format_zone(offset: i32, length: usize, with_z: bool) -> String {
+/// Formats the time zone
+fn format_zone(length: usize, offset: i32, with_z: bool) -> String {
     if with_z && offset == 0 {
         return "Z".to_string();
     }

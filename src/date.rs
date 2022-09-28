@@ -209,7 +209,7 @@ impl Date {
         )?))
     }
 
-    /// Parses a custom string with a given format and creates a new [`Date`] instance from it.
+    /// Parses a custom string with a given format and creates a new [`Date`] instance from it. See [`Date::format`] for a list of available symbols.
     ///
     /// **Note**: To successfully parse a string, you need to either provide `year`, `month` and `day of month` or `year` and `day of year`.
     ///

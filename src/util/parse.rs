@@ -1,7 +1,10 @@
 use super::format::get_length;
 use crate::{
     errors::{invalid_format::create_invalid_format, AstrolabeError},
-    shared::{MONTH_ABBREVIATED, MONTH_WIDE, SECS_PER_HOUR, SECS_PER_MINUTE, WDAY_WIDE},
+    shared::{
+        MONTH_ABBREVIATED, MONTH_WIDE, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
+        SECS_PER_MINUTE_U64, WDAY_WIDE,
+    },
     Date, DateUnit,
 };
 
@@ -88,27 +91,17 @@ pub(crate) enum ParseUnit {
     Month,
     DayOfMonth,
     DayOfYear,
-    // TODO: Remove
-    #[allow(dead_code)]
     Hour,
-    // TODO: Remove
-    #[allow(dead_code)]
+    Period,
+    PeriodHour,
     Min,
-    // TODO: Remove
-    #[allow(dead_code)]
     Sec,
-    // TODO: Remove
-    #[allow(dead_code)]
+    Decis,
     Centis,
-    // TODO: Remove
-    #[allow(dead_code)]
     Millis,
-    // TODO: Remove
-    #[allow(dead_code)]
     Micros,
-    // TODO: Remove
-    #[allow(dead_code)]
     Nanos,
+    Offset,
 }
 
 #[derive(Default)]
@@ -119,28 +112,62 @@ pub(crate) struct ParsedDate {
     pub(crate) day_of_year: Option<u32>,
 }
 
+#[derive(Default)]
+pub(crate) struct ParsedTime {
+    pub(crate) hour: Option<u64>,
+    pub(crate) period_hour: Option<u64>,
+    pub(crate) period: Option<Period>,
+    pub(crate) min: Option<u64>,
+    pub(crate) sec: Option<u64>,
+    pub(crate) decis: Option<u64>,
+    pub(crate) centis: Option<u64>,
+    pub(crate) millis: Option<u64>,
+    pub(crate) micros: Option<u64>,
+    pub(crate) nanos: Option<u64>,
+    pub(crate) offset: Option<i32>,
+}
+
+impl ParsedTime {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.hour.is_none()
+            && self.period_hour.is_none()
+            && self.min.is_none()
+            && self.sec.is_none()
+            && self.decis.is_none()
+            && self.centis.is_none()
+            && self.millis.is_none()
+            && self.micros.is_none()
+            && self.nanos.is_none()
+    }
+}
+
+pub(crate) enum Period {
+    AM = 0,
+    PM = 12,
+}
+
 /// Formats string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
 /// **Note**: Not all field types/symbols are implemented.
-// TODO: Remove
-// #[allow(dead_code)]
-// pub(crate) fn parse_part(
-//     chars: &str,
-//     string: &mut String,
-// ) -> Result<Option<ParsedPart>, AstrolabeError> {
-//     // Using unwrap because it's safe to assume that chars has a length of at least 1
-//     let first_char = chars.chars().next().unwrap();
-//     Ok(match first_char {
-//         'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => parse_date_part(chars, string)?,
-//         // 'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' | 'X' | 'x' | 'n' => {}
-//         _ => {
-//             remove_part(chars.len(), string)?;
-//             None
-//         }
-//     })
-// }
+pub(crate) fn parse_part(
+    chars: &str,
+    string: &mut String,
+) -> Result<Option<ParsedPart>, AstrolabeError> {
+    // Using unwrap because it's safe to assume that chars has a length of at least 1
+    let first_char = chars.chars().next().unwrap();
+    Ok(match first_char {
+        'G' | 'y' | 'q' | 'M' | 'w' | 'd' | 'D' | 'e' => parse_date_part(chars, string)?,
+        'a' | 'b' | 'h' | 'H' | 'K' | 'k' | 'm' | 's' | 'n' | 'X' | 'x' => {
+            parse_time_part(chars, string)?
+        }
+        _ => {
+            remove_part(chars.len(), string)?;
+            None
+        }
+    })
+}
 
 /// Parse string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
-/// This function only formats date parts while ignoring time related parts (E.g. hour, minute)
+/// This function only parses date parts while ignoring time related parts (E.g. hour, minute)
 pub(crate) fn parse_date_part(
     chars: &str,
     string: &mut String,
@@ -168,7 +195,7 @@ pub(crate) fn parse_date_part(
                     None
                 } else {
                     return Err(create_invalid_format(format!(
-                        "Could not parse {} from given string.",
+                        "Could not parse '{}' from given string.",
                         chars
                     )));
                 }
@@ -238,7 +265,7 @@ pub(crate) fn parse_date_part(
                     };
                 }
                 return Err(create_invalid_format(format!(
-                    "Could not parse {} from given string.",
+                    "Could not parse '{}' from given string.",
                     chars
                 )));
             }
@@ -360,6 +387,332 @@ pub(crate) fn parse_date_part(
     })
 }
 
+/// Parse string parts based on https://www.unicode.org/reports/tr35/tr35-dates.html#table-date-field-symbol-table
+/// This function only parses time parts while ignoring date related parts (E.g. year, day)
+pub(crate) fn parse_time_part(
+    chars: &str,
+    string: &mut String,
+) -> Result<Option<ParsedPart>, AstrolabeError> {
+    // Using unwrap because it's safe to assume that chars has a length of at least 1
+    let first_char = chars.chars().next().unwrap();
+    Ok(match first_char {
+        'a' => match chars.len() {
+            4 => {
+                let period = pick_part::<String>(4, string, "period")?;
+                match period.as_str() {
+                    "a.m." => Some(ParsedPart {
+                        value: 0,
+                        unit: ParseUnit::Period,
+                    }),
+                    "p.m." => Some(ParsedPart {
+                        value: 1,
+                        unit: ParseUnit::Period,
+                    }),
+                    _ => {
+                        return Err(create_invalid_format(format!(
+                            "Could not parse '{}' from given string.",
+                            chars
+                        )));
+                    }
+                }
+            }
+            5 => {
+                let period = pick_part::<String>(1, string, "period")?;
+                match period.as_str() {
+                    "a" => Some(ParsedPart {
+                        value: 0,
+                        unit: ParseUnit::Period,
+                    }),
+                    "p" => Some(ParsedPart {
+                        value: 1,
+                        unit: ParseUnit::Period,
+                    }),
+                    _ => {
+                        return Err(create_invalid_format(format!(
+                            "Could not parse '{}' from given string.",
+                            chars
+                        )));
+                    }
+                }
+            }
+            _ => {
+                let period = pick_part::<String>(2, string, "period")?;
+                match period.as_str() {
+                    "am" | "AM" => Some(ParsedPart {
+                        value: 0,
+                        unit: ParseUnit::Period,
+                    }),
+                    "pm" | "PM" => Some(ParsedPart {
+                        value: 1,
+                        unit: ParseUnit::Period,
+                    }),
+                    _ => {
+                        return Err(create_invalid_format(format!(
+                            "Could not parse '{}' from given string.",
+                            chars
+                        )));
+                    }
+                }
+            }
+        },
+        'b' => match chars.len() {
+            4 => {
+                for (n, period) in ["a.m.", "midnight", "p.m.", "noon"].iter().enumerate() {
+                    if string.starts_with(period) {
+                        // Using unwrap because it's safe to assume that the string is long enough
+                        remove_part(period.len(), string).unwrap();
+                        return Ok(Some(ParsedPart {
+                            value: if n <= 1 { 0 } else { 1 },
+                            unit: ParseUnit::Period,
+                        }));
+                    };
+                }
+                return Err(create_invalid_format(format!(
+                    "Could not parse '{}' from given string.",
+                    chars
+                )));
+            }
+            5 => {
+                for (n, period) in ["a", "mi", "p", "n"].iter().enumerate() {
+                    if string.starts_with(period) {
+                        // Using unwrap because it's safe to assume that the string is long enough
+                        remove_part(period.len(), string).unwrap();
+                        return Ok(Some(ParsedPart {
+                            value: if n <= 1 { 0 } else { 1 },
+                            unit: ParseUnit::Period,
+                        }));
+                    };
+                }
+                return Err(create_invalid_format(format!(
+                    "Could not parse '{}' from given string.",
+                    chars
+                )));
+            }
+            _ => {
+                for (n, period) in ["am", "AM", "midnight", "pm", "PM", "noon"]
+                    .iter()
+                    .enumerate()
+                {
+                    if string.starts_with(period) {
+                        // Using unwrap because it's safe to assume that the string is long enough
+                        remove_part(period.len(), string).unwrap();
+                        return Ok(Some(ParsedPart {
+                            value: if n <= 2 { 0 } else { 1 },
+                            unit: ParseUnit::Period,
+                        }));
+                    };
+                }
+                return Err(create_invalid_format(format!(
+                    "Could not parse '{}' from given string.",
+                    chars
+                )));
+            }
+        },
+        'h' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let hour = pick_part::<u32>(2, string, "hour")?;
+                    Some(ParsedPart {
+                        value: if hour == 12 { 0 } else { hour } as i64,
+                        unit: ParseUnit::PeriodHour,
+                    })
+                }
+                _ => {
+                    let hour = pick_part::<u32>(1, string, "hour")?;
+                    Some(ParsedPart {
+                        // Hour cannot be 12
+                        value: hour as i64,
+                        unit: ParseUnit::PeriodHour,
+                    })
+                }
+            },
+            _ => {
+                let hour = pick_part::<u32>(2, string, "hour")?;
+                Some(ParsedPart {
+                    value: if hour == 12 { 0 } else { hour } as i64,
+                    unit: ParseUnit::PeriodHour,
+                })
+            }
+        },
+        'H' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let hour = pick_part::<u32>(2, string, "hour")?;
+                    println!("{}", hour);
+                    Some(ParsedPart {
+                        value: hour as i64,
+                        unit: ParseUnit::Hour,
+                    })
+                }
+                _ => {
+                    let hour = pick_part::<u32>(1, string, "hour")?;
+                    Some(ParsedPart {
+                        value: hour as i64,
+                        unit: ParseUnit::Hour,
+                    })
+                }
+            },
+            _ => {
+                let hour = pick_part::<u32>(2, string, "hour")?;
+                Some(ParsedPart {
+                    value: hour as i64,
+                    unit: ParseUnit::Hour,
+                })
+            }
+        },
+        'K' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let hour = pick_part::<u32>(2, string, "hour")?;
+                    Some(ParsedPart {
+                        value: hour as i64,
+                        unit: ParseUnit::PeriodHour,
+                    })
+                }
+                _ => {
+                    let hour = pick_part::<u32>(1, string, "hour")?;
+                    Some(ParsedPart {
+                        value: hour as i64,
+                        unit: ParseUnit::PeriodHour,
+                    })
+                }
+            },
+            _ => {
+                let hour = pick_part::<u32>(2, string, "hour")?;
+                Some(ParsedPart {
+                    value: hour as i64,
+                    unit: ParseUnit::PeriodHour,
+                })
+            }
+        },
+        'k' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let hour = pick_part::<u32>(2, string, "hour")?;
+                    Some(ParsedPart {
+                        value: if hour == 24 { 0 } else { hour } as i64,
+                        unit: ParseUnit::Hour,
+                    })
+                }
+                _ => {
+                    let hour = pick_part::<u32>(1, string, "hour")?;
+                    Some(ParsedPart {
+                        // Hour cannot be 24
+                        value: hour as i64,
+                        unit: ParseUnit::Hour,
+                    })
+                }
+            },
+            _ => {
+                let hour = pick_part::<u32>(2, string, "hour")?;
+                Some(ParsedPart {
+                    value: if hour == 24 { 0 } else { hour } as i64,
+                    unit: ParseUnit::Hour,
+                })
+            }
+        },
+        'm' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let minute = pick_part::<u32>(2, string, "minute")?;
+                    Some(ParsedPart {
+                        value: minute as i64,
+                        unit: ParseUnit::Min,
+                    })
+                }
+                _ => {
+                    let minute = pick_part::<u32>(1, string, "minute")?;
+                    Some(ParsedPart {
+                        value: minute as i64,
+                        unit: ParseUnit::Min,
+                    })
+                }
+            },
+            _ => {
+                let minute = pick_part::<u32>(2, string, "minute")?;
+                Some(ParsedPart {
+                    value: minute as i64,
+                    unit: ParseUnit::Min,
+                })
+            }
+        },
+        's' => match chars.len() {
+            1 => match string.chars().nth(1) {
+                Some(char) if char.is_ascii_digit() => {
+                    let seconds = pick_part::<u32>(2, string, "seconds")?;
+                    Some(ParsedPart {
+                        value: seconds as i64,
+                        unit: ParseUnit::Sec,
+                    })
+                }
+                _ => {
+                    let seconds = pick_part::<u32>(1, string, "seconds")?;
+                    Some(ParsedPart {
+                        value: seconds as i64,
+                        unit: ParseUnit::Sec,
+                    })
+                }
+            },
+            _ => {
+                let seconds = pick_part::<u32>(2, string, "seconds")?;
+                Some(ParsedPart {
+                    value: seconds as i64,
+                    unit: ParseUnit::Sec,
+                })
+            }
+        },
+        'n' => match chars.len() {
+            1 => {
+                let subsecond = pick_part::<u32>(1, string, "subseconds")?;
+
+                Some(ParsedPart {
+                    value: subsecond as i64,
+                    unit: ParseUnit::Decis,
+                })
+            }
+            2 => {
+                let subsecond = pick_part::<u32>(2, string, "subseconds")?;
+
+                Some(ParsedPart {
+                    value: subsecond as i64,
+                    unit: ParseUnit::Centis,
+                })
+            }
+            4 => {
+                let subsecond = pick_part::<u32>(6, string, "subseconds")?;
+
+                Some(ParsedPart {
+                    value: subsecond as i64,
+                    unit: ParseUnit::Micros,
+                })
+            }
+            5 => {
+                let subsecond = pick_part::<u32>(9, string, "subseconds")?;
+
+                Some(ParsedPart {
+                    value: subsecond as i64,
+                    unit: ParseUnit::Nanos,
+                })
+            }
+            _ => {
+                let subsecond = pick_part::<u32>(3, string, "subseconds")?;
+
+                Some(ParsedPart {
+                    value: subsecond as i64,
+                    unit: ParseUnit::Millis,
+                })
+            }
+        },
+        'X' => parse_zone(chars.len(), string, true)?,
+        'x' => parse_zone(chars.len(), string, false)?,
+        _ => {
+            remove_part(chars.len(), string)?;
+            None
+        }
+    })
+}
+
+/// Parses the month of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
 fn parse_month(length: usize, string: &mut String) -> Result<Option<ParsedPart>, AstrolabeError> {
     Ok(match length {
         1 | 2 => {
@@ -408,6 +761,7 @@ fn parse_month(length: usize, string: &mut String) -> Result<Option<ParsedPart>,
     })
 }
 
+/// Parses the week day of a date based on https://www.unicode.org/reports/tr35/tr35-dates.html#dfst-month
 fn parse_wday(length: usize, string: &mut String) -> Result<Option<ParsedPart>, AstrolabeError> {
     Ok(match length {
         2 | 3 => {
@@ -434,6 +788,145 @@ fn parse_wday(length: usize, string: &mut String) -> Result<Option<ParsedPart>, 
         _ => {
             remove_part(1, string)?;
             None
+        }
+    })
+}
+
+/// Parses the time zone
+fn parse_zone(
+    length: usize,
+    string: &mut String,
+    with_z: bool,
+) -> Result<Option<ParsedPart>, AstrolabeError> {
+    let prefix = pick_part::<String>(1, string, "timezone prefix")?;
+
+    let multiplier = match prefix.as_str() {
+        "Z" if with_z => {
+            return Ok(Some(ParsedPart {
+                value: 0,
+                unit: ParseUnit::Offset,
+            }));
+        }
+        "+" => 1,
+        "-" => -1,
+        _ => {
+            return Err(create_invalid_format(
+                "Couldn't parse prefix of timezone offset. Prefix has to be either '+' or '-'."
+                    .to_string(),
+            ))
+        }
+    };
+
+    let hour = pick_part::<u32>(2, string, "timezone hour")?;
+
+    Ok(match length {
+        1 => match string.chars().next() {
+            Some(char) if char.is_ascii_digit() => {
+                let minute = pick_part::<u32>(2, string, "timezone minute")?;
+
+                let offset = (hour * SECS_PER_HOUR_U64 as u32 + minute * SECS_PER_MINUTE_U64 as u32)
+                    as i64
+                    * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+            _ => {
+                let offset = (hour * SECS_PER_HOUR_U64 as u32) as i64 * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+        },
+        2 => {
+            let minute = pick_part::<u32>(2, string, "timezone minute")?;
+
+            let offset = (hour * SECS_PER_HOUR_U64 as u32 + minute * SECS_PER_MINUTE_U64 as u32)
+                as i64
+                * multiplier;
+
+            Some(ParsedPart {
+                value: offset,
+                unit: ParseUnit::Offset,
+            })
+        }
+        4 => match string.chars().nth(2) {
+            Some(char) if char.is_ascii_digit() => {
+                let minute = pick_part::<u32>(2, string, "timezone minute")?;
+                let second = pick_part::<u32>(2, string, "timezone second")?;
+
+                let offset = (hour * SECS_PER_HOUR_U64 as u32
+                    + minute * SECS_PER_MINUTE_U64 as u32
+                    + second) as i64
+                    * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+            _ => {
+                let minute = pick_part::<u32>(2, string, "timezone minute")?;
+
+                let offset = (hour * SECS_PER_HOUR_U64 as u32 + minute * SECS_PER_MINUTE_U64 as u32)
+                    as i64
+                    * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+        },
+        5 => match string.chars().nth(4) {
+            Some(char) if char.is_ascii_digit() => {
+                // Using unwrap because it's safe to assume that the string is long enough
+                remove_part(1, string).unwrap();
+                let minute = pick_part::<u32>(2, string, "timezone minute")?;
+                // Using unwrap because it's safe to assume that the string is long enough
+                remove_part(1, string).unwrap();
+                let second = pick_part::<u32>(2, string, "timezone second")?;
+
+                let offset = (hour * SECS_PER_HOUR_U64 as u32
+                    + minute * SECS_PER_MINUTE_U64 as u32
+                    + second) as i64
+                    * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+            _ => {
+                remove_part(1, string)?;
+                let minute = pick_part::<u32>(2, string, "timezone minute")?;
+
+                let offset = (hour * SECS_PER_HOUR_U64 as u32 + minute * SECS_PER_MINUTE_U64 as u32)
+                    as i64
+                    * multiplier;
+
+                Some(ParsedPart {
+                    value: offset,
+                    unit: ParseUnit::Offset,
+                })
+            }
+        },
+        _ => {
+            remove_part(1, string)?;
+            let minute = pick_part::<u32>(2, string, "timezone minute")?;
+
+            let offset = (hour * SECS_PER_HOUR_U64 as u32 + minute * SECS_PER_MINUTE_U64 as u32)
+                as i64
+                * multiplier;
+
+            Some(ParsedPart {
+                value: offset,
+                unit: ParseUnit::Offset,
+            })
         }
     })
 }

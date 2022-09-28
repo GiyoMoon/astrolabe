@@ -4,16 +4,22 @@ use crate::{
         out_of_range::{create_custom_oor, create_simple_oor},
         AstrolabeError,
     },
-    shared::{DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64},
+    shared::{
+        DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64,
+        SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+    },
     util::{
         convert::{
             add_offset_to_dn, date_to_days, days_nanos_to_nanos, days_nanos_to_secs, days_to_date,
             dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_unit, remove_offset_from_dn,
-            secs_to_days_nanos, time_to_day_seconds,
+            secs_to_days_nanos, time_to_day_seconds, year_doy_to_days,
         },
         format::format_part,
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
-        parse::{parse_format_string, parse_offset},
+        parse::{
+            parse_format_string, parse_offset, parse_part, ParseUnit, ParsedDate, ParsedTime,
+            Period,
+        },
     },
     Date, Offset, Precision, Time,
 };
@@ -513,6 +519,108 @@ impl DateTime {
             Precision::Micros => self.format("yyyy-MM-ddTHH:mm:ss.nnnnXXX"),
             Precision::Nanos => self.format("yyyy-MM-ddTHH:mm:ss.nnnnnXXX"),
         }
+    }
+
+    /// Parses a custom string with a given format and creates a new [`DateTime`] instance from it. See [`DateTime::format`] for a list of available symbols.
+    ///
+    /// *Note**: To successfully parse a string, you need to either provide `year`, `month` and `day of month` or `year` and `day of year`.
+    ///
+    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given string could not be parsed with the given format.
+    ///
+    /// ```rust
+    /// # use astrolabe::DateTime;
+    /// let date_time = DateTime::parse("2022-05-02 12:32:01", "yyyy-MM-dd HH:mm:ss").unwrap();
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn parse(string: &str, format: &str) -> Result<Self, AstrolabeError> {
+        let parts = parse_format_string(format);
+
+        let mut date = ParsedDate::default();
+        let mut time = ParsedTime::default();
+        let mut string = string.to_string();
+
+        for part in parts {
+            // Escaped apostrophes
+            if part.starts_with('\u{0000}') {
+                string.replace_range(0..part.len(), "");
+                continue;
+            }
+
+            // Escaped parts
+            if part.starts_with('\'') {
+                string.replace_range(0..part.len() - if part.ends_with('\'') { 2 } else { 1 }, "");
+                continue;
+            }
+
+            let parsed_part = parse_part(&part, &mut string)?;
+            if let Some(parsed_part) = parsed_part {
+                match parsed_part.unit {
+                    ParseUnit::Year => date.year = Some(parsed_part.value as i32),
+                    ParseUnit::Month => date.month = Some(parsed_part.value as u32),
+                    ParseUnit::DayOfMonth => date.day_of_month = Some(parsed_part.value as u32),
+                    ParseUnit::DayOfYear => date.day_of_year = Some(parsed_part.value as u32),
+                    ParseUnit::Hour => time.hour = Some(parsed_part.value as u64),
+                    ParseUnit::PeriodHour => time.period_hour = Some(parsed_part.value as u64),
+                    ParseUnit::Period => {
+                        time.period = Some(if parsed_part.value == 0 {
+                            Period::AM
+                        } else {
+                            Period::PM
+                        })
+                    }
+                    ParseUnit::Min => time.min = Some(parsed_part.value as u64),
+                    ParseUnit::Sec => time.sec = Some(parsed_part.value as u64),
+                    ParseUnit::Decis => time.decis = Some(parsed_part.value as u64),
+                    ParseUnit::Centis => time.centis = Some(parsed_part.value as u64),
+                    ParseUnit::Millis => time.millis = Some(parsed_part.value as u64),
+                    ParseUnit::Micros => time.micros = Some(parsed_part.value as u64),
+                    ParseUnit::Nanos => time.nanos = Some(parsed_part.value as u64),
+                    ParseUnit::Offset => time.offset = Some(parsed_part.value as i32),
+                };
+            };
+        }
+
+        let mut date_time = if date.year.is_some()
+            && date.month.is_some()
+            && date.day_of_month.is_some()
+        {
+            DateTime::from_ymd(
+                date.year.unwrap() as i32,
+                date.month.unwrap() as u32,
+                date.day_of_month.unwrap() as u32,
+            )?
+        } else if date.year.is_some() && date.day_of_year.is_some() {
+            let days = year_doy_to_days(date.year.unwrap(), date.day_of_year.unwrap())?;
+            DateTime::from_days(days)
+        } else {
+            return Err(create_invalid_format("Not enough data to create a Date instance from this string. Please include year and either month and day of month or day of year".to_string()));
+        };
+
+        let mut nanoseconds = 0;
+
+        if time.hour.is_some() {
+            nanoseconds += time.hour.unwrap_or(0) * SECS_PER_HOUR_U64 * NANOS_PER_SEC;
+        } else {
+            nanoseconds += (time.period_hour.unwrap_or(0)
+                + time.period.unwrap_or(Period::AM) as u64)
+                * SECS_PER_HOUR_U64
+                * NANOS_PER_SEC;
+        }
+        nanoseconds += time.min.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
+        nanoseconds += time.sec.unwrap_or(0) * NANOS_PER_SEC;
+        nanoseconds += time.decis.unwrap_or(0) * 100_000_000;
+        nanoseconds += time.centis.unwrap_or(0) * 10_000_000;
+        nanoseconds += time.millis.unwrap_or(0) * 1_000_000;
+        nanoseconds += time.micros.unwrap_or(0) * 1_000;
+        nanoseconds += time.nanos.unwrap_or(0);
+
+        date_time = date_time.set_time(nanoseconds)?;
+
+        if let Some(offset) = time.offset {
+            date_time = date_time.set_offset(offset)?;
+        }
+
+        Ok(date_time)
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
