@@ -26,7 +26,7 @@
   </a>
   <!-- Github Actions -->
   <a href="https://github.com/giyomoon/astrolabe/actions">
-    <img src="https://img.shields.io/github/workflow/status/giyomoon/astrolabe/checks/main?style=flat" alt="Actions Status" />
+    <img src="https://img.shields.io/github/actions/workflow/status/giyomoon/astrolabe/checks.yml?branch=main&style=flat" alt="Actions Status" />
   </a>
   <!-- Code coverage -->
   <a href="https://app.codecov.io/gh/GiyoMoon/astrolabe">
