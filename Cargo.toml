@@ -20,4 +20,14 @@ include = [
     "LICENSE-MIT",
 ]
 
-[dependencies]
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+optional = true
+
+[dev-dependencies]
+serde_test = "1.0"

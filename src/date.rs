@@ -12,6 +12,7 @@ use crate::{
 };
 use std::{
     fmt::Display,
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -254,9 +255,9 @@ impl Date {
         Ok(
             if date.year.is_some() && date.month.is_some() && date.day_of_month.is_some() {
                 Date::from_ymd(
-                    date.year.unwrap() as i32,
-                    date.month.unwrap() as u32,
-                    date.day_of_month.unwrap() as u32,
+                    date.year.unwrap(),
+                    date.month.unwrap(),
+                    date.day_of_month.unwrap(),
                 )?
             } else if date.year.is_some() && date.day_of_year.is_some() {
                 let days = year_doy_to_days(date.year.unwrap(), date.day_of_year.unwrap())?;
@@ -360,5 +361,59 @@ impl From<&Date> for Date {
 impl Display for Date {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.format("yyyy/MM/dd"))
+    }
+}
+
+impl FromStr for Date {
+    type Err = AstrolabeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Date::parse(s, "yyyy-MM-dd")
+    }
+}
+
+#[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+mod serde {
+    use crate::Date;
+    use serde::de;
+    use serde::ser;
+    use std::fmt;
+
+    /// Serialize a [`Date`] instance as `yyyy-MM-dd`.
+    impl ser::Serialize for Date {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: ser::Serializer,
+        {
+            serializer.serialize_str(&self.format("yyyy-MM-dd"))
+        }
+    }
+
+    struct DateVisitor;
+
+    impl<'de> de::Visitor<'de> for DateVisitor {
+        type Value = Date;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a formatted date string in the format `yyyy-MM-dd`")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            value.parse().map_err(E::custom)
+        }
+    }
+
+    /// Deserialize a `yyyy-MM-dd` formatted string into a [`Date`] instance.
+    impl<'de> de::Deserialize<'de> for Date {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer.deserialize_str(DateVisitor)
+        }
     }
 }

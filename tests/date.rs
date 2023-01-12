@@ -34,6 +34,9 @@ mod date_tests {
         let clone = unit.clone();
         // PartialEq
         assert!(unit == clone);
+
+        assert!("2022-05-02".parse::<Date>().is_ok());
+        assert!("blabla".parse::<Date>().is_err());
     }
 
     #[test]

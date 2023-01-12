@@ -7,7 +7,7 @@ pub enum Offset {
     West,
 }
 
-/// Used for specifing the precision for RFC3339 timestamps.
+/// Used for specifing the precision for RFC 3339 timestamps.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Precision {
     /// Only seconds -> `2022-05-02T15:30:20Z`

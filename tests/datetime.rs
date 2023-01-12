@@ -48,6 +48,9 @@ mod datetime_tests {
         let clone = unit.clone();
         // PartialEq
         assert!(unit == clone);
+
+        assert!("2022-05-02T12:32:01Z".parse::<DateTime>().is_ok());
+        assert!("blabla".parse::<DateTime>().is_err());
     }
 
     #[test]

@@ -26,6 +26,7 @@ use crate::{
 use std::{
     cmp,
     fmt::Display,
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -227,7 +228,7 @@ impl DateTime {
         })
     }
 
-    /// Creates a new [`DateTime`] instance from an RFC3339 timestamp string.
+    /// Creates a new [`DateTime`] instance from an RFC 3339 timestamp string.
     ///
     /// ```rust
     /// # use astrolabe::DateTime;
@@ -237,27 +238,27 @@ impl DateTime {
     pub fn parse_rfc3339(string: &str) -> Result<Self, AstrolabeError> {
         if string.len() < 20 {
             return Err(create_invalid_format(
-                "RFC3339 string cannot be shorter than 20 chars".to_string(),
+                "RFC 3339 string cannot be shorter than 20 chars".to_string(),
             ));
         }
 
         let year = string[0..4].parse::<i32>().map_err(|_| {
-            create_invalid_format("Failed parsing year from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing year from RFC 3339 string".to_string())
         })?;
         let month = string[5..7].parse::<u32>().map_err(|_| {
-            create_invalid_format("Failed parsing month from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing month from RFC 3339 string".to_string())
         })?;
         let day = string[8..10].parse::<u32>().map_err(|_| {
-            create_invalid_format("Failed parsing day from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing day from RFC 3339 string".to_string())
         })?;
         let hour = string[11..13].parse::<u32>().map_err(|_| {
-            create_invalid_format("Failed parsing hour from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing hour from RFC 3339 string".to_string())
         })?;
         let min = string[14..16].parse::<u32>().map_err(|_| {
-            create_invalid_format("Failed parsing minute from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing minute from RFC 3339 string".to_string())
         })?;
         let sec = string[17..19].parse::<u32>().map_err(|_| {
-            create_invalid_format("Failed parsing second from RFC3339 string".to_string())
+            create_invalid_format("Failed parsing second from RFC 3339 string".to_string())
         })?;
 
         let (nanos, offset) = if string.chars().nth(19).unwrap() == '.' {
@@ -266,14 +267,14 @@ impl DateTime {
                 .take_while(|&char| char != 'Z' && char != '+' && char != '-')
                 .collect::<String>();
             let nanos = nanos_string.parse::<u64>().map_err(|_| {
-                create_invalid_format("Failed parsing subseconds from RFC3339 string".to_string())
+                create_invalid_format("Failed parsing subseconds from RFC 3339 string".to_string())
             })? * (1000000000 / 10_u64.pow(nanos_string.len() as u32));
 
             let offset_substring = string[20..]
                 .chars()
                 .position(|char| char == 'Z' || char == '+' || char == '-')
                 .ok_or_else(|| {
-                    create_invalid_format("Failed parsing offset from RFC3339 string".to_string())
+                    create_invalid_format("Failed parsing offset from RFC 3339 string".to_string())
                 })?;
             let offset = parse_offset(&string[20 + offset_substring..])?;
 
@@ -495,7 +496,7 @@ impl DateTime {
         })
     }
 
-    /// Format as an RFC3339 timestamp (`2022-05-02T15:30:20Z`).
+    /// Format as an RFC 3339 timestamp (`2022-05-02T15:30:20Z`).
     ///
     /// Use the [`Precision`] enum to specify decimal places after seconds:
     /// * [`Precision::Seconds`] -> `2022-05-02T15:30:20Z`
@@ -585,9 +586,9 @@ impl DateTime {
             && date.day_of_month.is_some()
         {
             DateTime::from_ymd(
-                date.year.unwrap() as i32,
-                date.month.unwrap() as u32,
-                date.day_of_month.unwrap() as u32,
+                date.year.unwrap(),
+                date.month.unwrap(),
+                date.day_of_month.unwrap(),
             )?
         } else if date.year.is_some() && date.day_of_year.is_some() {
             let days = year_doy_to_days(date.year.unwrap(), date.day_of_year.unwrap())?;
@@ -810,7 +811,7 @@ impl DateTime {
         Ok(Self {
             days: self.days,
             nanoseconds: self.nanoseconds,
-            offset: seconds as i32,
+            offset: seconds,
         })
     }
 
@@ -909,5 +910,60 @@ impl PartialOrd for DateTime {
 impl Ord for DateTime {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.as_nanoseconds().cmp(&other.as_nanoseconds())
+    }
+}
+
+impl FromStr for DateTime {
+    type Err = AstrolabeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        DateTime::parse_rfc3339(s)
+    }
+}
+
+#[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+mod serde {
+    use crate::DateTime;
+    use crate::Precision;
+    use serde::de;
+    use serde::ser;
+    use std::fmt;
+
+    /// Serialize a [`DateTime`] instance as an RFC 3339 string.
+    impl ser::Serialize for DateTime {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: ser::Serializer,
+        {
+            serializer.serialize_str(&self.format_rfc3339(Precision::Seconds))
+        }
+    }
+
+    struct DateTimeVisitor;
+
+    impl<'de> de::Visitor<'de> for DateTimeVisitor {
+        type Value = DateTime;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("an RFC 3339 formatted date string")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            value.parse().map_err(E::custom)
+        }
+    }
+
+    /// Deserialize an RFC 3339 string into a [`DateTime`] instance.
+    impl<'de> de::Deserialize<'de> for DateTime {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer.deserialize_str(DateTimeVisitor)
+        }
     }
 }

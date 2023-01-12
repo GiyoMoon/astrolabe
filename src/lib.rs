@@ -2,10 +2,11 @@
 //!
 //! ### Features
 //! - **Formatting** with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
-//! - **RFC3339** timestamp parsing/formatting
+//! - **RFC 3339** timestamp parsing/formatting
 //! - **Manipulation** functions to easily add, remove or set date units
 //! - **Timezone** offset
 //! - **Zero** dependencies
+//! - **Serde** serializing and deserializing (With feature flag `serde`)
 //!
 //! ### Example
 //! A basic example which demonstrates creating, formatting and manipulating a [`DateTime`] instance.
@@ -34,6 +35,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(clippy::many_single_char_names)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod date;
 mod datetime;

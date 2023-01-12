@@ -48,6 +48,9 @@ mod time_tests {
         let clone = unit.clone();
         // PartialEq
         assert!(unit == clone);
+
+        assert!("12:32:01".parse::<Time>().is_ok());
+        assert!("blabla".parse::<Time>().is_err());
     }
 
     #[test]
