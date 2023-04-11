@@ -13,6 +13,7 @@ mod date_tests {
         // From<&Date>
         let _ = Date::from(&date);
         // Clone
+        #[allow(clippy::clone_on_copy)]
         let clone = date.clone();
         // PartialEq
         assert!(date == clone);

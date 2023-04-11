@@ -13,6 +13,7 @@ mod datetime_tests {
         // From<&DateTime>
         let _ = DateTime::from(&date_time);
         // Clone
+        #[allow(clippy::clone_on_copy)]
         let clone = date_time.clone();
         // PartialEq
         assert!(date_time == clone);

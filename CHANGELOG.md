@@ -6,9 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.1] - Unreleased
+## [0.3.0] - Unreleased
 ### Added
-- Impl `Ord` and `PartialOrd` for `DateTime`, `Date` and `Time`
+- Impl `Ord`, `PartialOrd`, `FromStr` for `DateTime`, `Date` and `Time`
+- Impl Serde `Serialize` and `Deserialize` for `DateTime`, `Date` and `Time`
 - `DateTime::parse`
 - `Date::parse`
 - `Time::parse`
