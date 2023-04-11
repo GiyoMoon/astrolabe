@@ -127,20 +127,6 @@ pub(crate) struct ParsedTime {
     pub(crate) offset: Option<i32>,
 }
 
-impl ParsedTime {
-    pub(crate) fn is_empty(&self) -> bool {
-        self.hour.is_none()
-            && self.period_hour.is_none()
-            && self.min.is_none()
-            && self.sec.is_none()
-            && self.decis.is_none()
-            && self.centis.is_none()
-            && self.millis.is_none()
-            && self.micros.is_none()
-            && self.nanos.is_none()
-    }
-}
-
 pub(crate) enum Period {
     AM = 0,
     PM = 12,

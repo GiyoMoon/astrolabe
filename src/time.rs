@@ -1,6 +1,5 @@
 use crate::{
     errors::{
-        invalid_format::create_invalid_format,
         out_of_range::{create_custom_oor, create_simple_oor},
         AstrolabeError,
     },
@@ -245,7 +244,7 @@ impl Time {
         .unwrap())
     }
 
-    /// Parses a custom string with a given format and creates a new [`Time`] instance from it. See [`Time::format`] for a list of available symbols.
+    /// Parses a string with a given format and creates a new [`Time`] instance from it. See [`Time::format`] for a list of available symbols.
     ///
     /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given string could not be parsed with the given format.
     ///
@@ -296,12 +295,6 @@ impl Time {
                     _ => time.offset = Some(parsed_part.value as i32),
                 };
             };
-        }
-
-        if time.is_empty() {
-            return Err(create_invalid_format(
-                "No values parsed from string.".to_string(),
-            ));
         }
 
         let mut nanoseconds = 0;

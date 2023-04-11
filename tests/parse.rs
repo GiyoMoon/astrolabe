@@ -60,7 +60,6 @@ mod parse_tests {
         parse_ok_d("2022-Before Christ05-02", "yyyy-GGGGGGGMM-dd");
         parse_ok_d("2022-05-02Before Christ", "yyyy-MM-ddGGGGGGG");
 
-        parse_err_d("AD", "G");
         parse_err_d("AD", "GGGG");
         parse_err_d("AD2022-05-02", "GGGGyyyy-MM-dd");
         parse_err_d("ADU2022-05-02", "Gyyyy-MM-dd");
@@ -763,7 +762,6 @@ mod parse_tests {
         parse_ok_d("'02'2022-05", "''dd''yyy-MM");
         parse_ok_d("''02''2022-05", "''''dd''''yyy-MM");
         parse_ok_d("''dd''2022-05-02", "'''''dd'''''yyy-MM-dd");
-        parse_err_d("", "");
         parse_ok_d("test2022-05-02", "te's'tyyy-MM-dd");
 
         parse_ok_t("HHmmss123201HHmmss", "'HHmmss'HHmmss'HHmmss");
@@ -814,8 +812,6 @@ mod parse_tests {
         parse_err_d("-", "--");
         parse_err_t("-", "--");
 
-        parse_err_t("", "");
-
         let date_time = DateTime::parse("2022-05-02 12:32:01", "yyyy-MM-dd HH:mm:ss").unwrap();
         assert_eq!(
             "2022-05-02 12:32:01",
@@ -835,11 +831,37 @@ mod parse_tests {
 
         assert!(DateTime::parse("2022-14-02", "yyyy-MM-dd").is_err());
         assert!(DateTime::parse("2022-400", "yyyy-DDD").is_err());
-        assert!(DateTime::parse("2022", "yyyy").is_err());
 
         assert!(DateTime::parse("2022-M05-02 24", "yyyy-M-dd HH").is_err());
         assert!(DateTime::parse("2022-05-02 +24:00", "yyyy-MM-dd xxx").is_err());
         assert!(DateTime::parse("2022-05-02 24", "yyyy-MM-dd HH").is_err());
+    }
+
+    #[test]
+    fn minimal() {
+        parse_ok_custom_t("", "", "00:00:00 000000000", "HH:mm:ss nnnnn");
+        parse_ok_custom_t("12", "HH", "12:00:00 000000000", "HH:mm:ss nnnnn");
+
+        parse_ok_custom_d("", "", "0001/01/01");
+        parse_ok_custom_d("2022", "yyyy", "2022/01/01");
+        parse_ok_custom_d("05", "MM", "0001/05/01");
+        parse_ok_custom_d("02", "dd", "0001/01/02");
+
+        let date_time = DateTime::parse("", "").unwrap();
+        assert_eq!(
+            "0001/01/01 00:00:00 000000000",
+            date_time.format("yyyy/MM/dd HH:mm:ss nnnnn")
+        );
+        let date_time = DateTime::parse("2022", "yyyy").unwrap();
+        assert_eq!(
+            "2022/01/01 00:00:00 000000000",
+            date_time.format("yyyy/MM/dd HH:mm:ss nnnnn")
+        );
+        let date_time = DateTime::parse("05", "MM").unwrap();
+        assert_eq!(
+            "0001/05/01 00:00:00 000000000",
+            date_time.format("yyyy/MM/dd HH:mm:ss nnnnn")
+        );
     }
 
     fn parse_ok_d(string: &str, format: &str) {

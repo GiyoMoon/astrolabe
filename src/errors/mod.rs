@@ -1,4 +1,4 @@
-//! Various error types returned by methods in the astrolabe crate.
+//! Various error types returned by functions in the astrolabe crate.
 
 pub(crate) mod invalid_format;
 pub(crate) mod out_of_range;

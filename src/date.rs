@@ -1,7 +1,5 @@
 use crate::{
-    errors::{
-        invalid_format::create_invalid_format, out_of_range::create_simple_oor, AstrolabeError,
-    },
+    errors::{out_of_range::create_simple_oor, AstrolabeError},
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
         convert::{date_to_days, days_to_date, year_doy_to_days},
@@ -210,9 +208,7 @@ impl Date {
         )?))
     }
 
-    /// Parses a custom string with a given format and creates a new [`Date`] instance from it. See [`Date::format`] for a list of available symbols.
-    ///
-    /// **Note**: To successfully parse a string, you need to either provide `year`, `month` and `day of month` or `year` and `day of year`.
+    /// Parses a string with a given format and creates a new [`Date`] instance from it. See [`Date::format`] for a list of available symbols.
     ///
     /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given string could not be parsed with the given format.
     ///
@@ -252,20 +248,17 @@ impl Date {
             };
         }
 
-        Ok(
-            if date.year.is_some() && date.month.is_some() && date.day_of_month.is_some() {
-                Date::from_ymd(
-                    date.year.unwrap(),
-                    date.month.unwrap(),
-                    date.day_of_month.unwrap(),
-                )?
-            } else if date.year.is_some() && date.day_of_year.is_some() {
-                let days = year_doy_to_days(date.year.unwrap(), date.day_of_year.unwrap())?;
-                Date::from_days(days)
-            } else {
-                return Err(create_invalid_format("Not enough data to create a Date instance from this string. Please include year and either month and day of month or day of year".to_string()));
-            },
-        )
+        // Use day of year if present, otherwise use month + day of month
+        Ok(if date.day_of_year.is_some() {
+            let days = year_doy_to_days(date.year.unwrap_or(1), date.day_of_year.unwrap())?;
+            Date::from_days(days)
+        } else {
+            Date::from_ymd(
+                date.year.unwrap_or(1),
+                date.month.unwrap_or(1),
+                date.day_of_month.unwrap_or(1),
+            )?
+        })
     }
 
     /// Formatting with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table).
