@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2023-04-11
 ### Added
 - Impl `Ord`, `PartialOrd`, `FromStr` for `DateTime`, `Date` and `Time`
 - Impl Serde `Serialize` and `Deserialize` for `DateTime`, `Date` and `Time`
