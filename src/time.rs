@@ -4,7 +4,8 @@ use crate::{
         AstrolabeError,
     },
     shared::{
-        NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64,
+        SECS_PER_MINUTE_U64,
     },
     util::{
         convert::{
@@ -15,7 +16,7 @@ use crate::{
         manipulation::{apply_time_unit, set_time_unit},
         parse::{parse_format_string, parse_time_part, ParseUnit, ParsedTime, Period},
     },
-    DateTime, DateTimeUnit, Offset,
+    DateTime, Offset,
 };
 use std::{
     cmp,
@@ -623,7 +624,7 @@ impl FromStr for Time {
 impl From<DateTime> for Time {
     fn from(value: DateTime) -> Self {
         Self {
-            nanoseconds: value.get(DateTimeUnit::Nanos) as u64,
+            nanoseconds: (value.as_nanoseconds() % NANOS_PER_DAY as i128) as u64,
             offset: value.get_offset(),
         }
     }
@@ -632,7 +633,7 @@ impl From<DateTime> for Time {
 impl From<&DateTime> for Time {
     fn from(value: &DateTime) -> Self {
         Self {
-            nanoseconds: value.get(DateTimeUnit::Nanos) as u64,
+            nanoseconds: (value.as_nanoseconds() % NANOS_PER_DAY as i128) as u64,
             offset: value.get_offset(),
         }
     }

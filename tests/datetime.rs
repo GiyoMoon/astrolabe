@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod datetime_tests {
-    use astrolabe::{DateTime, DateTimeUnit, Precision};
+    use astrolabe::{Date, DateTime, DateTimeUnit, Precision, Time};
 
     #[test]
     fn derive() {
@@ -201,10 +201,7 @@ mod datetime_tests {
     fn from_hms_ok(expected: u64, hour: u32, minute: u32, second: u32) {
         assert_eq!(
             expected,
-            DateTime::from_hms(hour, minute, second)
-                .unwrap()
-                .time()
-                .as_nanoseconds()
+            Time::from(DateTime::from_hms(hour, minute, second).unwrap()).as_nanoseconds()
                 / 1_000_000_000
         );
     }
@@ -395,19 +392,11 @@ mod datetime_tests {
     fn time() {
         assert_eq!(
             0,
-            DateTime::default()
-                .set_time(0)
-                .unwrap()
-                .time()
-                .as_nanoseconds()
+            Time::from(DateTime::default().set_time(0).unwrap()).as_nanoseconds()
         );
         assert_eq!(
             86_399_999_999_999,
-            DateTime::default()
-                .set_time(86_399_999_999_999)
-                .unwrap()
-                .time()
-                .as_nanoseconds()
+            Time::from(DateTime::default().set_time(86_399_999_999_999).unwrap()).as_nanoseconds()
         );
         assert!(DateTime::default().set_time(86_400_000_000_000).is_err());
     }
@@ -415,8 +404,8 @@ mod datetime_tests {
     #[test]
     fn date_and_time() {
         let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-        let date = date_time.date();
-        let time = date_time.time();
+        let date: Date = date_time.into();
+        let time: Time = date_time.into();
         assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
         assert_eq!("12:32:01", time.format("HH:mm:ss"));
     }
