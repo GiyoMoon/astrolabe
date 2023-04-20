@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.4.0] - Unreleased
+### Added
+- **Structs**
+  - [`CronSchedule`](https://docs.rs/astrolabe/0.4.0/astrolabe/struct.CronSchedule.html)
+- `DateTime::clear_until`
+- `Date::clear_until`
+- `Time::clear_until`
+- Impl `From<Date>`, `From<&Date>`, `From<Time>` and `From<&Time>` for `DateTime`
+- Impl `From<DateTime>` and `From<&DateTime>` for `Date` and `Time`
 
 ## [0.3.0] - 2023-04-11
 ### Added
@@ -13,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DateTime::parse`
 - `Date::parse`
 - `Time::parse`
+### Removed
+- `DateTime::date` in favor of `Date::from<DateTime>`
+- `DateTime::time` in favor of `Time::from<DateTime>`
 
 ## [0.2.0] - 2022-08-25
 ### Added

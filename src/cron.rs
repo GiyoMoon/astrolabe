@@ -86,6 +86,7 @@ enum CronPartType {
     DayOfWeek,
 }
 
+/// Implements a cron expression parser and [`std::Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) to generate corresponding [`DateTime`] structs.
 #[derive(Debug, Clone)]
 pub struct CronSchedule {
     minutes: HashSet<u8>,
@@ -97,8 +98,45 @@ pub struct CronSchedule {
 }
 
 impl CronSchedule {
-    pub fn parse(string: &str) -> Result<Self, AstrolabeError> {
-        let fields: Vec<&str> = string.split_whitespace().collect();
+    /// Creates a new [`CronSchedule`] based on the provided cron expression.
+    /// Aims to be compatible with [crontab](https://man7.org/linux/man-pages/man5/crontab.5.html) from Linux.
+    ///
+    /// Returns an [`InvalidFormat`](AstrolabeError::InvalidFormat) error if the given expression could not be parsed.
+    ///
+    /// Format: `"minute hour day-of-month month day-of-week"`
+    ///
+    /// | Field        | Allowed values               |
+    /// | ------------ | ---------------------------- |
+    /// | minute       | 0-59                         |
+    /// | hour         | 0-23                         |
+    /// | day of month | 1-31                         |
+    /// | month        | 1-12, Jan-Dec                |
+    /// | day of week  | 0-7 (0/7 is Sunday), Mon-Sun |
+    ///
+    /// ```rust
+    /// # use astrolabe::CronSchedule;
+    /// // Every 5 minutes
+    /// let schedule = CronSchedule::parse("*/5 * * * *").unwrap();
+    /// for date in schedule.take(3) {
+    ///    println!("{}", date);
+    /// }
+    /// // Prints for example:
+    /// // 2022-05-02 16:15:00
+    /// // 2022-05-02 16:20:00
+    /// // 2022-05-02 16:25:00
+    ///
+    /// // Every weekday at 10:00
+    /// let schedule = CronSchedule::parse("0 10 * * Mon-Fri").unwrap();
+    /// for date in schedule.take(3) {
+    ///    println!("{}", date.format("yyyy-MM-dd HH:mm:ss eeee"));
+    /// }
+    /// // Prints for example:
+    /// // 2022-05-02 10:00:00 Monday
+    /// // 2022-05-03 10:00:00 Tuesday
+    /// // 2022-05-04 10:00:00 Wednesday
+    /// ```
+    pub fn parse(expression: &str) -> Result<Self, AstrolabeError> {
+        let fields: Vec<&str> = expression.split_whitespace().collect();
 
         if fields.len() != 5 {
             return Err(create_invalid_format(
@@ -159,7 +197,10 @@ impl Iterator for CronSchedule {
             }
 
             if !self.months.contains(&(next.get(DateTimeUnit::Month) as u8)) {
-                next = next.apply(1, DateTimeUnit::Month).ok()?;
+                next = next
+                    .apply(1, DateTimeUnit::Month)
+                    .ok()?
+                    .clear_until(DateTimeUnit::Day);
                 continue;
             }
 
@@ -178,17 +219,26 @@ impl Iterator for CronSchedule {
                     && !self.days_of_month.contains(&day_of_month))
                 || (dow_restricted && !dom_restricted && !self.days_of_week.contains(&day_of_week))
             {
-                next = next.apply(1, DateTimeUnit::Day).ok()?;
+                next = next
+                    .apply(1, DateTimeUnit::Day)
+                    .ok()?
+                    .clear_until(DateTimeUnit::Hour);
                 continue;
             }
 
             if !self.hours.contains(&(next.get(DateTimeUnit::Hour) as u8)) {
-                next = next.apply(1, DateTimeUnit::Hour).ok()?;
+                next = next
+                    .apply(1, DateTimeUnit::Hour)
+                    .ok()?
+                    .clear_until(DateTimeUnit::Min);
                 continue;
             }
 
             if !self.minutes.contains(&(next.get(DateTimeUnit::Min) as u8)) {
-                next = next.apply(1, DateTimeUnit::Min).ok()?;
+                next = next
+                    .apply(1, DateTimeUnit::Min)
+                    .ok()?
+                    .clear_until(DateTimeUnit::Sec);
                 continue;
             }
 

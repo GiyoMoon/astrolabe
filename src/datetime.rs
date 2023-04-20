@@ -11,8 +11,8 @@ use crate::{
     util::{
         convert::{
             add_offset_to_dn, date_to_days, days_nanos_to_nanos, days_nanos_to_secs, days_to_date,
-            dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_unit, remove_offset_from_dn,
-            secs_to_days_nanos, time_to_day_seconds, year_doy_to_days,
+            dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_time, nanos_to_unit,
+            remove_offset_from_dn, secs_to_days_nanos, time_to_day_seconds, year_doy_to_days,
         },
         format::format_part,
         manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
@@ -318,33 +318,6 @@ impl DateTime {
             nanoseconds,
             offset: 0,
         })
-    }
-
-    /// Returns the date.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_days(123);
-    /// let date = date_time.date();
-    /// assert_eq!(123, date.as_days());
-    /// ```
-    pub fn date(&self) -> Date {
-        Date::from_days(self.days)
-    }
-
-    /// Returns the clock time.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_days(0).set_time(3_600_000_000_000).unwrap();
-    /// let time = date_time.time();
-    /// assert_eq!(3_600_000_000_000, time.as_nanoseconds());
-    /// ```
-    pub fn time(&self) -> Time {
-        Time::from_nanoseconds(self.nanoseconds)
-            .unwrap()
-            .set_offset(self.offset)
-            .unwrap()
     }
 
     /// Returns the number of days since January 1, 0001 00:00:00 UTC. (Negative if date is before)
@@ -738,6 +711,65 @@ impl DateTime {
             .collect::<String>()
     }
 
+    /// Creates an new [`DateTime`] struct with the values cleared until the given unit. Is inclusive.
+    ///
+    /// ```rust
+    /// # use astrolabe::{DateTime, DateTimeUnit};
+    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
+    /// assert_eq!("2022/05/02 12:00:00", date_time.clear_until(DateTimeUnit::Min).format("yyyy/MM/dd HH:mm:ss"));
+    /// assert_eq!("2022/05/02 00:00:00", date_time.clear_until(DateTimeUnit::Hour).format("yyyy/MM/dd HH:mm:ss"));
+    /// assert_eq!("2022/01/01 00:00:00", date_time.clear_until(DateTimeUnit::Month).format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn clear_until(&self, unit: DateTimeUnit) -> Self {
+        match unit {
+            DateTimeUnit::Year => DateTime::default(),
+            DateTimeUnit::Month => {
+                let year = days_to_date(self.days).0;
+                // Using unwrap because it's safe to assume that the provided values are valid
+                DateTime::from_ymd(year, 1, 1).unwrap()
+            }
+            DateTimeUnit::Day => {
+                let (year, month, _) = days_to_date(self.days);
+                // Using unwrap because it's safe to assume that the provided values are valid
+                DateTime::from_ymd(year, month, 1).unwrap()
+            }
+            DateTimeUnit::Hour => DateTime::from(Date::from(self)),
+            DateTimeUnit::Min => {
+                let (year, month, day) = days_to_date(self.days);
+                let (hour, _, _) = nanos_to_time(self.nanoseconds);
+                // Using unwrap because it's safe to assume that the provided values are valid
+                DateTime::from_ymdhms(year, month, day, hour, 0, 0).unwrap()
+            }
+            DateTimeUnit::Sec => {
+                let (year, month, day) = days_to_date(self.days);
+                let (hour, min, _) = nanos_to_time(self.nanoseconds);
+                // Using unwrap because it's safe to assume that the provided values are valid
+                DateTime::from_ymdhms(year, month, day, hour, min, 0).unwrap()
+            }
+            DateTimeUnit::Centis => {
+                let (year, month, day) = days_to_date(self.days);
+                let (hour, min, sec) = nanos_to_time(self.nanoseconds);
+                // Using unwrap because it's safe to assume that the provided values are valid
+                DateTime::from_ymdhms(year, month, day, hour, min, sec).unwrap()
+            }
+            DateTimeUnit::Millis => {
+                // Using unwrap because it's safe to assume that the provided values are valid
+                self.set_time(Time::from(self).as_nanoseconds() / 10_000_000 * 10_000_000)
+                    .unwrap()
+            }
+            DateTimeUnit::Micros => {
+                // Using unwrap because it's safe to assume that the provided values are valid
+                self.set_time(Time::from(self).as_nanoseconds() / 1_000_000 * 1_000_000)
+                    .unwrap()
+            }
+            DateTimeUnit::Nanos => {
+                // Using unwrap because it's safe to assume that the provided values are valid
+                self.set_time(Time::from(self).as_nanoseconds() / 1_000 * 1_000)
+                    .unwrap()
+            }
+        }
+    }
+
     /// Creates a new [`DateTime`] instance with a given timezone offset defined as time units (hour, minute and second). Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
     ///
     /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
@@ -912,6 +944,38 @@ impl FromStr for DateTime {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         DateTime::parse_rfc3339(s)
+    }
+}
+
+impl From<Date> for DateTime {
+    fn from(value: Date) -> Self {
+        Self::from_days(value.as_days())
+    }
+}
+
+impl From<&Date> for DateTime {
+    fn from(value: &Date) -> Self {
+        Self::from_days(value.as_days())
+    }
+}
+
+impl From<Time> for DateTime {
+    fn from(value: Time) -> Self {
+        Self {
+            days: 0,
+            nanoseconds: value.as_nanoseconds(),
+            offset: value.get_offset(),
+        }
+    }
+}
+
+impl From<&Time> for DateTime {
+    fn from(value: &Time) -> Self {
+        Self {
+            days: 0,
+            nanoseconds: value.as_nanoseconds(),
+            offset: value.get_offset(),
+        }
     }
 }
 

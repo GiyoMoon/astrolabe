@@ -7,6 +7,7 @@ use crate::{
         manipulation::{apply_date_unit, set_date_unit},
         parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
     },
+    DateTime,
 };
 use std::{
     fmt::Display,
@@ -343,6 +344,30 @@ impl Date {
             })
             .collect::<String>()
     }
+
+    /// Creates an new [`Date`] struct with the values cleared until the given unit. Is inclusive.
+    ///
+    /// ```rust
+    /// # use astrolabe::{Date, DateUnit};
+    /// let date = Date::from_ymd(2022, 5, 2).unwrap();
+    /// assert_eq!("2022/05/01", date.clear_until(DateUnit::Day).format("yyyy/MM/dd"));
+    /// assert_eq!("2022/01/01", date.clear_until(DateUnit::Month).format("yyyy/MM/dd"));
+    /// ```
+    pub fn clear_until(&self, unit: DateUnit) -> Self {
+        match unit {
+            DateUnit::Year => Date::default(),
+            DateUnit::Month => {
+                let year = days_to_date(self.days).0;
+                // Using unwrap because it's safe to assume that the provided values are valid
+                Date::from_ymd(year, 1, 1).unwrap()
+            }
+            DateUnit::Day => {
+                let (year, month, _) = days_to_date(self.days);
+                // Using unwrap because it's safe to assume that the provided values are valid
+                Date::from_ymd(year, month, 1).unwrap()
+            }
+        }
+    }
 }
 
 impl From<&Date> for Date {
@@ -362,6 +387,22 @@ impl FromStr for Date {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Date::parse(s, "yyyy-MM-dd")
+    }
+}
+
+impl From<DateTime> for Date {
+    fn from(value: DateTime) -> Self {
+        Self {
+            days: value.as_days(),
+        }
+    }
+}
+
+impl From<&DateTime> for Date {
+    fn from(value: &DateTime) -> Self {
+        Self {
+            days: value.as_days(),
+        }
     }
 }
 
