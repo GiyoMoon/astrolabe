@@ -24,6 +24,9 @@ include = [
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+cron = []
+
 [dependencies.serde]
 version = "1.0"
 default-features = false

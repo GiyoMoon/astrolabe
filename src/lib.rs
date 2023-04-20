@@ -37,6 +37,9 @@
 #![allow(clippy::many_single_char_names)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+#[cfg(feature = "cron")]
+#[cfg_attr(docsrs, doc(cfg(feature = "cron")))]
+mod cron;
 mod date;
 mod datetime;
 pub mod errors;
@@ -44,6 +47,8 @@ mod shared;
 mod time;
 mod util;
 
+#[cfg(feature = "cron")]
+pub use self::cron::CronSchedule;
 pub use self::date::{Date, DateUnit};
 pub use self::datetime::{DateTime, DateTimeUnit};
 pub use self::shared::{Offset, Precision};
