@@ -8,6 +8,7 @@ mod shared_tests {
         // Debug
         println!("{:?}", offset);
         // Clone
+        #[allow(clippy::redundant_clone)]
         let clone = offset.clone();
         // PartialEq
         assert!(offset == clone);
@@ -19,6 +20,7 @@ mod shared_tests {
         // Debug
         println!("{:?}", precision);
         // Clone
+        #[allow(clippy::redundant_clone)]
         let clone = precision.clone();
         // PartialEq
         assert!(precision == clone);

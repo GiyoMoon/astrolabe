@@ -46,6 +46,7 @@ mod time_tests {
         // Debug
         println!("{:?}", unit);
         // Clone
+        #[allow(clippy::redundant_clone)]
         let clone = unit.clone();
         // PartialEq
         assert!(unit == clone);
