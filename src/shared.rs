@@ -74,11 +74,3 @@ pub(crate) const WDAY_WIDE: [&str; 7] = [
 ];
 pub(crate) const WDAY_NARROW: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
 pub(crate) const WDAY_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-#[cfg(feature = "cron")]
-pub(crate) const MONTH_ABBREVIATED_LOWER: [&str; 12] = [
-    "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
-];
-#[cfg(feature = "cron")]
-pub(crate) const WDAY_ABBREVIATED_LOWER: [&str; 7] =
-    ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
