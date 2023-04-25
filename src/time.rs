@@ -21,8 +21,9 @@ use crate::{
 use std::{
     cmp,
     fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// Time units for functions like [`Time::get`] or [`Time::apply`].
@@ -636,6 +637,70 @@ impl From<&DateTime> for Time {
             nanoseconds: (value.as_nanoseconds() % NANOS_PER_DAY as i128) as u64,
             offset: value.get_offset(),
         }
+    }
+}
+
+impl Add for Time {
+    type Output = Time;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Time {
+            nanoseconds: self.nanoseconds + rhs.nanoseconds,
+            offset: self.offset,
+        }
+    }
+}
+
+impl AddAssign for Time {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub for Time {
+    type Output = Time;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Time {
+            nanoseconds: self.nanoseconds - rhs.nanoseconds,
+            offset: self.offset,
+        }
+    }
+}
+
+impl SubAssign for Time {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl Add<Duration> for Time {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() + rhs.as_nanos() as u64;
+        Self::from_nanoseconds(nanos).unwrap()
+    }
+}
+
+impl AddAssign<Duration> for Time {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Duration> for Time {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() - rhs.as_nanos() as u64;
+        Self::from_nanoseconds(nanos).unwrap()
+    }
+}
+
+impl SubAssign<Duration> for Time {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
     }
 }
 

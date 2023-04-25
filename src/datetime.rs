@@ -26,8 +26,9 @@ use crate::{
 use std::{
     cmp,
     fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// Date and time units for functions like [`DateTime::get`] or [`DateTime::apply`].
@@ -956,6 +957,42 @@ impl From<Date> for DateTime {
 impl From<&Date> for DateTime {
     fn from(value: &Date) -> Self {
         Self::from_days(value.as_days())
+    }
+}
+
+impl Add<Duration> for DateTime {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() + rhs.as_nanos() as i128;
+        Self::from_nanoseconds(nanos)
+            .unwrap()
+            .set_offset(self.offset)
+            .unwrap()
+    }
+}
+
+impl AddAssign<Duration> for DateTime {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Duration> for DateTime {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() - rhs.as_nanos() as i128;
+        Self::from_nanoseconds(nanos)
+            .unwrap()
+            .set_offset(self.offset)
+            .unwrap()
+    }
+}
+
+impl SubAssign<Duration> for DateTime {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
     }
 }
 

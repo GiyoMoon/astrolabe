@@ -115,6 +115,7 @@ impl CronSchedule {
     ///
     /// ```rust
     /// # use astrolabe::CronSchedule;
+    ///
     /// // Every 5 minutes
     /// let schedule = CronSchedule::parse("*/5 * * * *").unwrap();
     /// for date in schedule.take(3) {
