@@ -207,6 +207,7 @@ impl Iterator for CronSchedule {
 
             let day_of_month = next.get(DateTimeUnit::Day) as u8;
             let day_of_week = days_to_wday(next.as_days(), false) as u8;
+
             // If both are restricted, the datetime will be valid if either field
             // matches the current time.
             // If only one is restricted, the datetime will be valid if the

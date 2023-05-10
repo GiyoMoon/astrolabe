@@ -9,8 +9,7 @@ use crate::{
     },
     util::{
         convert::{
-            add_offset_to_nanos, nanos_to_time, nanos_to_unit, remove_offset_from_nanos,
-            time_to_day_seconds,
+            add_offset_to_nanos, nanos_to_unit, remove_offset_from_nanos, time_to_day_seconds,
         },
         format::format_time_part,
         manipulation::{apply_time_unit, set_time_unit},
@@ -412,47 +411,6 @@ impl Time {
                 .collect::<Vec<char>>()
             })
             .collect::<String>()
-    }
-
-    /// Creates an new [`Time`] struct with the values cleared until the given unit. Is inclusive.
-    ///
-    /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
-    /// let time = Time::from_hms(12, 32, 1).unwrap();
-    /// assert_eq!("12:32:00", time.clear_until(TimeUnit::Sec).format("HH:mm:ss"));
-    /// assert_eq!("12:00:00", time.clear_until(TimeUnit::Min).format("HH:mm:ss"));
-    /// ```
-    pub fn clear_until(&self, unit: TimeUnit) -> Self {
-        match unit {
-            TimeUnit::Hour => Time::default(),
-            TimeUnit::Min => {
-                let (hour, _, _) = nanos_to_time(self.nanoseconds);
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_hms(hour, 0, 0).unwrap()
-            }
-            TimeUnit::Sec => {
-                let (hour, min, _) = nanos_to_time(self.nanoseconds);
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_hms(hour, min, 0).unwrap()
-            }
-            TimeUnit::Centis => {
-                let (hour, min, sec) = nanos_to_time(self.nanoseconds);
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_hms(hour, min, sec).unwrap()
-            }
-            TimeUnit::Millis => {
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_nanoseconds(self.as_nanoseconds() / 10_000_000 * 10_000_000).unwrap()
-            }
-            TimeUnit::Micros => {
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_nanoseconds(self.as_nanoseconds() / 1_000_000 * 1_000_000).unwrap()
-            }
-            TimeUnit::Nanos => {
-                // Using unwrap because it's safe to assume that the provided values are valid
-                Time::from_nanoseconds(self.as_nanoseconds() / 1_000 * 1_000).unwrap()
-            }
-        }
     }
 
     /// Creates a new [`Time`] instance with a given timezone offset defined as time units (hour, minute and second). Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.

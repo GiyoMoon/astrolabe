@@ -721,7 +721,7 @@ impl DateTime {
     /// assert_eq!("2022/05/02 00:00:00", date_time.clear_until(DateTimeUnit::Hour).format("yyyy/MM/dd HH:mm:ss"));
     /// assert_eq!("2022/01/01 00:00:00", date_time.clear_until(DateTimeUnit::Month).format("yyyy/MM/dd HH:mm:ss"));
     /// ```
-    pub fn clear_until(&self, unit: DateTimeUnit) -> Self {
+    pub(crate) fn clear_until(&self, unit: DateTimeUnit) -> Self {
         match unit {
             DateTimeUnit::Year => DateTime::default(),
             DateTimeUnit::Month => {

@@ -9,9 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Structs**
   - [`CronSchedule`](https://docs.rs/astrolabe/0.4.0/astrolabe/struct.CronSchedule.html)
-- `DateTime::clear_until`
-- `Date::clear_until`
-- `Time::clear_until`
 - Impl `From<Date>`, `From<&Date>`, `From<Time>` and `From<&Time>` for `DateTime`
 - Impl `From<DateTime>` and `From<&DateTime>` for `Date` and `Time`
 - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>`, `AddAssign<Duration>` for `DateTime`, `Date` and `Time`
