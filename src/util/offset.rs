@@ -1,5 +1,7 @@
-use super::time::convert::{days_nanos_to_nanos, nanos_to_days_nanos};
-use crate::shared::{NANOS_PER_DAY, NANOS_PER_SEC};
+use super::{
+    constants::{NANOS_PER_DAY, NANOS_PER_SEC},
+    time::convert::{days_nanos_to_nanos, nanos_to_days_nanos},
+};
 
 /// Adds a given offset to nanoseconds
 pub(crate) fn add_offset_to_nanos(nanoseconds: u64, offset: i32) -> u64 {

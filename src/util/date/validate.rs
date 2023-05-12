@@ -3,8 +3,10 @@ use crate::{
         out_of_range::{create_conditional_oor, create_simple_oor},
         AstrolabeError, OutOfRange,
     },
-    shared::{MAX_DATE, MIN_DATE},
-    util::leap::is_leap_year,
+    util::{
+        constants::{MAX_DATE, MIN_DATE},
+        leap::is_leap_year,
+    },
 };
 
 /// Checks if the given date (year, month and day of month) is in the valid range for the [`Date`]/[`DateTime`] struct

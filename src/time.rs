@@ -3,11 +3,11 @@ use crate::{
         out_of_range::{create_custom_oor, create_simple_oor},
         AstrolabeError,
     },
-    shared::{
-        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64,
-        SECS_PER_MINUTE_U64,
-    },
     util::{
+        constants::{
+            NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64,
+            SECS_PER_MINUTE_U64,
+        },
         format::format_time_part,
         offset::{add_offset_to_nanos, remove_offset_from_nanos},
         parse::{parse_format_string, parse_time_part, ParseUnit, ParsedTime, Period},

@@ -1,7 +1,7 @@
 use super::convert::{nanos_to_time, nanos_to_unit};
 use crate::{
     errors::{out_of_range::create_conditional_oor, AstrolabeError},
-    shared::{
+    util::constants::{
         NANOS_PER_SEC, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
     TimeUnit,

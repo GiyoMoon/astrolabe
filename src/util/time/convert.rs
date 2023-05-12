@@ -1,7 +1,7 @@
 use super::validate::validate_time;
 use crate::{
     errors::{out_of_range::create_simple_oor, AstrolabeError},
-    shared::{
+    util::constants::{
         NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_HOUR_U64,
         SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
