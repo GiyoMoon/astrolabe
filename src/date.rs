@@ -3,7 +3,7 @@ use crate::{
     util::{
         constants::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
         date::{
-            convert::{date_to_days, days_to_date, year_doy_to_days},
+            convert::{date_to_days, days_to_date, days_to_doy, year_doy_to_days},
             manipulate::{apply_date_unit, set_date_unit},
         },
         format::format_date_part,
@@ -78,6 +78,20 @@ impl Date {
         Ok(Self { days })
     }
 
+    /// Returns the date.
+    ///
+    /// ```rust
+    /// # use astrolabe::Date;
+    /// let date = Date::from_ymd(2022, 05, 02).unwrap();
+    /// let (year, month, day) = date.as_ymd();
+    /// assert_eq!(2022, year);
+    /// assert_eq!(5, month);
+    /// assert_eq!(2, day);
+    /// ```
+    pub fn as_ymd(&self) -> (i32, u32, u32) {
+        days_to_date(self.days)
+    }
+
     /// Creates a new [`Date`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
@@ -107,6 +121,17 @@ impl Date {
         Ok(Self { days })
     }
 
+    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
+    ///
+    /// ```rust
+    /// # use astrolabe::Date;
+    /// let date = Date::from_ymd(2000, 1, 1).unwrap();
+    /// assert_eq!(946_684_800, date.as_timestamp());
+    /// ```
+    pub fn as_timestamp(&self) -> i64 {
+        (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
+    }
+
     /// Creates a new [`Date`] instance from days since January 1, 0001.
     ///
     /// ```rust
@@ -127,30 +152,6 @@ impl Date {
     /// ```
     pub fn as_days(&self) -> i32 {
         self.days
-    }
-
-    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_ymd(2000, 1, 1).unwrap();
-    /// assert_eq!(946_684_800, date.timestamp());
-    /// ```
-    pub fn timestamp(&self) -> i64 {
-        (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
-    }
-
-    /// Returns the number of days between two [`Date`] instances.
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_ymd(1970, 1, 1).unwrap();
-    /// let date_2 = Date::from_ymd(1970, 2, 1).unwrap();
-    /// assert_eq!(31, date.between(&date_2));
-    /// assert_eq!(31, date_2.between(&date));
-    /// ```
-    pub fn between(&self, compare: &Self) -> u32 {
-        (self.days - compare.days).unsigned_abs()
     }
 
     /// Get a specific [`DateUnit`].
@@ -346,6 +347,36 @@ impl Date {
                     .collect::<Vec<char>>()
             })
             .collect::<String>()
+    }
+
+    /// Returns full years since the provided date.
+    pub fn years_since(&self, compare: &Self) -> i32 {
+        let self_year = days_to_date(self.days).0;
+        let self_doy = days_to_doy(self.days);
+
+        let other_year = days_to_date(compare.days).0;
+        let other_doy = days_to_doy(compare.days);
+        self_year - other_year - if self_doy > other_doy { 1 } else { 0 }
+    }
+
+    /// Returns full months since the provided date.
+    pub fn months_since(&self, compare: &Self) -> i32 {
+        let (self_year, self_month, self_day) = days_to_date(self.days);
+        let (other_year, other_month, other_day) = days_to_date(compare.days);
+
+        let years_between = self_year - other_year;
+        let months_between = self_month - other_month - if self_day > other_day { 1 } else { 0 };
+        years_between * 12 + months_between as i32
+    }
+
+    /// Returns days since the provided date.
+    pub fn days_since(&self, compare: &Self) -> i32 {
+        self.days - compare.days
+    }
+
+    /// Returns the duration between the provided date.
+    pub fn duration_between(&self, compare: &Self) -> Duration {
+        Duration::from_secs((self.days_since(compare).unsigned_abs() as u64) * SECS_PER_DAY_U64)
     }
 }
 
