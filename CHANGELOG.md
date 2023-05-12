@@ -17,20 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Date`
   - Impl `From<DateTime>`, `From<&DateTime>`
   - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
-- `Date`
+  - `as_ymd()`
+  - `years_since()`, `months_since()`, `days_since()`, `duration_between()`
+- `Time`
   - Impl `From<DateTime>`, `From<&DateTime>`
   - Impl `Add`, `AddAssign`, `Sub` and `AddAssign`
   - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
-  - `as_ymd()`
-  - `years_since()`, `months_since()`, `days_since()`, `duration_between()`
+  - `as_hms()`
+  - `hours_since()`, `mins_since()`, `secs_since()`, `millis_since()`, `micros_since()`, `nanos_since()`, `duration_between()`
 
-### Renamed
-- `Date::timestamp` to `Date::as_timestamp`
+
+### Changed
+- Renamed `Date::timestamp` to `Date::as_timestamp`
+- `Time::as_seconds` now returns `u32` instead of `u64`
 
 ### Removed
 - `DateTime::date` in favor of `Date::from<DateTime>`
 - `DateTime::time` in favor of `Time::from<DateTime>`
 - `Date::between` in favor of `Date::days_since`
+- `Time::between` in favor of `Time::nanos_since`
 
 ## [0.3.0] - 2023-04-11
 ### Added
