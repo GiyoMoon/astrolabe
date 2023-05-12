@@ -46,5 +46,5 @@ mod util;
 
 pub use self::date::{Date, DateUnit};
 pub use self::datetime::{DateTime, DateTimeUnit};
-pub use self::shared::{Offset, Precision};
+pub use self::shared::{DateUtilities, Offset, OffsetUtilities, Precision, TimeUtilities};
 pub use self::time::{Time, TimeUnit};
