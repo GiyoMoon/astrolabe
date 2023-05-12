@@ -21,10 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Impl `From<DateTime>`, `From<&DateTime>`
   - Impl `Add`, `AddAssign`, `Sub` and `AddAssign`
   - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
+  - `as_ymd()`
+  - `years_since()`, `months_since()`, `days_since()`, `duration_between()`
+
+### Renamed
+- `Date::timestamp` to `Date::as_timestamp`
 
 ### Removed
 - `DateTime::date` in favor of `Date::from<DateTime>`
 - `DateTime::time` in favor of `Time::from<DateTime>`
+- `Date::between` in favor of `Date::days_since`
 
 ## [0.3.0] - 2023-04-11
 ### Added

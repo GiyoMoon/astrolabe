@@ -94,7 +94,7 @@ mod date_tests {
 
     #[test]
     fn timestamp() {
-        assert_eq!(0, Date::from_timestamp(0).unwrap().timestamp());
+        assert_eq!(0, Date::from_timestamp(0).unwrap().as_timestamp());
         assert_eq!(
             "1970/01/01",
             Date::from_timestamp(0).unwrap().format("yyyy/MM/dd")
@@ -107,7 +107,7 @@ mod date_tests {
             185_480_451_504_000,
             Date::from_timestamp(185_480_451_590_399)
                 .unwrap()
-                .timestamp()
+                .as_timestamp()
         );
         assert_eq!(
             "5879611/07/12",
@@ -120,7 +120,7 @@ mod date_tests {
             -185_604_722_784_000,
             Date::from_timestamp(-185_604_722_784_000)
                 .unwrap()
-                .timestamp()
+                .as_timestamp()
         );
         assert_eq!(
             "-5879611/06/23",
@@ -137,8 +137,8 @@ mod date_tests {
     fn between() {
         let date1 = Date::from_days(123);
         let date2 = Date::from_days(200);
-        assert_eq!(77, date1.between(&date2));
-        assert_eq!(77, date2.between(&date1));
+        assert_eq!(77, date1.days_since(&date2).unsigned_abs());
+        assert_eq!(77, date2.days_since(&date1).unsigned_abs());
     }
 
     #[test]
@@ -154,7 +154,7 @@ mod date_tests {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
 
         let modified = date.apply(123, DateUnit::Day).unwrap();
-        assert_eq!(10627200, modified.timestamp());
+        assert_eq!(10627200, modified.as_timestamp());
         let modified = date.apply(11, DateUnit::Month).unwrap();
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
         let modified = date.apply(12, DateUnit::Month).unwrap();
