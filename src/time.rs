@@ -4,7 +4,8 @@ use crate::{
         AstrolabeError,
     },
     shared::{
-        NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR_U64,
+        SECS_PER_MINUTE_U64,
     },
     util::{
         convert::{
@@ -14,13 +15,14 @@ use crate::{
         manipulation::{apply_time_unit, set_time_unit},
         parse::{parse_format_string, parse_time_part, ParseUnit, ParsedTime, Period},
     },
-    Offset,
+    DateTime, Offset,
 };
 use std::{
     cmp,
     fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// Time units for functions like [`Time::get`] or [`Time::apply`].
@@ -537,11 +539,34 @@ impl Time {
     }
 }
 
+// ########################################
+//
+//  Standard trait implementations
+//
+// ########################################
+
 impl From<&Time> for Time {
     fn from(time: &Time) -> Self {
         Self {
             nanoseconds: time.nanoseconds,
             offset: time.offset,
+        }
+    }
+}
+
+impl From<DateTime> for Time {
+    fn from(value: DateTime) -> Self {
+        Self {
+            nanoseconds: (value.as_nanoseconds() % NANOS_PER_DAY as i128) as u64,
+            offset: value.get_offset(),
+        }
+    }
+}
+impl From<&DateTime> for Time {
+    fn from(value: &DateTime) -> Self {
+        Self {
+            nanoseconds: (value.as_nanoseconds() % NANOS_PER_DAY as i128) as u64,
+            offset: value.get_offset(),
         }
     }
 }
@@ -557,7 +582,6 @@ impl PartialEq for Time {
         self.as_nanoseconds() == rhs.as_nanoseconds()
     }
 }
-
 impl PartialOrd for Time {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.nanoseconds.partial_cmp(&other.nanoseconds)
@@ -577,6 +601,72 @@ impl FromStr for Time {
         Time::parse(s, "HH:mm:ss")
     }
 }
+
+impl Add for Time {
+    type Output = Time;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Time {
+            nanoseconds: self.nanoseconds + rhs.nanoseconds,
+            offset: self.offset,
+        }
+    }
+}
+impl AddAssign for Time {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub for Time {
+    type Output = Time;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Time {
+            nanoseconds: self.nanoseconds - rhs.nanoseconds,
+            offset: self.offset,
+        }
+    }
+}
+impl SubAssign for Time {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl Add<Duration> for Time {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() + rhs.as_nanos() as u64;
+        Self::from_nanoseconds(nanos).unwrap()
+    }
+}
+impl AddAssign<Duration> for Time {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Duration> for Time {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() - rhs.as_nanos() as u64;
+        Self::from_nanoseconds(nanos).unwrap()
+    }
+}
+impl SubAssign<Duration> for Time {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
+    }
+}
+
+// ########################################
+//
+//  Serde implementations
+//
+// ########################################
 
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]

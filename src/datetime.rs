@@ -5,8 +5,8 @@ use crate::{
         AstrolabeError,
     },
     shared::{
-        DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64,
-        SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+        DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY,
+        SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
     },
     util::{
         convert::{
@@ -26,8 +26,9 @@ use crate::{
 use std::{
     cmp,
     fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// Date and time units for functions like [`DateTime::get`] or [`DateTime::apply`].
@@ -318,33 +319,6 @@ impl DateTime {
             nanoseconds,
             offset: 0,
         })
-    }
-
-    /// Returns the date.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_days(123);
-    /// let date = date_time.date();
-    /// assert_eq!(123, date.as_days());
-    /// ```
-    pub fn date(&self) -> Date {
-        Date::from_days(self.days)
-    }
-
-    /// Returns the clock time.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_days(0).set_time(3_600_000_000_000).unwrap();
-    /// let time = date_time.time();
-    /// assert_eq!(3_600_000_000_000, time.as_nanoseconds());
-    /// ```
-    pub fn time(&self) -> Time {
-        Time::from_nanoseconds(self.nanoseconds)
-            .unwrap()
-            .set_offset(self.offset)
-            .unwrap()
     }
 
     /// Returns the number of days since January 1, 0001 00:00:00 UTC. (Negative if date is before)
@@ -873,12 +847,56 @@ impl DateTime {
     }
 }
 
+// ########################################
+//
+//  Standard trait implementations
+//
+// ########################################
+
 impl From<&DateTime> for DateTime {
     fn from(date_time: &DateTime) -> Self {
         Self {
             days: date_time.days,
             nanoseconds: date_time.nanoseconds,
             offset: date_time.offset,
+        }
+    }
+}
+
+impl From<Date> for DateTime {
+    fn from(value: Date) -> Self {
+        Self {
+            days: value.as_days(),
+            nanoseconds: 0,
+            offset: 0,
+        }
+    }
+}
+impl From<&Date> for DateTime {
+    fn from(value: &Date) -> Self {
+        Self {
+            days: value.as_days(),
+            nanoseconds: 0,
+            offset: 0,
+        }
+    }
+}
+
+impl From<Time> for DateTime {
+    fn from(value: Time) -> Self {
+        Self {
+            days: 0,
+            nanoseconds: value.as_nanoseconds(),
+            offset: value.get_offset(),
+        }
+    }
+}
+impl From<&Time> for DateTime {
+    fn from(time: &Time) -> Self {
+        Self {
+            days: 0,
+            nanoseconds: time.as_nanoseconds(),
+            offset: time.get_offset(),
         }
     }
 }
@@ -894,7 +912,6 @@ impl PartialEq for DateTime {
         self.as_nanoseconds() == rhs.as_nanoseconds()
     }
 }
-
 impl PartialOrd for DateTime {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.as_nanoseconds().partial_cmp(&other.as_nanoseconds())
@@ -914,6 +931,84 @@ impl FromStr for DateTime {
         DateTime::parse_rfc3339(s)
     }
 }
+
+impl Add<Time> for DateTime {
+    type Output = Self;
+
+    fn add(self, rhs: Time) -> Self::Output {
+        let nanos = self.as_nanoseconds() + rhs.as_nanoseconds() as i128;
+        Self {
+            days: (nanos / NANOS_PER_DAY as i128) as i32,
+            nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
+            offset: self.offset,
+        }
+    }
+}
+impl AddAssign<Time> for DateTime {
+    fn add_assign(&mut self, rhs: Time) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Time> for DateTime {
+    type Output = Self;
+
+    fn sub(self, rhs: Time) -> Self::Output {
+        let nanos = self.as_nanoseconds() - rhs.as_nanoseconds() as i128;
+        Self {
+            days: (nanos / NANOS_PER_DAY as i128) as i32,
+            nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
+            offset: self.offset,
+        }
+    }
+}
+impl SubAssign<Time> for DateTime {
+    fn sub_assign(&mut self, rhs: Time) {
+        *self = *self - rhs;
+    }
+}
+
+impl Add<Duration> for DateTime {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() + rhs.as_nanos() as i128;
+        Self {
+            days: (nanos / NANOS_PER_DAY as i128) as i32,
+            nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
+            offset: self.offset,
+        }
+    }
+}
+impl AddAssign<Duration> for DateTime {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Duration> for DateTime {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        let nanos = self.as_nanoseconds() - rhs.as_nanos() as i128;
+        Self {
+            days: (nanos / NANOS_PER_DAY as i128) as i32,
+            nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
+            offset: self.offset,
+        }
+    }
+}
+impl SubAssign<Duration> for DateTime {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
+    }
+}
+
+// ########################################
+//
+//  Serde implementations
+//
+// ########################################
 
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
