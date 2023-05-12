@@ -2,9 +2,11 @@ use crate::{
     errors::{out_of_range::create_simple_oor, AstrolabeError},
     shared::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
     util::{
-        convert::{date_to_days, days_to_date, year_doy_to_days},
+        date::{
+            convert::{date_to_days, days_to_date, year_doy_to_days},
+            manipulate::{apply_date_unit, set_date_unit},
+        },
         format::format_date_part,
-        manipulation::{apply_date_unit, set_date_unit},
         parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
     },
     DateTime,

@@ -9,16 +9,22 @@ use crate::{
         SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
     },
     util::{
-        convert::{
-            add_offset_to_dn, date_to_days, days_nanos_to_nanos, days_nanos_to_secs, days_to_date,
-            dtu_to_du, dtu_to_tu, nanos_to_days_nanos, nanos_to_unit, remove_offset_from_dn,
-            secs_to_days_nanos, time_to_day_seconds, year_doy_to_days,
+        date::{
+            convert::{date_to_days, days_to_date, dtu_to_du, year_doy_to_days},
+            manipulate::{apply_date_unit, set_date_unit},
         },
         format::format_part,
-        manipulation::{apply_date_unit, apply_time_unit, set_date_unit, set_time_unit},
+        offset::{add_offset_to_dn, remove_offset_from_dn},
         parse::{
             parse_format_string, parse_offset, parse_part, ParseUnit, ParsedDate, ParsedTime,
             Period,
+        },
+        time::{
+            convert::{
+                days_nanos_to_nanos, days_nanos_to_secs, dtu_to_tu, nanos_to_days_nanos,
+                nanos_to_unit, secs_to_days_nanos, time_to_day_seconds,
+            },
+            manipulate::{apply_time_unit, set_time_unit},
         },
     },
     Date, Offset, Precision, Time,
