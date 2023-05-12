@@ -4,11 +4,11 @@ use crate::{
         out_of_range::{create_custom_oor, create_simple_oor},
         AstrolabeError,
     },
-    shared::{
-        DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY,
-        SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
-    },
     util::{
+        constants::{
+            DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY,
+            SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+        },
         date::{
             convert::{date_to_days, days_to_date, dtu_to_du, year_doy_to_days},
             manipulate::{apply_date_unit, set_date_unit},
