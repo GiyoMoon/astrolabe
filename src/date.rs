@@ -7,11 +7,13 @@ use crate::{
         manipulation::{apply_date_unit, set_date_unit},
         parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
     },
+    DateTime,
 };
 use std::{
     fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// Date units for functions like [`Date::get`] or [`Date::apply`].
@@ -345,9 +347,70 @@ impl Date {
     }
 }
 
+// ########################################
+//
+//  Standard trait implementations
+//
+// ########################################
+
 impl From<&Date> for Date {
     fn from(date: &Date) -> Self {
         Self { days: date.days }
+    }
+}
+
+impl From<DateTime> for Date {
+    fn from(value: DateTime) -> Self {
+        Self {
+            days: value.as_days(),
+        }
+    }
+}
+impl From<&DateTime> for Date {
+    fn from(value: &DateTime) -> Self {
+        Self {
+            days: value.as_days(),
+        }
+    }
+}
+
+impl Add<Duration> for Date {
+    type Output = Self;
+
+    /// Performs the `+` operation.
+    ///
+    /// Only adds full days (`86 400` seconds) to [`Date`]. Any additional duration will be ignored.
+    fn add(self, rhs: Duration) -> Self::Output {
+        let days = self.days + (rhs.as_secs() / SECS_PER_DAY_U64) as i32;
+        Self { days }
+    }
+}
+impl AddAssign<Duration> for Date {
+    /// Performs the `+=` operation.
+    ///
+    /// Only adds full days (`86 400` seconds) to [`Date`]. Any additional duration will be ignored.
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Duration> for Date {
+    type Output = Self;
+
+    /// Performs the `-` operation.
+    ///
+    /// Only removes full days (`86 400` seconds) to [`Date`]. Any additional duration will be ignored.
+    fn sub(self, rhs: Duration) -> Self::Output {
+        let days = self.days - (rhs.as_secs() / SECS_PER_DAY_U64) as i32;
+        Self { days }
+    }
+}
+impl SubAssign<Duration> for Date {
+    /// Performs the `-=` operation.
+    ///
+    /// Only removes full days (`86 400` seconds) to [`Date`]. Any additional duration will be ignored.
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
     }
 }
 
@@ -364,6 +427,12 @@ impl FromStr for Date {
         Date::parse(s, "yyyy-MM-dd")
     }
 }
+
+// ########################################
+//
+//  Serde implementations
+//
+// ########################################
 
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]

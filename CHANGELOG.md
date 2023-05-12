@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - Unreleased
+### Added
+- Traits `DateUtilities`, `TimeUtilities`, `OffsetUtilities`
+  - Define get and manipulation functions for date and time units + offset.
+- `DateTime`
+  - Impl `From<Date>`, `From<&Date>`, `From<Time>` and `From<&Time>`
+  - Impl `Add<Time>`, `AddAssign<Time>`, `Sub<Time>` and `AddAssign<Time>`
+  - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
+- `Date`
+  - Impl `From<DateTime>`, `From<&DateTime>`
+  - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
+- `Date`
+  - Impl `From<DateTime>`, `From<&DateTime>`
+  - Impl `Add`, `AddAssign`, `Sub` and `AddAssign`
+  - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
+
+### Removed
+- `DateTime::date` in favor of `Date::from<DateTime>`
+- `DateTime::time` in favor of `Time::from<DateTime>`
+
 ## [0.3.0] - 2023-04-11
 ### Added
 - Impl `Ord`, `PartialOrd`, `FromStr` for `DateTime`, `Date` and `Time`
