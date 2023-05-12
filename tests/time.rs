@@ -76,7 +76,7 @@ mod time_tests {
         from_hms_err(24, 60, 60);
     }
 
-    fn from_hms_ok(expected: u64, hour: u32, minute: u32, second: u32) {
+    fn from_hms_ok(expected: u32, hour: u32, minute: u32, second: u32) {
         assert_eq!(
             expected,
             Time::from_hms(hour, minute, second).unwrap().as_seconds()
@@ -110,8 +110,8 @@ mod time_tests {
     fn between() {
         let time1 = Time::from_seconds(0).unwrap();
         let time2 = Time::from_seconds(123).unwrap();
-        assert_eq!(123_000_000_000, time1.between(&time2));
-        assert_eq!(123_000_000_000, time2.between(&time1));
+        assert_eq!(123_000_000_000, time1.nanos_since(&time2).unsigned_abs());
+        assert_eq!(123_000_000_000, time2.nanos_since(&time1).unsigned_abs());
     }
 
     #[test]
