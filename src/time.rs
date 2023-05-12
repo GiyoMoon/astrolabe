@@ -8,12 +8,13 @@ use crate::{
         SECS_PER_MINUTE_U64,
     },
     util::{
-        convert::{
-            add_offset_to_nanos, nanos_to_unit, remove_offset_from_nanos, time_to_day_seconds,
-        },
         format::format_time_part,
-        manipulation::{apply_time_unit, set_time_unit},
+        offset::{add_offset_to_nanos, remove_offset_from_nanos},
         parse::{parse_format_string, parse_time_part, ParseUnit, ParsedTime, Period},
+        time::{
+            convert::{nanos_to_unit, time_to_day_seconds},
+            manipulate::{apply_time_unit, set_time_unit},
+        },
     },
     DateTime, Offset,
 };
