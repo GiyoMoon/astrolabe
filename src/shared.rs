@@ -37,6 +37,11 @@ pub trait DateUtilities: Sized {
     fn day_of_year(&self) -> u32;
     /// Returns the day of the week (`0-6`, `0` is Sunday).
     fn weekday(&self) -> u8;
+
+    /// Creates a date from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
+    fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError>;
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
     fn timestamp(&self) -> i64;
 
@@ -233,6 +238,13 @@ pub trait OffsetUtilities: Sized {
     /// - `UTC+1` is `offset_from_hms(1, 0, 0)`
     /// - `UTC-1` is `offset_from_hms(-1, 0, 0)`.
     fn set_offset_hms(&self, hour: i32, min: u32, sec: u32) -> Self;
+    /// Sets the offset from hours, minutes and seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    ///
+    /// Examples:
+    /// - `UTC+1` is `as_offset_hms(1, 0, 0)`
+    /// - `UTC-1` is `as_offset_hms(-1, 0, 0)`.
+    fn as_offset_hms(&self, hour: i32, min: u32, sec: u32) -> Self;
+
     /// Returns the offset as hours, minutes and seconds.
     fn get_offset_hms(&self) -> (i32, u32, u32);
 
@@ -242,19 +254,12 @@ pub trait OffsetUtilities: Sized {
     /// - `UTC+1` is `offset_from_secs(3600)`
     /// - `UTC-1` is `offset_from_secs(-3600)`.
     fn set_offset_secs(&self, seconds: i32) -> Self;
-    /// Returns the offset as seconds.
-    fn get_offset_secs(&self) -> i32;
-
-    /// Sets the offset from hours, minutes and seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
-    ///
-    /// Examples:
-    /// - `UTC+1` is `as_offset_hms(1, 0, 0)`
-    /// - `UTC-1` is `as_offset_hms(-1, 0, 0)`.
-    fn as_offset_hms(&self, hour: i32, min: u32, sec: u32) -> Self;
     /// Sets the offset from seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
     ///
     /// Examples:
     /// - `UTC+1` is `as_offset_secs(3600)`
     /// - `UTC-1` is `as_offset_secs(-3600)`.
     fn as_offset_secs(&self, seconds: i32) -> Self;
+    /// Returns the offset as seconds.
+    fn get_offset_secs(&self) -> i32;
 }

@@ -92,35 +92,6 @@ impl Date {
         days_to_date(self.days)
     }
 
-    /// Creates a new [`Date`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_timestamp(0).unwrap();
-    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
-        let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64
-            - i64::from(
-                timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0,
-            ))
-        .try_into()
-        .map_err(|_| {
-            create_simple_oor(
-                "timestamp",
-                (i32::MIN as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128,
-                (i32::MAX as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
-                    + SECS_PER_DAY_U64 as i128
-                    - 1,
-                timestamp as i128,
-            )
-        })?;
-
-        Ok(Self { days })
-    }
-
     /// Get a specific [`DateUnit`].
     ///
     /// ```rust
@@ -345,6 +316,26 @@ impl DateUtilities for Date {
 
     fn weekday(&self) -> u8 {
         todo!()
+    }
+
+    fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
+        let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64
+            - i64::from(
+                timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0,
+            ))
+        .try_into()
+        .map_err(|_| {
+            create_simple_oor(
+                "timestamp",
+                (i32::MIN as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128,
+                (i32::MAX as i128 - DAYS_TO_1970_I64 as i128) * SECS_PER_DAY_U64 as i128
+                    + SECS_PER_DAY_U64 as i128
+                    - 1,
+                timestamp as i128,
+            )
+        })?;
+
+        Ok(Self { days })
     }
 
     fn timestamp(&self) -> i64 {
