@@ -222,19 +222,6 @@ impl DateTime {
         (hour as u32, minute as u32, second as u32)
     }
 
-    /// Creates a new [`DateTime`] instance from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time = DateTime::from_timestamp(0).unwrap();
-    /// assert_eq!("1970/01/01 00:00:00", date_time.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
-        Self::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
-    }
-
     /// Creates a new [`DateTime`] instance from an RFC 3339 timestamp string.
     ///
     /// ```rust
@@ -835,6 +822,10 @@ impl DateUtilities for DateTime {
 
     fn weekday(&self) -> u8 {
         todo!()
+    }
+
+    fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
+        Self::from_seconds(timestamp + DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64)
     }
 
     fn timestamp(&self) -> i64 {
