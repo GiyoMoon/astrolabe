@@ -9,7 +9,7 @@ use crate::{
         format::format_date_part,
         parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
     },
-    DateTime,
+    DateTime, DateUtilities,
 };
 use std::{
     fmt::Display,
@@ -42,7 +42,7 @@ pub enum DateUnit {
 /// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Date {
-    days: i32,
+    pub(crate) days: i32,
 }
 
 impl Date {
@@ -121,39 +121,6 @@ impl Date {
         Ok(Self { days })
     }
 
-    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_ymd(2000, 1, 1).unwrap();
-    /// assert_eq!(946_684_800, date.as_timestamp());
-    /// ```
-    pub fn as_timestamp(&self) -> i64 {
-        (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
-    }
-
-    /// Creates a new [`Date`] instance from days since January 1, 0001.
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_days(738276);
-    /// assert_eq!("2022/05/02", date.format("yyyy/MM/dd"));
-    /// ```
-    pub fn from_days(days: i32) -> Self {
-        Self { days }
-    }
-
-    /// Returns the number of days since January 1, 0001. (Negative if date is before)
-    ///
-    /// ```rust
-    /// # use astrolabe::Date;
-    /// let date = Date::from_ymd(1, 1, 1).unwrap();
-    /// assert_eq!(0, date.as_days());
-    /// ```
-    pub fn as_days(&self) -> i32 {
-        self.days
-    }
-
     /// Get a specific [`DateUnit`].
     ///
     /// ```rust
@@ -206,11 +173,9 @@ impl Date {
     /// assert_eq!("1970/01/01", applied_2.format("yyyy/MM/dd"));
     /// ```
     pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
-        Ok(Self::from_days(apply_date_unit(
-            self.days,
-            amount as i64,
-            unit,
-        )?))
+        Ok(Self {
+            days: (apply_date_unit(self.days, amount as i64, unit)?),
+        })
     }
 
     /// Parses a string with a given format and creates a new [`Date`] instance from it. See [`Date::format`] for a list of available symbols.
@@ -256,9 +221,9 @@ impl Date {
         // Use day of year if present, otherwise use month + day of month
         Ok(if date.day_of_year.is_some() {
             let days = year_doy_to_days(date.year.unwrap_or(1), date.day_of_year.unwrap())?;
-            Date::from_days(days)
+            Self { days }
         } else {
-            Date::from_ymd(
+            Self::from_ymd(
                 date.year.unwrap_or(1),
                 date.month.unwrap_or(1),
                 date.day_of_month.unwrap_or(1),
@@ -349,34 +314,115 @@ impl Date {
             .collect::<String>()
     }
 
-    /// Returns full years since the provided date.
-    pub fn years_since(&self, compare: &Self) -> i32 {
+    /// Returns the duration between the provided date.
+    pub fn duration_between(&self, compare: &Self) -> Duration {
+        Duration::from_secs((self.days_since(compare).unsigned_abs() as u64) * SECS_PER_DAY_U64)
+    }
+}
+
+// ########################################
+//
+//  DateUtility trait implementation
+//
+// ########################################
+
+impl DateUtilities for Date {
+    fn year(&self) -> i32 {
+        todo!()
+    }
+
+    fn month(&self) -> u32 {
+        todo!()
+    }
+
+    fn day(&self) -> u32 {
+        todo!()
+    }
+
+    fn day_of_year(&self) -> u32 {
+        todo!()
+    }
+
+    fn weekday(&self) -> u8 {
+        todo!()
+    }
+
+    fn timestamp(&self) -> i64 {
+        (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
+    }
+
+    fn set_year(&self, _year: i32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_month(&self, _month: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_day(&self, _day: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_day_of_year(&self, _day_of_year: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn clear_until_year(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_month(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_day(&self) -> Self {
+        todo!()
+    }
+
+    fn years_since(&self, compare: &Self) -> i32 {
         let self_year = days_to_date(self.days).0;
         let self_doy = days_to_doy(self.days);
 
         let other_year = days_to_date(compare.days).0;
         let other_doy = days_to_doy(compare.days);
-        self_year - other_year - if self_doy > other_doy { 1 } else { 0 }
+        self_year - other_year - if self_doy < other_doy { 1 } else { 0 }
     }
 
-    /// Returns full months since the provided date.
-    pub fn months_since(&self, compare: &Self) -> i32 {
+    fn months_since(&self, compare: &Self) -> i32 {
         let (self_year, self_month, self_day) = days_to_date(self.days);
         let (other_year, other_month, other_day) = days_to_date(compare.days);
 
         let years_between = self_year - other_year;
-        let months_between = self_month - other_month - if self_day > other_day { 1 } else { 0 };
+        let months_between = self_month - other_month - if self_day < other_day { 1 } else { 0 };
         years_between * 12 + months_between as i32
     }
 
-    /// Returns days since the provided date.
-    pub fn days_since(&self, compare: &Self) -> i32 {
+    fn days_since(&self, compare: &Self) -> i32 {
         self.days - compare.days
-    }
-
-    /// Returns the duration between the provided date.
-    pub fn duration_between(&self, compare: &Self) -> Duration {
-        Duration::from_secs((self.days_since(compare).unsigned_abs() as u64) * SECS_PER_DAY_U64)
     }
 }
 
@@ -394,16 +440,12 @@ impl From<&Date> for Date {
 
 impl From<DateTime> for Date {
     fn from(value: DateTime) -> Self {
-        Self {
-            days: value.as_days(),
-        }
+        Self { days: value.days }
     }
 }
 impl From<&DateTime> for Date {
     fn from(value: &DateTime) -> Self {
-        Self {
-            days: value.as_days(),
-        }
+        Self { days: value.days }
     }
 }
 
@@ -457,7 +499,7 @@ impl FromStr for Date {
     type Err = AstrolabeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Date::parse(s, "yyyy-MM-dd")
+        Self::parse(s, "yyyy-MM-dd")
     }
 }
 
