@@ -16,7 +16,7 @@ use crate::{
             manipulate::{apply_time_unit, set_time_unit},
         },
     },
-    DateTime, Offset,
+    DateTime, Offset, TimeUtilities,
 };
 use std::{
     cmp,
@@ -48,15 +48,15 @@ pub enum TimeUnit {
 /// Clock time with nanosecond precision.
 #[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct Time {
-    nanoseconds: u64,
-    offset: i32,
+    pub(crate) nanoseconds: u64,
+    pub(crate) offset: i32,
 }
 
 impl Time {
     /// Creates a new [`Time`] instance with [`SystemTime::now()`].
     ///
     /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
+    /// # use astrolabe::Time;
     /// let time = Time::now();
     /// println!("{}", time);
     /// ```
@@ -93,7 +93,7 @@ impl Time {
     /// Returns the time as hour, minute and seconds.
     ///
     /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 12, 12).unwrap();
     /// let (hour, minute, second) = time.as_hms();
     /// assert_eq!(12, hour);
@@ -137,7 +137,7 @@ impl Time {
     /// Returns the time as seconds.
     ///
     /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 12, 12).unwrap();
     /// assert_eq!(43932, time.as_seconds());
     /// ```
@@ -150,7 +150,7 @@ impl Time {
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds are invalid (over `86_399_999_999_999`)
     ///
     /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
+    /// # use astrolabe::Time;
     /// let time = Time::from_nanoseconds(1_234).unwrap();
     /// assert_eq!(1_234, time.as_nanoseconds());
     /// ```
@@ -172,7 +172,7 @@ impl Time {
     /// Returns the time as nanoseconds.
     ///
     /// ```rust
-    /// # use astrolabe::{Time, TimeUnit};
+    /// # use astrolabe::Time;
     /// let time = Time::from_hms(12, 12, 12).unwrap();
     /// assert_eq!(43_932_000_000_000, time.as_nanoseconds());
     /// ```
@@ -326,9 +326,9 @@ impl Time {
         nanoseconds += time.nanos.unwrap_or(0);
 
         Ok(if let Some(offset) = time.offset {
-            Time::from_nanoseconds(nanoseconds)?.set_offset(offset)?
+            Self::from_nanoseconds(nanoseconds)?.set_offset(offset)?
         } else {
-            Time::from_nanoseconds(nanoseconds)?
+            Self::from_nanoseconds(nanoseconds)?
         })
     }
 
@@ -546,49 +546,175 @@ impl Time {
         self.offset
     }
 
-    /// Returns full hours since the provided time.
-    pub fn hours_since(&self, compare: &Self) -> i32 {
-        let self_hour = (self.as_seconds() / SECS_PER_HOUR) as i32;
-        let other_hour = (compare.as_seconds() / SECS_PER_HOUR) as i32;
-        self_hour - other_hour
-    }
-
-    /// Returns full minutes since the provided time.
-    pub fn mins_since(&self, compare: &Self) -> i32 {
-        let self_min = (self.as_seconds() / SECS_PER_MINUTE) as i32;
-        let other_min = (compare.as_seconds() / SECS_PER_MINUTE) as i32;
-        self_min - other_min
-    }
-
-    /// Returns full seconds since the provided time.
-    pub fn secs_since(&self, compare: &Self) -> i32 {
-        self.as_seconds() as i32 - compare.as_seconds() as i32
-    }
-
-    /// Returns full milliseconds since the provided time.
-    pub fn millis_since(&self, compare: &Self) -> i64 {
-        let self_millis = (self.nanoseconds / 1_000_000) as i64;
-        let other_millis = (compare.nanoseconds / 10_000_000) as i64;
-        self_millis - other_millis
-    }
-
-    /// Returns full microseconds since the provided time.
-    pub fn micros_since(&self, compare: &Self) -> i64 {
-        let self_micros = (self.nanoseconds / 1_000) as i64;
-        let other_micros = (compare.nanoseconds / 1_000) as i64;
-        self_micros - other_micros
-    }
-
-    /// Returns full nanoseconds since the provided time.
-    pub fn nanos_since(&self, compare: &Self) -> i64 {
-        self.nanoseconds as i64 - compare.nanoseconds as i64
-    }
-
     /// Returns the duration between the provided time.
     pub fn duration_between(&self, other: &Self) -> Duration {
         let nanos = self.nanoseconds as i64 - other.nanoseconds as i64;
 
         Duration::from_nanos(nanos.unsigned_abs())
+    }
+}
+
+// ########################################
+//
+//  TimeUtility trait implementation
+//
+// ########################################
+
+impl TimeUtilities for Time {
+    fn hour(&self) -> u32 {
+        todo!()
+    }
+
+    fn minute(&self) -> u32 {
+        todo!()
+    }
+
+    fn second(&self) -> u32 {
+        todo!()
+    }
+
+    fn milli(&self) -> u64 {
+        todo!()
+    }
+
+    fn micro(&self) -> u64 {
+        todo!()
+    }
+
+    fn nano(&self) -> u64 {
+        todo!()
+    }
+
+    fn set_hour(&self, _hour: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_min(&self, _min: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_second(&self, _second: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_milli(&self, _milli: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_micro(&self, _micro: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn set_nano(&self, _nano: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_hours(&self, _hours: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_seconds(&self, _seconds: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_millis(&self, _millis: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_micros(&self, _micros: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn add_nanos(&self, _nanos: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_hours(&self, _hours: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_seconds(&self, _seconds: u32) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_millis(&self, _millis: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_micros(&self, _micros: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn sub_nanos(&self, _nanos: u64) -> Result<Self, AstrolabeError> {
+        todo!()
+    }
+
+    fn clear_until_hour(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_min(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_second(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_milli(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_micro(&self) -> Self {
+        todo!()
+    }
+
+    fn clear_until_nano(&self) -> Self {
+        todo!()
+    }
+
+    type SubDayReturn = i32;
+
+    fn hours_since(&self, compare: &Self) -> Self::SubDayReturn {
+        let self_hour = (self.as_seconds() / SECS_PER_HOUR) as i32;
+        let other_hour = (compare.as_seconds() / SECS_PER_HOUR) as i32;
+        self_hour - other_hour
+    }
+
+    fn mins_since(&self, compare: &Self) -> Self::SubDayReturn {
+        let self_min = (self.as_seconds() / SECS_PER_MINUTE) as i32;
+        let other_min = (compare.as_seconds() / SECS_PER_MINUTE) as i32;
+        self_min - other_min
+    }
+
+    fn seconds_since(&self, compare: &Self) -> Self::SubDayReturn {
+        self.as_seconds() as i32 - compare.as_seconds() as i32
+    }
+
+    type SubSecReturn = i64;
+
+    fn millis_since(&self, compare: &Self) -> Self::SubSecReturn {
+        let self_millis = (self.nanoseconds / 1_000_000) as i64;
+        let other_millis = (compare.nanoseconds / 10_000_000) as i64;
+        self_millis - other_millis
+    }
+
+    fn micros_since(&self, compare: &Self) -> Self::SubSecReturn {
+        let self_micros = (self.nanoseconds / 1_000) as i64;
+        let other_micros = (compare.nanoseconds / 1_000) as i64;
+        self_micros - other_micros
+    }
+
+    fn nanos_since(&self, compare: &Self) -> Self::SubSecReturn {
+        self.nanoseconds as i64 - compare.nanoseconds as i64
     }
 }
 

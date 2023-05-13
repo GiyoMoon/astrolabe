@@ -28,15 +28,17 @@ pub enum Precision {
 /// Used by [`DateTime`](crate::DateTime) and [`Date`](crate::Date).
 pub trait DateUtilities: Sized {
     /// Returns the year.
-    fn get_year(&self) -> i32;
+    fn year(&self) -> i32;
     /// Returns the month of the year (`1-12`).
-    fn get_month(&self) -> u32;
+    fn month(&self) -> u32;
     /// Returns the day of the month (`1-31`).
-    fn get_day(&self) -> u32;
+    fn day(&self) -> u32;
     /// Returns the day of the year (`1-365` or `1-366`).
-    fn get_day_of_year(&self) -> u32;
+    fn day_of_year(&self) -> u32;
     /// Returns the day of the week (`0-6`, `0` is Sunday).
-    fn get_weekday(&self) -> u8;
+    fn weekday(&self) -> u8;
+    /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
+    fn timestamp(&self) -> i64;
 
     /// Sets the year to the provided value.
     ///
@@ -87,23 +89,30 @@ pub trait DateUtilities: Sized {
     fn clear_until_month(&self) -> Self;
     /// Clears date/time units until the day (inclusive).
     fn clear_until_day(&self) -> Self;
+
+    /// Returns full years since the provided date.
+    fn years_since(&self, compare: &Self) -> i32;
+    /// Returns full months since the provided date.
+    fn months_since(&self, compare: &Self) -> i32;
+    /// Returns full days since the provided date.
+    fn days_since(&self, compare: &Self) -> i32;
 }
 
 /// Defines functions to get and manipulate time units.
 /// Used by [`DateTime`](crate::DateTime) and [`Time`](crate::Time).
 pub trait TimeUtilities: Sized {
     /// Returns the hour (`0-23`).
-    fn get_hour(&self) -> u32;
+    fn hour(&self) -> u32;
     /// Returns the minute of the hour (`0-59`).
-    fn get_minute(&self) -> u32;
+    fn minute(&self) -> u32;
     /// Returns the second of the minute (`0-59`).
-    fn get_sec(&self) -> u32;
+    fn second(&self) -> u32;
     /// Returns the millisecond of the second (`0-999`).
-    fn get_milli(&self) -> u64;
+    fn milli(&self) -> u64;
     /// Returns the microsecond of the second (`0-999_999`).
-    fn get_micro(&self) -> u64;
+    fn micro(&self) -> u64;
     /// Returns the nanosecond of the second (`0-999_999_999`).
-    fn get_nano(&self) -> u64;
+    fn nano(&self) -> u64;
 
     /// Sets the hour to the provided value.
     ///
@@ -116,7 +125,7 @@ pub trait TimeUtilities: Sized {
     /// Sets the second to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_sec(&self, sec: u32) -> Result<Self, AstrolabeError>;
+    fn set_second(&self, sec: u32) -> Result<Self, AstrolabeError>;
     /// Sets the millisecond to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
@@ -141,7 +150,7 @@ pub trait TimeUtilities: Sized {
     /// Adds the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_secs(&self, secs: u32) -> Result<Self, AstrolabeError>;
+    fn add_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError>;
     /// Adds the provided milliseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -166,7 +175,7 @@ pub trait TimeUtilities: Sized {
     /// Subtracts the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_secs(&self, secs: u32) -> Result<Self, AstrolabeError>;
+    fn sub_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError>;
     /// Subtracts the provided milliseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -185,13 +194,31 @@ pub trait TimeUtilities: Sized {
     /// Clears date/time units until the minute (inclusive).
     fn clear_until_min(&self) -> Self;
     /// Clears date/time units until the second (inclusive).
-    fn clear_until_sec(&self) -> Self;
+    fn clear_until_second(&self) -> Self;
     /// Clears date/time units until the millisecond (inclusive).
     fn clear_until_milli(&self) -> Self;
     /// Clears date/time units until the microsecond (inclusive).
     fn clear_until_micro(&self) -> Self;
     /// Clears date/time units until the nanosecond (inclusive).
     fn clear_until_nano(&self) -> Self;
+
+    /// Return type for the `hour_`, `mins_` and `secs_since` functions. Is `i32` for [`Time`](crate::Time) and `i64` for [`DateTime`](crate::DateTime).
+    type SubDayReturn;
+    /// Returns full hours since the provided time.
+    fn hours_since(&self, compare: &Self) -> Self::SubDayReturn;
+    /// Returns full minutes since the provided time.
+    fn mins_since(&self, compare: &Self) -> Self::SubDayReturn;
+    /// Returns full seconds since the provided time.
+    fn seconds_since(&self, compare: &Self) -> Self::SubDayReturn;
+
+    /// Return type for the `millis_`, `micros_` and `manos_since` functions. Is `i64` for [`Time`](crate::Time) and `i128` for [`DateTime`](crate::DateTime).
+    type SubSecReturn;
+    /// Returns full milliseconds since the provided time.
+    fn millis_since(&self, compare: &Self) -> Self::SubSecReturn;
+    /// Returns full microseconds since the provided time.
+    fn micros_since(&self, compare: &Self) -> Self::SubSecReturn;
+    /// Returns full nanoseconds since the provided time.
+    fn nanos_since(&self, compare: &Self) -> Self::SubSecReturn;
 }
 
 /// Defines functions to get and manipulate the offset.

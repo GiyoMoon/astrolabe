@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod datetime_tests {
-    use astrolabe::{Date, DateTime, DateTimeUnit, Precision, Time};
+    use astrolabe::{Date, DateTime, DateTimeUnit, DateUtilities, Precision, Time};
 
     #[test]
     fn derive() {
@@ -61,99 +61,16 @@ mod datetime_tests {
     }
 
     #[test]
-    fn days() {
-        assert_eq!(0, DateTime::from_days(0).as_days());
-        assert_eq!(i32::MAX, DateTime::from_days(i32::MAX).as_days());
-        assert_eq!(i32::MIN, DateTime::from_days(i32::MIN).as_days());
-    }
-
-    #[test]
-    fn seconds() {
-        assert_eq!(0, DateTime::from_seconds(0).unwrap().as_seconds());
-        assert_eq!(-1, DateTime::from_seconds(-1).unwrap().as_seconds());
-        assert_eq!(
-            185_542_587_187_199,
-            DateTime::from_seconds(185_542_587_187_199)
-                .unwrap()
-                .as_seconds()
-        );
-        assert_eq!(
-            "5879611/07/12 23:59:59",
-            DateTime::from_seconds(185_542_587_187_199)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        assert!(DateTime::from_seconds(185_542_587_187_200).is_err());
-        assert_eq!(
-            -185_542_587_187_200,
-            DateTime::from_seconds(-185_542_587_187_200)
-                .unwrap()
-                .as_seconds()
-        );
-        assert_eq!(
-            "-5879611/06/23 00:00:00",
-            DateTime::from_seconds(-185_542_587_187_200)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        assert!(DateTime::from_seconds(-185_542_587_187_201).is_err());
-    }
-
-    #[test]
-    fn nanoseconds() {
-        assert_eq!(0, DateTime::from_nanoseconds(0).unwrap().as_nanoseconds());
-        assert_eq!(
-            "0002/01/01 12:34:56",
-            DateTime::from_nanoseconds(31_581_296_000_000_000)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        //41'104
-        assert_eq!(
-            "-0001/01/01 00:00:00",
-            DateTime::from_nanoseconds(-31_622_400_000_000_000)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        assert_eq!(
-            185_542_587_187_199_999_999_999,
-            DateTime::from_nanoseconds(185_542_587_187_199_999_999_999)
-                .unwrap()
-                .as_nanoseconds()
-        );
-        assert_eq!(
-            "5879611/07/12 23:59:59",
-            DateTime::from_nanoseconds(185_542_587_187_199_999_999_999)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        assert!(DateTime::from_nanoseconds(185_542_587_187_200_000_000_000).is_err());
-        assert_eq!(
-            -185_542_587_187_200_000_000_000,
-            DateTime::from_nanoseconds(-185_542_587_187_200_000_000_000)
-                .unwrap()
-                .as_nanoseconds()
-        );
-        assert_eq!(
-            "-5879611/06/23 00:00:00",
-            DateTime::from_nanoseconds(-185_542_587_187_200_000_000_000)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
-        );
-        assert!(DateTime::from_nanoseconds(-185_542_587_273_600_000_000_000).is_err());
-    }
-
-    #[test]
     fn from_ymd() {
         // check allowed limits
-        from_ymd_ok(0, 1, 1, 1);
-        from_ymd_ok(334, 1, 12, 1);
-        from_ymd_ok(30, 1, 1, 31);
-        from_ymd_ok(58, 1, 2, 28);
-        from_ymd_ok(1154, 4, 2, 29);
-        from_ymd_ok(119, 1, 4, 30);
-        from_ymd_ok(i32::MAX, 5_879_611, 7, 12);
-        from_ymd_ok(i32::MIN, -5_879_611, 6, 23);
+        from_ymd_ok(1, 1, 1);
+        from_ymd_ok(1, 12, 1);
+        from_ymd_ok(1, 1, 31);
+        from_ymd_ok(1, 2, 28);
+        from_ymd_ok(4, 2, 29);
+        from_ymd_ok(1, 4, 30);
+        from_ymd_ok(5_879_611, 7, 12);
+        from_ymd_ok(-5_879_611, 6, 23);
 
         // check invalid limits
         from_ymd_err(1, 0, 1);
@@ -171,10 +88,10 @@ mod datetime_tests {
         from_ymd_err(-5_879_611, 5, 1);
     }
 
-    fn from_ymd_ok(expected: i32, year: i32, month: u32, day: u32) {
+    fn from_ymd_ok(year: i32, month: u32, day: u32) {
         assert_eq!(
-            expected,
-            DateTime::from_ymd(year, month, day).unwrap().as_days()
+            (year, month, day),
+            DateTime::from_ymd(year, month, day).unwrap().as_ymd()
         );
     }
 
@@ -392,13 +309,15 @@ mod datetime_tests {
     fn time() {
         assert_eq!(
             0,
-            Time::from(DateTime::default().set_time(0).unwrap()).as_nanoseconds()
+            Time::from(DateTime::default().set_time(Time::default())).as_nanoseconds()
         );
         assert_eq!(
             86_399_999_999_999,
-            Time::from(DateTime::default().set_time(86_399_999_999_999).unwrap()).as_nanoseconds()
+            Time::from(
+                DateTime::default().set_time(Time::from_nanoseconds(86_399_999_999_999).unwrap())
+            )
+            .as_nanoseconds()
         );
-        assert!(DateTime::default().set_time(86_400_000_000_000).is_err());
     }
 
     #[test]
@@ -411,21 +330,13 @@ mod datetime_tests {
     }
 
     #[test]
-    fn between() {
-        let date_time1 = DateTime::from_days(123);
-        let date_time2 = DateTime::from_days(200);
-        assert_eq!(77 * 86400, date_time1.between(&date_time2));
-        assert_eq!(77 * 86400, date_time2.between(&date_time1));
-    }
-
-    #[test]
     fn get() {
         let date_time = DateTime::from_ymd(2000, 5, 10).unwrap();
         assert_eq!(2000, date_time.get(DateTimeUnit::Year));
         assert_eq!(5, date_time.get(DateTimeUnit::Month));
         assert_eq!(10, date_time.get(DateTimeUnit::Day));
 
-        let date_time = DateTime::from_nanoseconds(10_921_123_456_789).unwrap();
+        let date_time = DateTime::from(Time::from_nanoseconds(10_921_123_456_789).unwrap());
 
         assert_eq!(3, date_time.get(DateTimeUnit::Hour));
         assert_eq!(2, date_time.get(DateTimeUnit::Min));
@@ -652,7 +563,7 @@ mod datetime_tests {
     fn implementations() {
         let default = DateTime::default();
         assert_eq!(0, default.as_nanoseconds());
-        let date_time = DateTime::from_nanoseconds(12345).unwrap();
+        let date_time = DateTime::from(Time::from_nanoseconds(12345).unwrap());
         let date_time_copy = DateTime::from(&date_time);
         assert_eq!(12345, date_time.as_nanoseconds());
         assert_eq!(12345, date_time_copy.as_nanoseconds());
@@ -660,21 +571,26 @@ mod datetime_tests {
 
     #[test]
     fn special_cases() {
-        assert_eq!(2400, DateTime::from_days(876_275).get(DateTimeUnit::Year));
+        assert_eq!(
+            2400,
+            DateTime::from_ymd(2400, 2, 29)
+                .unwrap()
+                .get(DateTimeUnit::Year)
+        );
         assert_eq!(
             -4,
             DateTime::from_ymd(-4, 1, 1)
                 .unwrap()
                 .get(DateTimeUnit::Year)
         );
-        assert_eq!(1186, DateTime::from_ymd(4, 4, 1).unwrap().as_days());
-        assert_eq!(1247, DateTime::from_ymd(4, 6, 1).unwrap().as_days());
-        assert_eq!(1277, DateTime::from_ymd(4, 7, 1).unwrap().as_days());
-        assert_eq!(1308, DateTime::from_ymd(4, 8, 1).unwrap().as_days());
-        assert_eq!(1339, DateTime::from_ymd(4, 9, 1).unwrap().as_days());
-        assert_eq!(1369, DateTime::from_ymd(4, 10, 1).unwrap().as_days());
-        assert_eq!(1400, DateTime::from_ymd(4, 11, 1).unwrap().as_days());
-        assert_eq!(212, DateTime::from_ymd(1, 8, 1).unwrap().as_days());
-        assert_eq!(304, DateTime::from_ymd(1, 11, 1).unwrap().as_days());
+        assert_eq!((4, 4, 1), DateTime::from_ymd(4, 4, 1).unwrap().as_ymd());
+        assert_eq!((4, 6, 1), DateTime::from_ymd(4, 6, 1).unwrap().as_ymd());
+        assert_eq!((4, 7, 1), DateTime::from_ymd(4, 7, 1).unwrap().as_ymd());
+        assert_eq!((4, 8, 1), DateTime::from_ymd(4, 8, 1).unwrap().as_ymd());
+        assert_eq!((4, 9, 1), DateTime::from_ymd(4, 9, 1).unwrap().as_ymd());
+        assert_eq!((4, 10, 1), DateTime::from_ymd(4, 10, 1).unwrap().as_ymd());
+        assert_eq!((4, 11, 1), DateTime::from_ymd(4, 11, 1).unwrap().as_ymd());
+        assert_eq!((1, 8, 1), DateTime::from_ymd(1, 8, 1).unwrap().as_ymd());
+        assert_eq!((1, 11, 1), DateTime::from_ymd(1, 11, 1).unwrap().as_ymd());
     }
 }

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod date_tests {
-    use astrolabe::{Date, DateUnit};
+    use astrolabe::{Date, DateUnit, DateUtilities};
 
     #[test]
     fn derive() {
@@ -47,23 +47,16 @@ mod date_tests {
     }
 
     #[test]
-    fn days() {
-        assert_eq!(0, Date::from_days(0).as_days());
-        assert_eq!(i32::MAX, Date::from_days(i32::MAX).as_days());
-        assert_eq!(i32::MIN, Date::from_days(i32::MIN).as_days());
-    }
-
-    #[test]
     fn from_ymd() {
         // check allowed limits
-        from_ymd_ok(0, 1, 1, 1);
-        from_ymd_ok(334, 1, 12, 1);
-        from_ymd_ok(30, 1, 1, 31);
-        from_ymd_ok(58, 1, 2, 28);
-        from_ymd_ok(1154, 4, 2, 29);
-        from_ymd_ok(119, 1, 4, 30);
-        from_ymd_ok(i32::MAX, 5_879_611, 7, 12);
-        from_ymd_ok(i32::MIN, -5_879_611, 6, 23);
+        from_ymd_ok(1, 1, 1);
+        from_ymd_ok(1, 12, 1);
+        from_ymd_ok(1, 1, 31);
+        from_ymd_ok(1, 2, 28);
+        from_ymd_ok(4, 2, 29);
+        from_ymd_ok(1, 4, 30);
+        from_ymd_ok(5_879_611, 7, 12);
+        from_ymd_ok(-5_879_611, 6, 23);
 
         // check invalid limits
         from_ymd_err(1, 0, 1);
@@ -81,10 +74,10 @@ mod date_tests {
         from_ymd_err(-5_879_611, 5, 1);
     }
 
-    fn from_ymd_ok(expected: i32, year: i32, month: u32, day: u32) {
+    fn from_ymd_ok(year: i32, month: u32, day: u32) {
         assert_eq!(
-            expected,
-            Date::from_ymd(year, month, day).unwrap().as_days()
+            (year, month, day),
+            Date::from_ymd(year, month, day).unwrap().as_ymd()
         );
     }
 
@@ -94,7 +87,7 @@ mod date_tests {
 
     #[test]
     fn timestamp() {
-        assert_eq!(0, Date::from_timestamp(0).unwrap().as_timestamp());
+        assert_eq!(0, Date::from_timestamp(0).unwrap().timestamp());
         assert_eq!(
             "1970/01/01",
             Date::from_timestamp(0).unwrap().format("yyyy/MM/dd")
@@ -107,7 +100,7 @@ mod date_tests {
             185_480_451_504_000,
             Date::from_timestamp(185_480_451_590_399)
                 .unwrap()
-                .as_timestamp()
+                .timestamp()
         );
         assert_eq!(
             "5879611/07/12",
@@ -120,7 +113,7 @@ mod date_tests {
             -185_604_722_784_000,
             Date::from_timestamp(-185_604_722_784_000)
                 .unwrap()
-                .as_timestamp()
+                .timestamp()
         );
         assert_eq!(
             "-5879611/06/23",
@@ -131,14 +124,6 @@ mod date_tests {
 
         assert!(Date::from_timestamp(185_480_451_590_400).is_err());
         assert!(Date::from_timestamp(-185_604_722_784_001).is_err());
-    }
-
-    #[test]
-    fn between() {
-        let date1 = Date::from_days(123);
-        let date2 = Date::from_days(200);
-        assert_eq!(77, date1.days_since(&date2).unsigned_abs());
-        assert_eq!(77, date2.days_since(&date1).unsigned_abs());
     }
 
     #[test]
@@ -154,7 +139,7 @@ mod date_tests {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
 
         let modified = date.apply(123, DateUnit::Day).unwrap();
-        assert_eq!(10627200, modified.as_timestamp());
+        assert_eq!(10627200, modified.timestamp());
         let modified = date.apply(11, DateUnit::Month).unwrap();
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
         let modified = date.apply(12, DateUnit::Month).unwrap();
@@ -218,15 +203,15 @@ mod date_tests {
 
     #[test]
     fn negative_years() {
-        let date = Date::from_days(0);
+        let date = Date::from_ymd(1, 1, 1).unwrap();
         assert_eq!("0001-01-01", date.format("yyyy-MM-dd"));
         assert_eq!("01-01-01", date.format("yy-MM-dd"));
         assert_eq!(1, date.get(DateUnit::Year));
-        let date = Date::from_days(-366);
+        let date = Date::from_ymd(-1, 1, 1).unwrap();
         assert_eq!("-0001-01-01", date.format("yyyy-MM-dd"));
         assert_eq!("-01-01-01", date.format("yy-MM-dd"));
         assert_eq!(-1, date.get(DateUnit::Year));
-        let date = Date::from_days(-367);
+        let date = Date::from_ymd(-2, 12, 31).unwrap();
         assert_eq!("-0002-12-31", date.format("yyyy-MM-dd"));
         assert_eq!("-02-12-31", date.format("yy-MM-dd"));
         assert_eq!(-2, date.get(DateUnit::Year));
