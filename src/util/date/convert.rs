@@ -5,7 +5,6 @@ use crate::{
         AstrolabeError,
     },
     util::leap::{is_leap_year, leap_years},
-    DateTimeUnit, DateUnit,
 };
 
 /// Converts days (since 01. January 0001) to a date (year, month, day of month). Days can be negative.
@@ -193,14 +192,5 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
         n if n.is_negative() => (53 - (g - s) / 5) as u32,
         n if n > 364 + s => 1,
         _ => (n / 7 + 1) as u32,
-    }
-}
-
-/// Converts a [`DateTimeUnit`] to [`DateUnit`]. If there is no corresponding date unit, the default, [`DateUnit::Day`], will be used.
-pub(crate) fn dtu_to_du(unit: DateTimeUnit) -> DateUnit {
-    match unit {
-        DateTimeUnit::Year => DateUnit::Year,
-        DateTimeUnit::Month => DateUnit::Month,
-        _ => DateUnit::Day,
     }
 }

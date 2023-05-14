@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod offset_tests {
-    use astrolabe::{DateTime, DateTimeUnit, Offset, Time, TimeUnit};
+    use astrolabe::{DateTime, DateUtilities, Offset, Time, TimeUnit, TimeUtilities};
 
     #[test]
     fn set_offset_time() {
@@ -191,14 +191,8 @@ mod offset_tests {
             .unwrap()
             .set_offset(3661)
             .unwrap();
-        assert_eq!(
-            3661,
-            time.apply(1, DateTimeUnit::Year).unwrap().get_offset()
-        );
-        assert_eq!(
-            3661,
-            time.apply(1, DateTimeUnit::Hour).unwrap().get_offset()
-        );
+        assert_eq!(3661, time.add_years(1).unwrap().get_offset());
+        assert_eq!(3661, time.add_hours(1).unwrap().get_offset());
     }
 
     #[test]
@@ -207,171 +201,171 @@ mod offset_tests {
             .unwrap()
             .set_offset(-3661)
             .unwrap();
-        assert_eq!(22, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Hour).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Hour).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Hour).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Min).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Min).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Min).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Sec).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Sec).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Sec).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
+        assert_eq!(22, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(5).unwrap();
+        assert_eq!(5, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(23).unwrap();
+        assert_eq!(23, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(0).unwrap();
+        assert_eq!(0, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(5).unwrap();
+        assert_eq!(5, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(23).unwrap();
+        assert_eq!(23, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(0).unwrap();
+        assert_eq!(0, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(5).unwrap();
+        assert_eq!(5, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(23).unwrap();
+        assert_eq!(23, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(0).unwrap();
+        assert_eq!(0, date_time.second());
+        assert_eq!(1, date_time.day());
 
         let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
             .unwrap()
             .set_offset(3600)
             .unwrap();
-        assert_eq!(1, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Hour).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Hour).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Hour).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Min).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Min).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Min).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Sec).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Sec).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Sec).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
+        assert_eq!(1, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(5).unwrap();
+        assert_eq!(5, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(23).unwrap();
+        assert_eq!(23, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(0).unwrap();
+        assert_eq!(0, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(5).unwrap();
+        assert_eq!(5, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(23).unwrap();
+        assert_eq!(23, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(0).unwrap();
+        assert_eq!(0, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(5).unwrap();
+        assert_eq!(5, date_time.second());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(23).unwrap();
+        assert_eq!(23, date_time.second());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(0).unwrap();
+        assert_eq!(0, date_time.second());
+        assert_eq!(2, date_time.day());
 
         let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
             .unwrap()
             .set_offset(82800)
             .unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Hour).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Hour).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Hour).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Min).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Min).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Min).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Min));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Sec).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Sec).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Sec).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(2, date_time.get(DateTimeUnit::Day));
+        assert_eq!(23, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(5).unwrap();
+        assert_eq!(5, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(23).unwrap();
+        assert_eq!(23, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_hour(0).unwrap();
+        assert_eq!(0, date_time.hour());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(5).unwrap();
+        assert_eq!(5, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(23).unwrap();
+        assert_eq!(23, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_minute(0).unwrap();
+        assert_eq!(0, date_time.minute());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(5).unwrap();
+        assert_eq!(5, date_time.second());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(23).unwrap();
+        assert_eq!(23, date_time.second());
+        assert_eq!(2, date_time.day());
+        let date_time = date_time.set_second(0).unwrap();
+        assert_eq!(0, date_time.second());
+        assert_eq!(2, date_time.day());
 
         let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
             .unwrap()
             .set_offset(-82800)
             .unwrap();
-        assert_eq!(1, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Hour).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Hour).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Hour).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Min).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Min).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Min).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Sec).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Sec).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Sec).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
+        assert_eq!(1, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(5).unwrap();
+        assert_eq!(5, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(23).unwrap();
+        assert_eq!(23, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(0).unwrap();
+        assert_eq!(0, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(5).unwrap();
+        assert_eq!(5, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(23).unwrap();
+        assert_eq!(23, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(0).unwrap();
+        assert_eq!(0, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(5).unwrap();
+        assert_eq!(5, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(23).unwrap();
+        assert_eq!(23, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(0).unwrap();
+        assert_eq!(0, date_time.second());
+        assert_eq!(1, date_time.day());
 
         let date_time = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
             .unwrap()
             .set_offset(-43200)
             .unwrap();
-        assert_eq!(12, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Hour).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Hour).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Hour).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Hour));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Min).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Min).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Min).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Min));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(5, DateTimeUnit::Sec).unwrap();
-        assert_eq!(5, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(23, DateTimeUnit::Sec).unwrap();
-        assert_eq!(23, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
-        let date_time = date_time.set(0, DateTimeUnit::Sec).unwrap();
-        assert_eq!(0, date_time.get(DateTimeUnit::Sec));
-        assert_eq!(1, date_time.get(DateTimeUnit::Day));
+        assert_eq!(12, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(5).unwrap();
+        assert_eq!(5, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(23).unwrap();
+        assert_eq!(23, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_hour(0).unwrap();
+        assert_eq!(0, date_time.hour());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(5).unwrap();
+        assert_eq!(5, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(23).unwrap();
+        assert_eq!(23, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_minute(0).unwrap();
+        assert_eq!(0, date_time.minute());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(5).unwrap();
+        assert_eq!(5, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(23).unwrap();
+        assert_eq!(23, date_time.second());
+        assert_eq!(1, date_time.day());
+        let date_time = date_time.set_second(0).unwrap();
+        assert_eq!(0, date_time.second());
+        assert_eq!(1, date_time.day());
     }
 
     #[test]

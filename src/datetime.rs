@@ -10,8 +10,11 @@ use crate::{
             SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
         },
         date::{
-            convert::{date_to_days, days_to_date, dtu_to_du, year_doy_to_days},
-            manipulate::{apply_date_unit, set_date_unit},
+            convert::{date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days},
+            manipulate::{
+                add_days, add_months, add_years, set_day, set_day_of_year, set_month, set_year,
+                sub_days, sub_months, sub_years,
+            },
         },
         format::format_part,
         offset::{add_offset_to_dn, remove_offset_from_dn},
@@ -19,12 +22,9 @@ use crate::{
             parse_format_string, parse_offset, parse_part, ParseUnit, ParsedDate, ParsedTime,
             Period,
         },
-        time::{
-            convert::{
-                days_nanos_to_nanos, days_nanos_to_secs, dtu_to_tu, nanos_to_days_nanos,
-                nanos_to_unit, secs_to_days_nanos, time_to_day_seconds,
-            },
-            manipulate::{apply_time_unit, set_time_unit},
+        time::convert::{
+            days_nanos_to_nanos, days_nanos_to_secs, nanos_to_days_nanos, secs_to_days_nanos,
+            time_to_day_seconds,
         },
     },
     Date, DateUtilities, Offset, Precision, Time, TimeUtilities,
@@ -36,39 +36,6 @@ use std::{
     str::FromStr,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-/// Date and time units for functions like [`DateTime::get`] or [`DateTime::apply`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DateTimeUnit {
-    #[allow(missing_docs)]
-    Year,
-    /// **Note**: When used in the [`DateTime::apply`] function, this unit adds or removes calendar months, not 30 days.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_ymd(1970, 1, 31).unwrap();
-    /// assert_eq!("1970-02-28", date_time.apply(1, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// assert_eq!("1970-03-31", date_time.apply(2, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// assert_eq!("1970-04-30", date_time.apply(3, DateTimeUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// ```
-    Month,
-    #[allow(missing_docs)]
-    Day,
-    #[allow(missing_docs)]
-    Hour,
-    #[allow(missing_docs)]
-    Min,
-    #[allow(missing_docs)]
-    Sec,
-    #[allow(missing_docs)]
-    Centis,
-    #[allow(missing_docs)]
-    Millis,
-    #[allow(missing_docs)]
-    Micros,
-    #[allow(missing_docs)]
-    Nanos,
-}
 
 /// Combined date and time.
 /// Date is in the proleptic Gregorian calendar and clock time is with nanosecond precision.
@@ -85,9 +52,9 @@ impl DateTime {
     /// Creates a new [`DateTime`] instance with [`SystemTime::now()`].
     ///
     /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
+    /// # use astrolabe::DateTime;
     /// let date_time = DateTime::now();
-    /// assert!(2021 < date_time.get(DateTimeUnit::Year));
+    /// assert!(2021 < date_time.year();
     /// ```
     pub fn now() -> Self {
         let duration = SystemTime::now()
@@ -316,98 +283,6 @@ impl DateTime {
     /// ```
     pub fn between(&self, compare: &Self) -> u64 {
         (self.as_seconds() - compare.as_seconds()).unsigned_abs()
-    }
-
-    /// Get a specific [`DateTimeUnit`].
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// assert_eq!(2022, date_time.get(DateTimeUnit::Year));
-    /// assert_eq!(5, date_time.get(DateTimeUnit::Month));
-    /// assert_eq!(32, date_time.get(DateTimeUnit::Min));
-    /// ```
-    pub fn get(&self, unit: DateTimeUnit) -> i64 {
-        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
-        match unit {
-            DateTimeUnit::Year => days_to_date(days).0 as i64,
-            DateTimeUnit::Month => days_to_date(days).1 as i64,
-            DateTimeUnit::Day => days_to_date(days).2 as i64,
-            _ => nanos_to_unit(nanoseconds, dtu_to_tu(unit)) as i64,
-        }
-    }
-
-    /// Creates a new [`DateTime`] instance with a specified amount of time applied (added or subtracted).
-    ///
-    /// **Note**: When using [`DateTimeUnit::Month`], it adds calendar months and not 30 days. See it's [documentation](DateTimeUnit::Month) for examples.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_ymdhms(1970, 1, 1, 12, 32, 1).unwrap();
-    /// let applied = date_time.apply(1, DateTimeUnit::Day).unwrap();
-    /// assert_eq!("1970-01-01 12:32:01", date_time.format("yyyy-MM-dd HH:mm:ss"));
-    /// assert_eq!("1970-01-02 12:32:01", applied.format("yyyy-MM-dd HH:mm:ss"));
-    /// let applied_2 = applied.apply(-1, DateTimeUnit::Hour).unwrap();
-    /// assert_eq!("1970-01-02 11:32:01", applied_2.format("yyyy-MM-dd HH:mm:ss"));
-    /// ```
-    pub fn apply(&self, amount: i64, unit: DateTimeUnit) -> Result<Self, AstrolabeError> {
-        Ok(match unit {
-            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => Self {
-                days: apply_date_unit(self.days, amount, dtu_to_du(unit))?,
-                nanoseconds: self.nanoseconds,
-                offset: self.offset,
-            },
-            _ => Self::from_nanoseconds(apply_time_unit(
-                self.as_nanoseconds(),
-                amount,
-                dtu_to_tu(unit),
-            ))?
-            .set_offset(self.offset)
-            .unwrap(),
-        })
-    }
-
-    /// Creates a new [`DateTime`] instance with a specific [`DateTimeUnit`] set to the provided value.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, DateTimeUnit};
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// assert_eq!(2000, date_time.set(2000, DateTimeUnit::Year).unwrap().get(DateTimeUnit::Year));
-    /// assert_eq!(10, date_time.set(10, DateTimeUnit::Min).unwrap().get(DateTimeUnit::Min));
-    /// ```
-    pub fn set(&self, value: i32, unit: DateTimeUnit) -> Result<Self, AstrolabeError> {
-        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
-        Ok(match unit {
-            DateTimeUnit::Year | DateTimeUnit::Month | DateTimeUnit::Day => {
-                let new_days = set_date_unit(self.days, value, dtu_to_du(unit))?;
-                let (days, nanoseconds) = remove_offset_from_dn(new_days, nanoseconds, self.offset);
-                Self {
-                    days,
-                    nanoseconds,
-                    offset: self.offset,
-                }
-            }
-            _ => {
-                if value.is_negative() {
-                    return Err(create_custom_oor(format!(
-                        "Value cannot be negative because unit is \"{:?}\"",
-                        unit
-                    )));
-                }
-                let new_nanoseconds =
-                    set_time_unit(self.nanoseconds, value.unsigned_abs(), dtu_to_tu(unit))?;
-                let (days, nanoseconds) = remove_offset_from_dn(days, new_nanoseconds, self.offset);
-                Self {
-                    days,
-                    nanoseconds,
-                    offset: self.offset,
-                }
-            }
-        })
     }
 
     /// Format as an RFC 3339 timestamp (`2022-05-02T15:30:20Z`).
@@ -805,23 +680,33 @@ impl DateTime {
 
 impl DateUtilities for DateTime {
     fn year(&self) -> i32 {
-        todo!()
+        let days = add_offset_to_dn(self.days, self.nanoseconds, self.offset).0;
+
+        days_to_date(days).0
     }
 
     fn month(&self) -> u32 {
-        todo!()
+        let days = add_offset_to_dn(self.days, self.nanoseconds, self.offset).0;
+
+        days_to_date(days).1
     }
 
     fn day(&self) -> u32 {
-        todo!()
+        let days = add_offset_to_dn(self.days, self.nanoseconds, self.offset).0;
+
+        days_to_date(days).2
     }
 
     fn day_of_year(&self) -> u32 {
-        todo!()
+        let days = add_offset_to_dn(self.days, self.nanoseconds, self.offset).0;
+
+        days_to_doy(days)
     }
 
     fn weekday(&self) -> u8 {
-        todo!()
+        let days = add_offset_to_dn(self.days, self.nanoseconds, self.offset).0;
+
+        days_to_wday(days, false) as u8
     }
 
     fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
@@ -832,44 +717,112 @@ impl DateUtilities for DateTime {
         self.as_seconds() - DAYS_TO_1970_I64 * SECS_PER_DAY_U64 as i64
     }
 
-    fn set_year(&self, _year: i32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_year(&self, year: i32) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+
+        let new_days = set_year(days, year)?;
+
+        Ok(Self {
+            days: remove_offset_from_dn(new_days, nanoseconds, self.offset).0,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn set_month(&self, _month: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_month(&self, month: u32) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+
+        let new_days = set_month(days, month)?;
+
+        Ok(Self {
+            days: remove_offset_from_dn(new_days, nanoseconds, self.offset).0,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn set_day(&self, _day: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_day(&self, day: u32) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+
+        let new_days = set_day(days, day)?;
+
+        Ok(Self {
+            days: remove_offset_from_dn(new_days, nanoseconds, self.offset).0,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn set_day_of_year(&self, _day_of_year: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_day_of_year(&self, day_of_year: u32) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+
+        let new_days = set_day_of_year(days, day_of_year)?;
+
+        Ok(Self {
+            days: remove_offset_from_dn(new_days, nanoseconds, self.offset).0,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_years(&self, years: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_years(self.days, years)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_months(&self, months: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_months(self.days, months)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_days(&self, days: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_days(self.days, days)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_years(&self, years: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_years(self.days, years)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_months(&self, months: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_months(self.days, months)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_days(&self, days: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_days(self.days, days)?;
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: self.nanoseconds,
+            offset: self.offset,
+        })
     }
 
     fn clear_until_year(&self) -> Self {
@@ -938,7 +891,7 @@ impl TimeUtilities for DateTime {
         todo!()
     }
 
-    fn set_min(&self, _min: u32) -> Result<Self, AstrolabeError> {
+    fn set_minute(&self, _min: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -962,7 +915,7 @@ impl TimeUtilities for DateTime {
         todo!()
     }
 
-    fn add_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+    fn add_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -986,7 +939,7 @@ impl TimeUtilities for DateTime {
         todo!()
     }
 
-    fn sub_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+    fn sub_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -1010,7 +963,7 @@ impl TimeUtilities for DateTime {
         todo!()
     }
 
-    fn clear_until_min(&self) -> Self {
+    fn clear_until_minute(&self) -> Self {
         todo!()
     }
 
@@ -1036,7 +989,7 @@ impl TimeUtilities for DateTime {
         todo!()
     }
 
-    fn mins_since(&self, _compare: &Self) -> Self::SubDayReturn {
+    fn minutes_since(&self, _compare: &Self) -> Self::SubDayReturn {
         todo!()
     }
 

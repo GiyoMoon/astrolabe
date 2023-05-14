@@ -5,7 +5,7 @@ use crate::{
         NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_HOUR_U64,
         SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
     },
-    DateTimeUnit, TimeUnit,
+    TimeUnit,
 };
 
 /// Converts nanoseconds to time units (hour, min, sec)
@@ -34,19 +34,6 @@ pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
         TimeUnit::Millis => nanos / 1_000_000 % 1_000,
         TimeUnit::Micros => nanos / 1_000 % 1_000_000,
         TimeUnit::Nanos => nanos % NANOS_PER_SEC,
-    }
-}
-
-/// Converts a [`DateTimeUnit`] to [`TimeUnit`]. If there is no corresponding time unit, the default, [`TimeUnit::Sec`], will be used.
-pub(crate) fn dtu_to_tu(unit: DateTimeUnit) -> TimeUnit {
-    match unit {
-        DateTimeUnit::Hour => TimeUnit::Hour,
-        DateTimeUnit::Min => TimeUnit::Min,
-        DateTimeUnit::Centis => TimeUnit::Centis,
-        DateTimeUnit::Millis => TimeUnit::Millis,
-        DateTimeUnit::Micros => TimeUnit::Micros,
-        DateTimeUnit::Nanos => TimeUnit::Nanos,
-        _ => TimeUnit::Sec,
     }
 }
 
