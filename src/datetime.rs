@@ -22,9 +22,12 @@ use crate::{
             parse_format_string, parse_offset, parse_part, ParseUnit, ParsedDate, ParsedTime,
             Period,
         },
-        time::convert::{
-            days_nanos_to_nanos, days_nanos_to_secs, nanos_to_days_nanos, secs_to_days_nanos,
-            time_to_day_seconds,
+        time::{
+            convert::{
+                days_nanos_to_nanos, days_nanos_to_secs, nanos_to_days_nanos, nanos_to_subsecond,
+                nanos_to_time, secs_to_days_nanos, time_to_day_seconds,
+            },
+            manipulate::{set_hour, set_micro, set_milli, set_minute, set_nano, set_second},
         },
     },
     Date, DateUtilities, Offset, Precision, Time, TimeUtilities,
@@ -54,7 +57,7 @@ impl DateTime {
     /// ```rust
     /// # use astrolabe::DateTime;
     /// let date_time = DateTime::now();
-    /// assert!(2021 < date_time.year();
+    /// assert!(2021 < date_time.year());
     /// ```
     pub fn now() -> Self {
         let duration = SystemTime::now()
@@ -532,7 +535,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance with a given timezone offset defined as time units (hour, minute and second). Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
     ///
-    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
@@ -562,7 +565,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance with a given timezone offset defined as seconds. Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
     ///
-    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
@@ -603,7 +606,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
     ///
-    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
@@ -637,7 +640,7 @@ impl DateTime {
 
     /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
     ///
-    /// The offset affects all format functions and the [`get`](DateTime::get) and [`set`](DateTime::set) functions but does not change the datetime itself which always represents UTC.
+    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
     ///
@@ -864,51 +867,123 @@ impl DateUtilities for DateTime {
 
 impl TimeUtilities for DateTime {
     fn hour(&self) -> u32 {
-        todo!()
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_time(nanoseconds).0
     }
 
     fn minute(&self) -> u32 {
-        todo!()
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_time(nanoseconds).1
     }
 
     fn second(&self) -> u32 {
-        todo!()
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_time(nanoseconds).2
     }
 
-    fn milli(&self) -> u64 {
-        todo!()
+    fn milli(&self) -> u32 {
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_subsecond(nanoseconds).0
     }
 
-    fn micro(&self) -> u64 {
-        todo!()
+    fn micro(&self) -> u32 {
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_subsecond(nanoseconds).1
     }
 
-    fn nano(&self) -> u64 {
-        todo!()
+    fn nano(&self) -> u32 {
+        let nanoseconds = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        nanos_to_subsecond(nanoseconds).2
     }
 
-    fn set_hour(&self, _hour: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_hour(&self, hour: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_hour(nanos, hour)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
-    fn set_minute(&self, _min: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_minute(&self, minute: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_minute(nanos, minute)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
-    fn set_second(&self, _sec: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_second(&self, second: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_second(nanos, second)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
-    fn set_milli(&self, _milli: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_milli(&self, milli: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_milli(nanos, milli)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
-    fn set_micro(&self, _micro: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_micro(&self, micro: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_micro(nanos, micro)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
-    fn set_nano(&self, _nano: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_nano(&self, nano: u32) -> Result<Self, AstrolabeError> {
+        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+
+        let new_nanos = set_nano(nanos, nano)?;
+
+        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+
+        Ok(Self {
+            days: new_days,
+            nanoseconds: new_nanos,
+            offset: self.offset,
+        })
     }
 
     fn add_hours(&self, _hours: u32) -> Result<Self, AstrolabeError> {
