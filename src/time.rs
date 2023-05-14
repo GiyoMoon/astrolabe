@@ -589,7 +589,7 @@ impl TimeUtilities for Time {
         todo!()
     }
 
-    fn set_min(&self, _min: u32) -> Result<Self, AstrolabeError> {
+    fn set_minute(&self, _min: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -613,7 +613,7 @@ impl TimeUtilities for Time {
         todo!()
     }
 
-    fn add_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+    fn add_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -637,7 +637,7 @@ impl TimeUtilities for Time {
         todo!()
     }
 
-    fn sub_mins(&self, _mins: u32) -> Result<Self, AstrolabeError> {
+    fn sub_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
         todo!()
     }
 
@@ -661,7 +661,7 @@ impl TimeUtilities for Time {
         todo!()
     }
 
-    fn clear_until_min(&self) -> Self {
+    fn clear_until_minute(&self) -> Self {
         todo!()
     }
 
@@ -689,7 +689,7 @@ impl TimeUtilities for Time {
         self_hour - other_hour
     }
 
-    fn mins_since(&self, compare: &Self) -> Self::SubDayReturn {
+    fn minutes_since(&self, compare: &Self) -> Self::SubDayReturn {
         let self_min = (self.as_seconds() / SECS_PER_MINUTE) as i32;
         let other_min = (compare.as_seconds() / SECS_PER_MINUTE) as i32;
         self_min - other_min

@@ -32,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `as_hms()`
   - `duration_between()`
 
-
 ### Changed
 - `DateTime::timestamp` now comes from `DateUtilities`
 - `Date::timestamp` now comes from `DateUtilities`
@@ -40,18 +39,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DateTime::set_time` now accepts `Time` instead of `u64`
 
 ### Removed
-- `DateTime::date` in favor of `Date::from<DateTime>`
-- `DateTime::time` in favor of `Time::from<DateTime>`
-- `Date::between` in favor of `Date::days_since`
-- `Time::between` in favor of `Time::nanos_since`
-- `DateTime::from_days`
-- `DateTime::as_days`
-- `DateTime::from_seconds`
-- `DateTime::as_seconds`
-- `DateTime::from_nanoseconds`
-- `DateTime::as_nanoseconds`
-- `Date::from_days`
-- `Date::as_days`
+- `DateTime`
+  - `DateTime::date` in favor of `Date::from<DateTime>`
+  - `DateTime::time` in favor of `Time::from<DateTime>`
+  - `DateTime::from_days`
+  - `DateTime::as_days`
+  - `DateTime::from_seconds`
+  - `DateTime::as_seconds`
+  - `DateTime::from_nanoseconds`
+  - `DateTime::as_nanoseconds`
+  - `Date::between` in favor of `Date::days_since`
+  - `Time::between` in favor of `Time::nanos_since`
+  - `DateTime::get` in favor of the `DateUtilities` and `TimeUtilities` get functions
+  - `DateTime::set` in favor of the `DateUtilities` and `TimeUtilities` set functions
+  - `DateTime::apply` in favor of the `DateUtilities` and `TimeUtilities` add and sub functions
+- `Date`
+  - `Date::from_days`
+  - `Date::as_days`
+  - `Date::get` in favor of the `DateUtilities` get functions
+  - `Date::set` in favor of the `DateUtilities` set functions
+  - `Date::apply` in favor of the `DateUtilities` add and sub functions
+- `DateTimeUnit`
+- `DateUnit`
+- `TimeUnit`
 
 ## [0.3.0] - 2023-04-11
 ### Added

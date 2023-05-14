@@ -126,7 +126,7 @@ pub trait TimeUtilities: Sized {
     /// Sets the minute to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_min(&self, min: u32) -> Result<Self, AstrolabeError>;
+    fn set_minute(&self, min: u32) -> Result<Self, AstrolabeError>;
     /// Sets the second to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
@@ -151,7 +151,7 @@ pub trait TimeUtilities: Sized {
     /// Adds the provided minutes.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_mins(&self, mins: u32) -> Result<Self, AstrolabeError>;
+    fn add_minutes(&self, mins: u32) -> Result<Self, AstrolabeError>;
     /// Adds the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -176,7 +176,7 @@ pub trait TimeUtilities: Sized {
     /// Subtracts the provided minutes.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_mins(&self, mins: u32) -> Result<Self, AstrolabeError>;
+    fn sub_minutes(&self, mins: u32) -> Result<Self, AstrolabeError>;
     /// Subtracts the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -197,7 +197,7 @@ pub trait TimeUtilities: Sized {
     /// Clears date/time units until the hour (inclusive).
     fn clear_until_hour(&self) -> Self;
     /// Clears date/time units until the minute (inclusive).
-    fn clear_until_min(&self) -> Self;
+    fn clear_until_minute(&self) -> Self;
     /// Clears date/time units until the second (inclusive).
     fn clear_until_second(&self) -> Self;
     /// Clears date/time units until the millisecond (inclusive).
@@ -212,7 +212,7 @@ pub trait TimeUtilities: Sized {
     /// Returns full hours since the provided time.
     fn hours_since(&self, compare: &Self) -> Self::SubDayReturn;
     /// Returns full minutes since the provided time.
-    fn mins_since(&self, compare: &Self) -> Self::SubDayReturn;
+    fn minutes_since(&self, compare: &Self) -> Self::SubDayReturn;
     /// Returns full seconds since the provided time.
     fn seconds_since(&self, compare: &Self) -> Self::SubDayReturn;
 

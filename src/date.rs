@@ -3,8 +3,11 @@ use crate::{
     util::{
         constants::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
         date::{
-            convert::{date_to_days, days_to_date, days_to_doy, year_doy_to_days},
-            manipulate::{apply_date_unit, set_date_unit},
+            convert::{date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days},
+            manipulate::{
+                add_days, add_months, add_years, set_day, set_day_of_year, set_month, set_year,
+                sub_days, sub_months, sub_years,
+            },
         },
         format::format_date_part,
         parse::{parse_date_part, parse_format_string, ParseUnit, ParsedDate},
@@ -18,25 +21,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-/// Date units for functions like [`Date::get`] or [`Date::apply`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DateUnit {
-    #[allow(missing_docs)]
-    Year,
-    /// **Note**: When used in the [`Date::apply`] function, this unit adds or removes calendar months, not 30 days.
-    ///
-    /// ```rust
-    /// # use astrolabe::{Date, DateUnit};
-    /// let date = Date::from_ymd(1970, 1, 31).unwrap();
-    /// assert_eq!("1970-02-28", date.apply(1, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// assert_eq!("1970-03-31", date.apply(2, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// assert_eq!("1970-04-30", date.apply(3, DateUnit::Month).unwrap().format("yyyy-MM-dd"));
-    /// ```
-    Month,
-    #[allow(missing_docs)]
-    Day,
-}
-
 /// Date in the proleptic Gregorian calendar.
 ///
 /// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
@@ -49,9 +33,9 @@ impl Date {
     /// Creates a new [`Date`] instance with [`SystemTime::now()`].
     ///
     /// ```rust
-    /// # use astrolabe::{Date, DateUnit};
+    /// # use astrolabe::Date;
     /// let date = Date::now();
-    /// assert!(2021 < date.get(DateUnit::Year));
+    /// assert!(2021 < date.year());
     /// ```
     pub fn now() -> Self {
         let days = SystemTime::now()
@@ -90,63 +74,6 @@ impl Date {
     /// ```
     pub fn as_ymd(&self) -> (i32, u32, u32) {
         days_to_date(self.days)
-    }
-
-    /// Get a specific [`DateUnit`].
-    ///
-    /// ```rust
-    /// # use astrolabe::{Date, DateUnit};
-    /// let date = Date::from_ymd(2022, 5, 2).unwrap();
-    /// assert_eq!(2022, date.get(DateUnit::Year));
-    /// assert_eq!(5, date.get(DateUnit::Month));
-    /// assert_eq!(2, date.get(DateUnit::Day));
-    /// ```
-    pub fn get(&self, unit: DateUnit) -> i32 {
-        match unit {
-            DateUnit::Year => days_to_date(self.days).0,
-            DateUnit::Month => days_to_date(self.days).1 as i32,
-            DateUnit::Day => days_to_date(self.days).2 as i32,
-        }
-    }
-
-    /// Creates a new [`Date`] instance with a specific [`DateUnit`] set to the provided value.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is invalid or out of range.
-    ///
-    /// ```rust
-    /// # use astrolabe::{Date, DateUnit};
-    /// let mut date = Date::from_ymd(2022, 5, 2).unwrap();
-    /// date = date.set(2000, DateUnit::Year).unwrap();
-    /// date = date.set(10, DateUnit::Day).unwrap();
-    /// assert_eq!("2000/05/10", date.format("yyyy/MM/dd"));
-    /// ```
-    pub fn set(&self, value: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
-        Ok(Self {
-            days: set_date_unit(self.days, value, unit)?,
-        })
-    }
-
-    /// Creates a new [`Date`] instance with a specified amount of time applied (added or subtracted).
-    ///
-    /// **Note**: When using [`DateUnit::Month`], it adds calendar months and not 30 days. See it's [documentation](DateUnit::Month) for examples.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::{Date, DateUnit};
-    /// let date = Date::from_ymd(1970, 1, 1).unwrap();
-    ///
-    /// let applied = date.apply(1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970/01/01", date.format("yyyy/MM/dd"));
-    /// assert_eq!("1970/01/02", applied.format("yyyy/MM/dd"));
-    ///
-    /// let applied_2 = applied.apply(-1, DateUnit::Day).unwrap();
-    /// assert_eq!("1970/01/01", applied_2.format("yyyy/MM/dd"));
-    /// ```
-    pub fn apply(&self, amount: i32, unit: DateUnit) -> Result<Self, AstrolabeError> {
-        Ok(Self {
-            days: (apply_date_unit(self.days, amount as i64, unit)?),
-        })
     }
 
     /// Parses a string with a given format and creates a new [`Date`] instance from it. See [`Date::format`] for a list of available symbols.
@@ -299,23 +226,23 @@ impl Date {
 
 impl DateUtilities for Date {
     fn year(&self) -> i32 {
-        todo!()
+        days_to_date(self.days).0
     }
 
     fn month(&self) -> u32 {
-        todo!()
+        days_to_date(self.days).1
     }
 
     fn day(&self) -> u32 {
-        todo!()
+        days_to_date(self.days).2
     }
 
     fn day_of_year(&self) -> u32 {
-        todo!()
+        days_to_doy(self.days)
     }
 
     fn weekday(&self) -> u8 {
-        todo!()
+        days_to_wday(self.days, false) as u8
     }
 
     fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
@@ -342,44 +269,54 @@ impl DateUtilities for Date {
         (self.days as i64 - DAYS_TO_1970_I64) * SECS_PER_DAY_U64 as i64
     }
 
-    fn set_year(&self, _year: i32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_year(&self, year: i32) -> Result<Self, AstrolabeError> {
+        let new_days = set_year(self.days, year)?;
+        Ok(Self { days: new_days })
     }
 
-    fn set_month(&self, _month: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_month(&self, month: u32) -> Result<Self, AstrolabeError> {
+        let new_days = set_month(self.days, month)?;
+        Ok(Self { days: new_days })
     }
 
-    fn set_day(&self, _day: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_day(&self, day: u32) -> Result<Self, AstrolabeError> {
+        let new_days = set_day(self.days, day)?;
+        Ok(Self { days: new_days })
     }
 
-    fn set_day_of_year(&self, _day_of_year: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn set_day_of_year(&self, day_of_year: u32) -> Result<Self, AstrolabeError> {
+        let new_days = set_day_of_year(self.days, day_of_year)?;
+        Ok(Self { days: new_days })
     }
 
-    fn add_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_years(&self, years: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_years(self.days, years)?;
+        Ok(Self { days: new_days })
     }
 
-    fn add_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_months(&self, months: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_months(self.days, months)?;
+        Ok(Self { days: new_days })
     }
 
-    fn add_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_days(&self, days: u32) -> Result<Self, AstrolabeError> {
+        let new_days = add_days(self.days, days)?;
+        Ok(Self { days: new_days })
     }
 
-    fn sub_years(&self, _years: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_years(&self, years: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_years(self.days, years)?;
+        Ok(Self { days: new_days })
     }
 
-    fn sub_months(&self, _months: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_months(&self, months: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_months(self.days, months)?;
+        Ok(Self { days: new_days })
     }
 
-    fn sub_days(&self, _days: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_days(&self, days: u32) -> Result<Self, AstrolabeError> {
+        let new_days = sub_days(self.days, days)?;
+        Ok(Self { days: new_days })
     }
 
     fn clear_until_year(&self) -> Self {

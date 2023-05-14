@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     errors::{invalid_format::create_invalid_format, AstrolabeError},
-    Date, DateUnit,
+    Date, DateUtilities,
 };
 
 /// Parses the offset part from an RFC 3339 timestamp string to offset seconds
@@ -199,7 +199,7 @@ pub(crate) fn parse_date_part(
                     })
                 } else {
                     let sub_century_year = pick_part::<i32>(2, string, "year")?;
-                    let current_century = Date::now().get(DateUnit::Year) / 1000 * 1000;
+                    let current_century = Date::now().year() / 1000 * 1000;
                     Some(ParsedPart {
                         value: (current_century + sub_century_year) as i64,
                         unit: ParseUnit::Year,
