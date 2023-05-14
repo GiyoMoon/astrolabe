@@ -2,10 +2,8 @@ use super::validate::validate_time;
 use crate::{
     errors::{out_of_range::create_simple_oor, AstrolabeError},
     util::constants::{
-        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_HOUR_U64,
-        SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
+        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_MINUTE,
     },
-    TimeUnit,
 };
 
 /// Converts nanoseconds to time units (hour, min, sec)
@@ -17,24 +15,19 @@ pub(crate) fn nanos_to_time(nanos: u64) -> (u32, u32, u32) {
     (hour, min, sec)
 }
 
+/// Converts nanoseconds to subsecond units (millis, micros, nanos)
+pub(crate) fn nanos_to_subsecond(nanos: u64) -> (u32, u32, u32) {
+    let millis = nanos % NANOS_PER_SEC / 1_000_000;
+    let micros = nanos % NANOS_PER_SEC / 1_000;
+    let nanos = nanos % NANOS_PER_SEC;
+    (millis as u32, micros as u32, nanos as u32)
+}
+
 /// Converts time units (hour, minute and seconds) to day seconds
 pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
     validate_time(hour, min, sec)?;
 
     Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
-}
-
-/// Returns a given [`TimeUnit`] from nanoseconds
-pub(crate) fn nanos_to_unit(nanos: u64, unit: TimeUnit) -> u64 {
-    match unit {
-        TimeUnit::Hour => nanos / NANOS_PER_SEC / SECS_PER_HOUR_U64,
-        TimeUnit::Min => nanos / NANOS_PER_SEC / SECS_PER_MINUTE_U64 % SECS_PER_MINUTE_U64,
-        TimeUnit::Sec => nanos / NANOS_PER_SEC % 60,
-        TimeUnit::Centis => nanos / 10_000_000 % 100,
-        TimeUnit::Millis => nanos / 1_000_000 % 1_000,
-        TimeUnit::Micros => nanos / 1_000 % 1_000_000,
-        TimeUnit::Nanos => nanos % NANOS_PER_SEC,
-    }
 }
 
 /// Converts days and nanoseconds to seconds
@@ -113,4 +106,17 @@ pub(crate) fn nanos_to_days_nanos(nanoseconds: i128) -> Result<(i32, u64), Astro
     };
 
     Ok((days, adjusted_day_nanos))
+}
+
+/// Converts time units (hour, minute and seconds) and nanoseconds to nanoseconds. Only the subsecond nanoseconds are used.
+pub(crate) fn time_nanos_to_nanos(hour: u32, minute: u32, second: u32, nanos: u64) -> u64 {
+    let time_seconds = time_to_day_seconds(hour, minute, second).unwrap();
+    time_seconds as u64 * NANOS_PER_SEC + nanos % NANOS_PER_SEC
+}
+
+/// Inserts a subsecond value into nanoseconds. For example, it inserts milliseconds (e.g. `999`) with a divisor of `1_000_000` into nanoseconds (e.g. `1_222_333_444`) and returns `1_999_333_444`.
+pub(crate) fn set_subsecond_value(nanos: u64, value: u64, divisor: u64) -> u64 {
+    let upper_nanos = nanos / NANOS_PER_SEC * NANOS_PER_SEC;
+    let subdevider_nanos = nanos % divisor;
+    upper_nanos + value * divisor + subdevider_nanos
 }

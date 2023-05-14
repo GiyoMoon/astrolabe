@@ -150,30 +150,30 @@ mod offset_tests {
     #[test]
     fn get() {
         let time = Time::from_hms(0, 0, 0).unwrap();
-        assert_eq!(0, time.get(TimeUnit::Hour));
-        assert_eq!(0, time.get(TimeUnit::Min));
-        assert_eq!(0, time.get(TimeUnit::Sec));
+        assert_eq!(0, time.hour());
+        assert_eq!(0, time.minute());
+        assert_eq!(0, time.second());
         let time = time.set_offset(3661).unwrap();
-        assert_eq!(1, time.get(TimeUnit::Hour));
-        assert_eq!(1, time.get(TimeUnit::Min));
-        assert_eq!(1, time.get(TimeUnit::Sec));
+        assert_eq!(1, time.hour());
+        assert_eq!(1, time.minute());
+        assert_eq!(1, time.second());
         let time = time.set_offset(-3661).unwrap();
-        assert_eq!(22, time.get(TimeUnit::Hour));
-        assert_eq!(58, time.get(TimeUnit::Min));
-        assert_eq!(59, time.get(TimeUnit::Sec));
+        assert_eq!(22, time.hour());
+        assert_eq!(58, time.minute());
+        assert_eq!(59, time.second());
 
         let time = Time::from_hms(0, 0, 0).unwrap();
-        assert_eq!(0, time.get(TimeUnit::Hour));
-        assert_eq!(0, time.get(TimeUnit::Min));
-        assert_eq!(0, time.get(TimeUnit::Sec));
+        assert_eq!(0, time.hour());
+        assert_eq!(0, time.minute());
+        assert_eq!(0, time.second());
         let time = time.set_offset(3661).unwrap();
-        assert_eq!(1, time.get(TimeUnit::Hour));
-        assert_eq!(1, time.get(TimeUnit::Min));
-        assert_eq!(1, time.get(TimeUnit::Sec));
+        assert_eq!(1, time.hour());
+        assert_eq!(1, time.minute());
+        assert_eq!(1, time.second());
         let time = time.set_offset(-3661).unwrap();
-        assert_eq!(22, time.get(TimeUnit::Hour));
-        assert_eq!(58, time.get(TimeUnit::Min));
-        assert_eq!(59, time.get(TimeUnit::Sec));
+        assert_eq!(22, time.hour());
+        assert_eq!(58, time.minute());
+        assert_eq!(59, time.second());
 
         let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 0, 0).unwrap();
         assert!(date_time.as_offset(-3599).is_ok());

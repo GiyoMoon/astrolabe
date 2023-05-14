@@ -113,11 +113,11 @@ pub trait TimeUtilities: Sized {
     /// Returns the second of the minute (`0-59`).
     fn second(&self) -> u32;
     /// Returns the millisecond of the second (`0-999`).
-    fn milli(&self) -> u64;
+    fn milli(&self) -> u32;
     /// Returns the microsecond of the second (`0-999_999`).
-    fn micro(&self) -> u64;
+    fn micro(&self) -> u32;
     /// Returns the nanosecond of the second (`0-999_999_999`).
-    fn nano(&self) -> u64;
+    fn nano(&self) -> u32;
 
     /// Sets the hour to the provided value.
     ///
@@ -134,15 +134,15 @@ pub trait TimeUtilities: Sized {
     /// Sets the millisecond to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_milli(&self, milli: u64) -> Result<Self, AstrolabeError>;
+    fn set_milli(&self, milli: u32) -> Result<Self, AstrolabeError>;
     /// Sets the microsecond to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_micro(&self, micro: u64) -> Result<Self, AstrolabeError>;
+    fn set_micro(&self, micro: u32) -> Result<Self, AstrolabeError>;
     /// Sets the nanosecond to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_nano(&self, nano: u64) -> Result<Self, AstrolabeError>;
+    fn set_nano(&self, nano: u32) -> Result<Self, AstrolabeError>;
 
     /// Adds the provided hours.
     ///

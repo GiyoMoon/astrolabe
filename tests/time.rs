@@ -118,13 +118,12 @@ mod time_tests {
     fn get() {
         let time = Time::from_nanoseconds(10_921_123_456_789).unwrap();
 
-        assert_eq!(3, time.get(TimeUnit::Hour));
-        assert_eq!(2, time.get(TimeUnit::Min));
-        assert_eq!(1, time.get(TimeUnit::Sec));
-        assert_eq!(12, time.get(TimeUnit::Centis));
-        assert_eq!(123, time.get(TimeUnit::Millis));
-        assert_eq!(123_456, time.get(TimeUnit::Micros));
-        assert_eq!(123_456_789, time.get(TimeUnit::Nanos));
+        assert_eq!(3, time.hour());
+        assert_eq!(2, time.minute());
+        assert_eq!(1, time.second());
+        assert_eq!(123, time.milli());
+        assert_eq!(123_456, time.micro());
+        assert_eq!(123_456_789, time.nano());
     }
 
     #[test]
@@ -139,13 +138,12 @@ mod time_tests {
         time = time.apply(6, TimeUnit::Micros).unwrap();
         time = time.apply(7, TimeUnit::Nanos).unwrap();
 
-        assert_eq!(2, time.get(TimeUnit::Hour));
-        assert_eq!(2, time.get(TimeUnit::Min));
-        assert_eq!(3, time.get(TimeUnit::Sec));
-        assert_eq!(4, time.get(TimeUnit::Centis));
-        assert_eq!(45, time.get(TimeUnit::Millis));
-        assert_eq!(45_006, time.get(TimeUnit::Micros));
-        assert_eq!(45_006_007, time.get(TimeUnit::Nanos));
+        assert_eq!(2, time.hour());
+        assert_eq!(2, time.minute());
+        assert_eq!(3, time.second());
+        assert_eq!(45, time.milli());
+        assert_eq!(45_006, time.micro());
+        assert_eq!(45_006_007, time.nano());
 
         time = time.apply(-2, TimeUnit::Hour).unwrap();
         time = time.apply(-2, TimeUnit::Min).unwrap();
@@ -167,24 +165,22 @@ mod time_tests {
             .apply(34_661_123_456_789, TimeUnit::Nanos)
             .unwrap();
 
-        time = time.set(1, TimeUnit::Hour).unwrap();
-        time = time.set(2, TimeUnit::Min).unwrap();
-        time = time.set(3, TimeUnit::Sec).unwrap();
-        time = time.set(4, TimeUnit::Centis).unwrap();
+        time = time.set_minute(1).unwrap();
+        time = time.set_minute(2).unwrap();
+        time = time.set_second(3).unwrap();
 
-        assert_eq!(1, time.get(TimeUnit::Hour));
-        assert_eq!(2, time.get(TimeUnit::Min));
-        assert_eq!(3, time.get(TimeUnit::Sec));
-        assert_eq!(4, time.get(TimeUnit::Centis));
+        assert_eq!(1, time.hour());
+        assert_eq!(2, time.minute());
+        assert_eq!(3, time.second());
 
-        time = time.set(5, TimeUnit::Millis).unwrap();
-        assert_eq!(5, time.get(TimeUnit::Millis));
-        time = time.set(6, TimeUnit::Micros).unwrap();
-        assert_eq!(6, time.get(TimeUnit::Micros));
-        time = time.set(7, TimeUnit::Nanos).unwrap();
-        assert_eq!(7, time.get(TimeUnit::Nanos));
+        time = time.set_milli(5).unwrap();
+        assert_eq!(5, time.milli());
+        time = time.set_micro(6).unwrap();
+        assert_eq!(6, time.micro());
+        time = time.set_nano(7).unwrap();
+        assert_eq!(7, time.nano());
 
-        assert!(time.set(24, TimeUnit::Hour).is_err());
+        assert!(time.set_hour(24).is_err());
     }
 
     #[test]
