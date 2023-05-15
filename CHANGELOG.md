@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `DateTime::as_nanoseconds`
   - `DateTime::date` in favor of `Date::from<DateTime>`
   - `DateTime::time` in favor of `Time::from<DateTime>`
+  - `DateTime::between` in favor of `DateTime::seconds_since`
   - `DateTime::get` in favor of the `DateUtilities` and `TimeUtilities` get functions
   - `DateTime::set` in favor of the `DateUtilities` and `TimeUtilities` set functions
   - `DateTime::apply` in favor of the `DateUtilities` and `TimeUtilities` add and sub functions

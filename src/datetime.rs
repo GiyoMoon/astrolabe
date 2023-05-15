@@ -24,10 +24,20 @@ use crate::{
         },
         time::{
             convert::{
-                days_nanos_to_nanos, days_nanos_to_secs, nanos_to_days_nanos, nanos_to_subsecond,
-                nanos_to_time, secs_to_days_nanos, time_to_day_seconds,
+                days_nanos_to_hours, days_nanos_to_micros, days_nanos_to_millis,
+                days_nanos_to_minutes, days_nanos_to_nanos, days_nanos_to_seconds,
+                days_nanos_to_secs, nanos_to_days_nanos, nanos_to_subhour_nanos,
+                nanos_to_submicro_nanos, nanos_to_submilli_nanos, nanos_to_subminute_nanos,
+                nanos_to_subsecond, nanos_to_subsecond_nanos, nanos_to_time, secs_to_days_nanos,
+                time_to_day_seconds,
             },
-            manipulate::{set_hour, set_micro, set_milli, set_minute, set_nano, set_second},
+            manipulate::{
+                add_hours, add_micros, add_millis, add_minutes, add_seconds,
+                clear_nanos_until_micro, clear_nanos_until_milli, clear_nanos_until_minute,
+                clear_nanos_until_nanos, clear_nanos_until_second, set_hour, set_micro, set_milli,
+                set_minute, set_nano, set_second, sub_hours, sub_micros, sub_millis, sub_minutes,
+                sub_seconds,
+            },
         },
     },
     Date, DateUtilities, Offset, Precision, Time, TimeUtilities,
@@ -55,7 +65,7 @@ impl DateTime {
     /// Creates a new [`DateTime`] instance with [`SystemTime::now()`].
     ///
     /// ```rust
-    /// # use astrolabe::DateTime;
+    /// # use astrolabe::{DateTime, DateUtilities};
     /// let date_time = DateTime::now();
     /// assert!(2021 < date_time.year());
     /// ```
@@ -192,6 +202,22 @@ impl DateTime {
         (hour as u32, minute as u32, second as u32)
     }
 
+    /// Creates a new [`DateTime`] with the specified time.
+    ///
+    /// ```rust
+    /// # use astrolabe::{DateTime, Time};
+    /// let time = Time::from_hms(12, 32, 1).unwrap();
+    /// let date_time = DateTime::from_ymd(2022, 5, 2).unwrap().set_time(time);
+    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
+    /// ```
+    pub fn set_time(&self, time: Time) -> Self {
+        Self {
+            days: self.days,
+            nanoseconds: time.as_nanos(),
+            offset: self.offset,
+        }
+    }
+
     /// Creates a new [`DateTime`] instance from an RFC 3339 timestamp string.
     ///
     /// ```rust
@@ -257,35 +283,6 @@ impl DateTime {
             offset: 0,
         }
         .as_offset(offset)
-    }
-
-    /// Creates a new [`DateTime`] with the specified time.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, Time};
-    /// let time = Time::from_hms(12, 32, 1).unwrap();
-    /// let date_time = DateTime::from_ymd(2022, 5, 2).unwrap().set_time(time);
-    /// assert_eq!("2022/05/02 12:32:01", date_time.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn set_time(&self, time: Time) -> Self {
-        Self {
-            days: self.days,
-            nanoseconds: time.as_nanoseconds(),
-            offset: self.offset,
-        }
-    }
-
-    /// Returns the number of seconds between two [`DateTime`] instances.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time1 = DateTime::from_ymd(1970, 1, 1).unwrap();
-    /// let date_time2 = DateTime::from_ymd(1970, 1, 2).unwrap();
-    /// assert_eq!(86400, date_time1.between(&date_time2));
-    /// assert_eq!(86400, date_time2.between(&date_time1));
-    /// ```
-    pub fn between(&self, compare: &Self) -> u64 {
-        (self.as_seconds() - compare.as_seconds()).unsigned_abs()
     }
 
     /// Format as an RFC 3339 timestamp (`2022-05-02T15:30:20Z`).
@@ -404,7 +401,7 @@ impl DateTime {
         nanoseconds += time.micros.unwrap_or(0) * 1_000;
         nanoseconds += time.nanos.unwrap_or(0);
 
-        date_time = date_time.set_time(Time::from_nanoseconds(nanoseconds)?);
+        date_time = date_time.set_time(Time::from_nanos(nanoseconds)?);
 
         if let Some(offset) = time.offset {
             date_time = date_time.set_offset(offset)?;
@@ -631,11 +628,9 @@ impl DateTime {
             seconds
         };
 
-        let new_nanos = self.as_nanoseconds() - seconds as i128 * NANOS_PER_SEC as i128;
+        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
 
-        Ok(Self::from_nanoseconds(new_nanos)?
-            .set_offset(seconds)
-            .unwrap())
+        Ok(Self::from_nanos(new_nanos)?.set_offset(seconds).unwrap())
     }
 
     /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
@@ -652,8 +647,8 @@ impl DateTime {
     /// assert_eq!("2022/05/02 12:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
     /// ```
     pub fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
-        let new_nanos = self.as_nanoseconds() - seconds as i128 * NANOS_PER_SEC as i128;
-        Self::from_nanoseconds(new_nanos)?.set_offset(seconds)
+        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
+        Self::from_nanos(new_nanos)?.set_offset(seconds)
     }
 
     /// Returns the set offset in seconds.
@@ -829,23 +824,63 @@ impl DateUtilities for DateTime {
     }
 
     fn clear_until_year(&self) -> Self {
-        todo!()
+        Self {
+            offset: self.offset,
+            ..Default::default()
+        }
     }
 
     fn clear_until_month(&self) -> Self {
-        todo!()
+        let year = days_to_date(self.days).0;
+        let new_days = date_to_days(year, 1, 1).unwrap();
+        Self {
+            days: new_days,
+            offset: self.offset,
+            ..Default::default()
+        }
     }
 
     fn clear_until_day(&self) -> Self {
-        todo!()
+        let (year, month, _) = days_to_date(self.days);
+        let new_days = date_to_days(year, month, 1).unwrap();
+        Self {
+            days: new_days,
+            offset: self.offset,
+            ..Default::default()
+        }
     }
 
-    fn years_since(&self, _compare: &Self) -> i32 {
-        todo!()
+    fn years_since(&self, compare: &Self) -> i32 {
+        let self_year = days_to_date(self.days).0;
+        let self_doy = days_to_doy(self.days);
+
+        let other_year = days_to_date(compare.days).0;
+        let other_doy = days_to_doy(compare.days);
+
+        let subtract_year = if self_doy == other_doy {
+            self.nanoseconds < compare.nanoseconds
+        } else {
+            self_doy < other_doy
+        };
+
+        self_year - other_year - if subtract_year { 1 } else { 0 }
     }
 
-    fn months_since(&self, _compare: &Self) -> i32 {
-        todo!()
+    fn months_since(&self, compare: &Self) -> i32 {
+        let (self_year, self_month, self_day) = days_to_date(self.days);
+        let (other_year, other_month, other_day) = days_to_date(compare.days);
+
+        let subtract_year = if self_day == other_day {
+            self.nanoseconds < compare.nanoseconds
+        } else {
+            self_day < other_day
+        };
+
+        let years_between = self_year - other_year;
+        let months_between =
+            self_month as i32 - other_month as i32 - if subtract_year { 1 } else { 0 };
+
+        years_between * 12 + months_between
     }
 
     fn days_since(&self, compare: &Self) -> i32 {
@@ -903,11 +938,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_hour(&self, hour: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_hour(nanos, hour)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -917,11 +952,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_minute(&self, minute: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_minute(nanos, minute)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -931,11 +966,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_second(&self, second: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_second(nanos, second)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -945,11 +980,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_milli(&self, milli: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_milli(nanos, milli)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -959,11 +994,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_micro(&self, micro: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_micro(nanos, micro)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -973,11 +1008,11 @@ impl TimeUtilities for DateTime {
     }
 
     fn set_nano(&self, nano: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_dn(self.days, self.nanoseconds, self.offset).1;
+        let (days, nanos) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
 
         let new_nanos = set_nano(nanos, nano)?;
 
-        let (new_days, new_nanos) = remove_offset_from_dn(self.days, new_nanos, self.offset);
+        let (new_days, new_nanos) = remove_offset_from_dn(days, new_nanos, self.offset);
 
         Ok(Self {
             days: new_days,
@@ -986,104 +1021,377 @@ impl TimeUtilities for DateTime {
         })
     }
 
-    fn add_hours(&self, _hours: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_hours(&self, hours: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos =
+            self.days as i128 * NANOS_PER_DAY as i128 + add_hours(self.nanoseconds, hours) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} hours would result into an out of range datetime",
+                hours
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + add_minutes(self.nanoseconds, minutes) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} minutes would result into an out of range datetime",
+                minutes
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_seconds(&self, _seconds: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + add_seconds(self.nanoseconds, seconds) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} seconds would result into an out of range datetime",
+                seconds
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_millis(&self, _millis: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_millis(&self, millis: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + add_millis(self.nanoseconds, millis) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} milliseconds would result into an out of range datetime",
+                millis
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_micros(&self, _micros: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_micros(&self, micros: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + add_micros(self.nanoseconds, micros) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} microseconds would result into an out of range datetime",
+                micros
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn add_nanos(&self, _nanos: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn add_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos =
+            self.days as i128 * NANOS_PER_DAY as i128 + self.nanoseconds as i128 + nanos as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Adding {} nanoseconds would result into an out of range datetime",
+                nanos
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_hours(&self, _hours: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_hours(&self, hours: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + sub_hours(self.nanoseconds as i64, hours) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} hours would result into an out of range datetime",
+                hours
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_minutes(&self, _mins: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + sub_minutes(self.nanoseconds as i64, minutes) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} minutes would result into an out of range datetime",
+                minutes
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_seconds(&self, _seconds: u32) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + sub_seconds(self.nanoseconds as i64, seconds) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} seconds would result into an out of range datetime",
+                seconds
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_millis(&self, _millis: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_millis(&self, millis: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + sub_millis(self.nanoseconds as i64, millis) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} milliseconds would result into an out of range datetime",
+                millis
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_micros(&self, _micros: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_micros(&self, micros: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos = self.days as i128 * NANOS_PER_DAY as i128
+            + sub_micros(self.nanoseconds as i64, micros) as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} microseconds would result into an out of range datetime",
+                micros
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
-    fn sub_nanos(&self, _nanos: u64) -> Result<Self, AstrolabeError> {
-        todo!()
+    fn sub_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError> {
+        let total_nanos =
+            self.days as i128 * NANOS_PER_DAY as i128 + self.nanoseconds as i128 - nanos as i128;
+
+        let (days, nanoseconds) = nanos_to_days_nanos(total_nanos).map_err(|_| {
+            create_custom_oor(format!(
+                "Subtracting {} nanoseconds would result into an out of range datetime",
+                nanos
+            ))
+        })?;
+
+        Ok(Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        })
     }
 
     fn clear_until_hour(&self) -> Self {
-        todo!()
+        let (days, _) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanos) = remove_offset_from_dn(days, 0, self.offset);
+        Self {
+            days,
+            nanoseconds: nanos,
+            offset: self.offset,
+        }
     }
 
     fn clear_until_minute(&self) -> Self {
-        todo!()
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanoseconds) =
+            remove_offset_from_dn(days, clear_nanos_until_minute(nanoseconds), self.offset);
+        Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        }
     }
 
     fn clear_until_second(&self) -> Self {
-        todo!()
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanoseconds) =
+            remove_offset_from_dn(days, clear_nanos_until_second(nanoseconds), self.offset);
+        Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        }
     }
 
     fn clear_until_milli(&self) -> Self {
-        todo!()
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanoseconds) =
+            remove_offset_from_dn(days, clear_nanos_until_milli(nanoseconds), self.offset);
+        Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        }
     }
 
     fn clear_until_micro(&self) -> Self {
-        todo!()
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanoseconds) =
+            remove_offset_from_dn(days, clear_nanos_until_micro(nanoseconds), self.offset);
+        Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        }
     }
 
     fn clear_until_nano(&self) -> Self {
-        todo!()
+        let (days, nanoseconds) = add_offset_to_dn(self.days, self.nanoseconds, self.offset);
+        let (days, nanoseconds) =
+            remove_offset_from_dn(days, clear_nanos_until_nanos(nanoseconds), self.offset);
+        Self {
+            days,
+            nanoseconds,
+            offset: self.offset,
+        }
     }
 
     type SubDayReturn = i64;
 
-    fn hours_since(&self, _compare: &Self) -> Self::SubDayReturn {
-        todo!()
+    fn hours_since(&self, compare: &Self) -> Self::SubDayReturn {
+        let self_total_hours = days_nanos_to_hours(self.days, self.nanoseconds);
+        let self_subhour_nanos = nanos_to_subhour_nanos(self.nanoseconds);
+
+        let compare_total_hours = days_nanos_to_hours(compare.days, compare.nanoseconds);
+        let compare_subhour_nanos = nanos_to_subhour_nanos(compare.nanoseconds);
+
+        self_total_hours
+            - compare_total_hours
+            - if self_subhour_nanos < compare_subhour_nanos {
+                1
+            } else {
+                0
+            }
     }
 
-    fn minutes_since(&self, _compare: &Self) -> Self::SubDayReturn {
-        todo!()
+    fn minutes_since(&self, compare: &Self) -> Self::SubDayReturn {
+        let self_total_minutes = days_nanos_to_minutes(self.days, self.nanoseconds);
+        let self_subminute_nanos = nanos_to_subminute_nanos(self.nanoseconds);
+
+        let compare_total_minutes = days_nanos_to_minutes(compare.days, compare.nanoseconds);
+        let compare_subminute_nanos = nanos_to_subminute_nanos(compare.nanoseconds);
+
+        self_total_minutes
+            - compare_total_minutes
+            - if self_subminute_nanos < compare_subminute_nanos {
+                1
+            } else {
+                0
+            }
     }
 
-    fn seconds_since(&self, _compare: &Self) -> Self::SubDayReturn {
-        todo!()
+    fn seconds_since(&self, compare: &Self) -> Self::SubDayReturn {
+        let self_total_seconds = days_nanos_to_seconds(self.days, self.nanoseconds);
+        let self_subsecond_nanos = nanos_to_subsecond_nanos(self.nanoseconds);
+
+        let compare_total_seconds = days_nanos_to_seconds(compare.days, compare.nanoseconds);
+        let compare_subsecond_nanos = nanos_to_subsecond_nanos(compare.nanoseconds);
+
+        self_total_seconds
+            - compare_total_seconds
+            - if self_subsecond_nanos < compare_subsecond_nanos {
+                1
+            } else {
+                0
+            }
     }
 
     type SubSecReturn = i128;
 
-    fn millis_since(&self, _compare: &Self) -> Self::SubSecReturn {
-        todo!()
+    fn millis_since(&self, compare: &Self) -> Self::SubSecReturn {
+        let self_total_millis = days_nanos_to_millis(self.days, self.nanoseconds);
+        let self_submilli_nanos = nanos_to_submilli_nanos(self.nanoseconds);
+
+        let compare_total_millis = days_nanos_to_millis(compare.days, compare.nanoseconds);
+        let compare_submilli_nanos = nanos_to_submilli_nanos(compare.nanoseconds);
+
+        self_total_millis
+            - compare_total_millis
+            - if self_submilli_nanos < compare_submilli_nanos {
+                1
+            } else {
+                0
+            }
     }
 
-    fn micros_since(&self, _compare: &Self) -> Self::SubSecReturn {
-        todo!()
+    fn micros_since(&self, compare: &Self) -> Self::SubSecReturn {
+        let self_total_micros = days_nanos_to_micros(self.days, self.nanoseconds);
+        let self_submicro_nanos = nanos_to_submicro_nanos(self.nanoseconds);
+
+        let compare_total_micros = days_nanos_to_micros(compare.days, compare.nanoseconds);
+        let compare_submicro_nanos = nanos_to_submicro_nanos(compare.nanoseconds);
+
+        self_total_micros
+            - compare_total_micros
+            - if self_submicro_nanos < compare_submicro_nanos {
+                1
+            } else {
+                0
+            }
     }
 
-    fn nanos_since(&self, _compare: &Self) -> Self::SubSecReturn {
-        todo!()
+    fn nanos_since(&self, compare: &Self) -> Self::SubSecReturn {
+        let self_total_nanos = days_nanos_to_nanos(self.days, self.nanoseconds);
+
+        let compare_total_nanos = days_nanos_to_nanos(compare.days, compare.nanoseconds);
+
+        self_total_nanos - compare_total_nanos
     }
 }
 
@@ -1111,8 +1419,8 @@ impl DateTime {
     }
 
     /// Creates a new [`DateTime`] instance from nanoseconds.
-    fn from_nanoseconds(nanoseconds: i128) -> Result<Self, AstrolabeError> {
-        let (days, nanoseconds) = nanos_to_days_nanos(nanoseconds)?;
+    fn from_nanos(nanos: i128) -> Result<Self, AstrolabeError> {
+        let (days, nanoseconds) = nanos_to_days_nanos(nanos)?;
 
         Ok(Self {
             days,
@@ -1122,7 +1430,7 @@ impl DateTime {
     }
 
     /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
-    pub fn as_nanoseconds(&self) -> i128 {
+    pub fn as_nanos(&self) -> i128 {
         days_nanos_to_nanos(self.days, self.nanoseconds)
     }
 }
@@ -1166,7 +1474,7 @@ impl From<Time> for DateTime {
     fn from(value: Time) -> Self {
         Self {
             days: 0,
-            nanoseconds: value.as_nanoseconds(),
+            nanoseconds: value.as_nanos(),
             offset: value.get_offset(),
         }
     }
@@ -1175,7 +1483,7 @@ impl From<&Time> for DateTime {
     fn from(time: &Time) -> Self {
         Self {
             days: 0,
-            nanoseconds: time.as_nanoseconds(),
+            nanoseconds: time.as_nanos(),
             offset: time.get_offset(),
         }
     }
@@ -1189,18 +1497,18 @@ impl Display for DateTime {
 
 impl PartialEq for DateTime {
     fn eq(&self, rhs: &Self) -> bool {
-        self.as_nanoseconds() == rhs.as_nanoseconds()
+        self.as_nanos() == rhs.as_nanos()
     }
 }
 impl PartialOrd for DateTime {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.as_nanoseconds().partial_cmp(&other.as_nanoseconds())
+        self.as_nanos().partial_cmp(&other.as_nanos())
     }
 }
 
 impl Ord for DateTime {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nanoseconds().cmp(&other.as_nanoseconds())
+        self.as_nanos().cmp(&other.as_nanos())
     }
 }
 
@@ -1216,7 +1524,7 @@ impl Add<Time> for DateTime {
     type Output = Self;
 
     fn add(self, rhs: Time) -> Self::Output {
-        let nanos = self.as_nanoseconds() + rhs.as_nanoseconds() as i128;
+        let nanos = self.as_nanos() + rhs.as_nanos() as i128;
         Self {
             days: (nanos / NANOS_PER_DAY as i128) as i32,
             nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
@@ -1234,7 +1542,7 @@ impl Sub<Time> for DateTime {
     type Output = Self;
 
     fn sub(self, rhs: Time) -> Self::Output {
-        let nanos = self.as_nanoseconds() - rhs.as_nanoseconds() as i128;
+        let nanos = self.as_nanos() - rhs.as_nanos() as i128;
         Self {
             days: (nanos / NANOS_PER_DAY as i128) as i32,
             nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
@@ -1252,7 +1560,7 @@ impl Add<Duration> for DateTime {
     type Output = Self;
 
     fn add(self, rhs: Duration) -> Self::Output {
-        let nanos = self.as_nanoseconds() + rhs.as_nanos() as i128;
+        let nanos = self.as_nanos() + rhs.as_nanos() as i128;
         Self {
             days: (nanos / NANOS_PER_DAY as i128) as i32,
             nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,
@@ -1270,7 +1578,7 @@ impl Sub<Duration> for DateTime {
     type Output = Self;
 
     fn sub(self, rhs: Duration) -> Self::Output {
-        let nanos = self.as_nanoseconds() - rhs.as_nanos() as i128;
+        let nanos = self.as_nanos() - rhs.as_nanos() as i128;
         Self {
             days: (nanos / NANOS_PER_DAY as i128) as i32,
             nanoseconds: (nanos % NANOS_PER_DAY as i128) as u64,

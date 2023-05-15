@@ -11,7 +11,7 @@
 //! ### Example
 //! A basic example which demonstrates creating, formatting and manipulating a [`DateTime`] instance.
 //! ```rust
-//! use astrolabe::{DateTime, Precision};
+//! use astrolabe::{DateTime, TimeUtilities, Precision};
 //!
 //! // Create a DateTime instance from year, month, and days (day of month)
 //! let date_time = DateTime::from_ymd(2022, 5, 2).unwrap();
@@ -50,4 +50,4 @@ mod util;
 pub use self::date::Date;
 pub use self::datetime::DateTime;
 pub use self::shared::{DateUtilities, Offset, OffsetUtilities, Precision, TimeUtilities};
-pub use self::time::{Time, TimeUnit};
+pub use self::time::Time;

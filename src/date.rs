@@ -33,7 +33,7 @@ impl Date {
     /// Creates a new [`Date`] instance with [`SystemTime::now()`].
     ///
     /// ```rust
-    /// # use astrolabe::Date;
+    /// # use astrolabe::{Date, DateUtilities};
     /// let date = Date::now();
     /// assert!(2021 < date.year());
     /// ```
@@ -320,15 +320,19 @@ impl DateUtilities for Date {
     }
 
     fn clear_until_year(&self) -> Self {
-        todo!()
+        Self { days: 0 }
     }
 
     fn clear_until_month(&self) -> Self {
-        todo!()
+        let year = days_to_date(self.days).0;
+        let new_days = date_to_days(year, 1, 1).unwrap();
+        Self { days: new_days }
     }
 
     fn clear_until_day(&self) -> Self {
-        todo!()
+        let (year, month, _) = days_to_date(self.days);
+        let new_days = date_to_days(year, month, 1).unwrap();
+        Self { days: new_days }
     }
 
     fn years_since(&self, compare: &Self) -> i32 {

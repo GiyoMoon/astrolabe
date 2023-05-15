@@ -78,7 +78,7 @@ Astrolabe is a date and time library for Rust which aims to be feature rich, lig
 A basic example which demonstrates creating, formatting and manipulating a `DateTime` instance.
 
 ```rust
-use astrolabe::{DateTime, Precision};
+use astrolabe::{DateTime, TimeUtilities, Precision};
 
 // Create a DateTime instance from year, month, and days (day of month)
 let date_time = DateTime::from_ymd(2022, 5, 2).unwrap();

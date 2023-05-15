@@ -1,4 +1,6 @@
 pub(crate) const NANOS_PER_SEC: u64 = 1_000_000_000;
+pub(crate) const NANOS_PER_MINUTE: u64 = SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
+pub(crate) const NANOS_PER_HOUR: u64 = SECS_PER_HOUR_U64 * NANOS_PER_SEC;
 pub(crate) const NANOS_PER_DAY: u64 = SECS_PER_DAY_U64 * NANOS_PER_SEC;
 
 pub(crate) const SECS_PER_MINUTE: u32 = 60;

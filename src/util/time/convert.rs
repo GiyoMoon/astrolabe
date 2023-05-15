@@ -2,7 +2,8 @@ use super::validate::validate_time;
 use crate::{
     errors::{out_of_range::create_simple_oor, AstrolabeError},
     util::constants::{
-        NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_MINUTE,
+        NANOS_PER_DAY, NANOS_PER_HOUR, NANOS_PER_MINUTE, NANOS_PER_SEC, SECS_PER_DAY_U64,
+        SECS_PER_HOUR, SECS_PER_MINUTE,
     },
 };
 
@@ -119,4 +120,51 @@ pub(crate) fn set_subsecond_value(nanos: u64, value: u64, divisor: u64) -> u64 {
     let upper_nanos = nanos / NANOS_PER_SEC * NANOS_PER_SEC;
     let subdevider_nanos = nanos % divisor;
     upper_nanos + value * divisor + subdevider_nanos
+}
+
+pub(crate) fn days_nanos_to_hours(days: i32, nanos: u64) -> i64 {
+    days as i64 * 24 + nanos_to_time(nanos).0 as i64
+}
+
+pub(crate) fn nanos_to_subhour_nanos(nanoseconds: u64) -> i64 {
+    (nanoseconds % NANOS_PER_HOUR) as i64
+}
+
+pub(crate) fn days_nanos_to_minutes(days: i32, nanos: u64) -> i64 {
+    let (subday_hours, subhour_minutes, _) = nanos_to_time(nanos);
+    days as i64 * 24 * 60 + subday_hours as i64 * 60 + subhour_minutes as i64
+}
+
+pub(crate) fn nanos_to_subminute_nanos(nanoseconds: u64) -> i64 {
+    (nanoseconds % NANOS_PER_MINUTE) as i64
+}
+
+pub(crate) fn days_nanos_to_seconds(days: i32, nanos: u64) -> i64 {
+    let (subday_hours, subhour_minutes, subminute_seconds) = nanos_to_time(nanos);
+    days as i64 * 24 * 60 * 60
+        + subday_hours as i64 * 60 * 60
+        + subhour_minutes as i64 * 60
+        + subminute_seconds as i64
+}
+
+pub(crate) fn nanos_to_subsecond_nanos(nanoseconds: u64) -> i64 {
+    (nanoseconds % NANOS_PER_SEC) as i64
+}
+
+pub(crate) fn days_nanos_to_millis(days: i32, nanos: u64) -> i128 {
+    let total_seconds = days_nanos_to_seconds(days, nanos);
+    total_seconds as i128 * 1_000 + nanos as i128 / 1_000_000
+}
+
+pub(crate) fn nanos_to_submilli_nanos(nanoseconds: u64) -> i64 {
+    (nanoseconds % 1_000_000) as i64
+}
+
+pub(crate) fn days_nanos_to_micros(days: i32, nanos: u64) -> i128 {
+    let total_seconds = days_nanos_to_seconds(days, nanos);
+    total_seconds as i128 * 1_000_000 + nanos as i128 / 1_000
+}
+
+pub(crate) fn nanos_to_submicro_nanos(nanoseconds: u64) -> i64 {
+    (nanoseconds % 1_000) as i64
 }
