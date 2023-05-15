@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - Unreleased
 ### Added
 - Traits `DateUtilities`, `TimeUtilities`, `OffsetUtilities`
-  - Define get and manipulation functions for date and time units + offset.
+  - Define get and manipulation functions for date and time units and offset functions.
 - `DateTime`
   - Impl `From<Date>`, `From<&Date>`, `From<Time>` and `From<&Time>`
   - Impl `Add<Time>`, `AddAssign<Time>`, `Sub<Time>` and `AddAssign<Time>`
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Impl `TimeUtilities`
   - `as_ymdhms()`, `as_ymd()`, `as_hms()`
   - `duration_between()`
+  - `get_offset_hms()`
 - `Date`
   - Impl `From<DateTime>`, `From<&DateTime>`
   - Impl `Add<Duration>`, `AddAssign<Duration>`, `Sub<Duration>` and `AddAssign<Duration>`
@@ -31,12 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Impl `TimeUtilities`
   - `as_hms()`
   - `duration_between()`
+  - `get_offset_hms()`
 
 ### Changed
 - `DateTime::timestamp` now comes from `DateUtilities`
 - `Date::timestamp` now comes from `DateUtilities`
 - `Time::as_seconds` now returns `u32` instead of `u64`
 - `DateTime::set_time` now accepts `Time` instead of `u64`
+- All offset functions now come from the `OffsetUtilities` trait
+- Renamed `set_offset_time()` to `set_offset_hms()`
+- Renamed `as_offset_time()` to `as_offset_hms()`
 
 ### Removed
 - `DateTime`

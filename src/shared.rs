@@ -1,14 +1,5 @@
 use crate::errors::AstrolabeError;
 
-/// Used to define if an offset is `UTC+` or `UTC-` (eastern or western hemisphere).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Offset {
-    /// Offset in the eastern hemisphere (`UTC±00:00 - UTC+23:59:59`).
-    East,
-    /// Offset in the western hemisphere (`UTC±00:00 - UTC-23:59:59`).
-    West,
-}
-
 /// Used for specifing the precision for RFC 3339 timestamps.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Precision {
@@ -126,11 +117,11 @@ pub trait TimeUtilities: Sized {
     /// Sets the minute to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_minute(&self, min: u32) -> Result<Self, AstrolabeError>;
+    fn set_minute(&self, minute: u32) -> Result<Self, AstrolabeError>;
     /// Sets the second to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
-    fn set_second(&self, sec: u32) -> Result<Self, AstrolabeError>;
+    fn set_second(&self, second: u32) -> Result<Self, AstrolabeError>;
     /// Sets the millisecond to the provided value.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
@@ -234,32 +225,40 @@ pub trait TimeUtilities: Sized {
 pub trait OffsetUtilities: Sized {
     /// Sets the offset from hours, minutes and seconds.
     ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
+    ///
     /// Examples:
     /// - `UTC+1` is `offset_from_hms(1, 0, 0)`
     /// - `UTC-1` is `offset_from_hms(-1, 0, 0)`.
-    fn set_offset_hms(&self, hour: i32, min: u32, sec: u32) -> Self;
+    fn set_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError>;
     /// Sets the offset from hours, minutes and seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
     /// Examples:
     /// - `UTC+1` is `as_offset_hms(1, 0, 0)`
     /// - `UTC-1` is `as_offset_hms(-1, 0, 0)`.
-    fn as_offset_hms(&self, hour: i32, min: u32, sec: u32) -> Self;
+    fn as_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError>;
 
     /// Returns the offset as hours, minutes and seconds.
     fn get_offset_hms(&self) -> (i32, u32, u32);
 
     /// Sets the offset from hours, minutes and seconds.
     ///
-    /// Examples:
-    /// - `UTC+1` is `offset_from_secs(3600)`
-    /// - `UTC-1` is `offset_from_secs(-3600)`.
-    fn set_offset_secs(&self, seconds: i32) -> Self;
-    /// Sets the offset from seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
     ///
     /// Examples:
-    /// - `UTC+1` is `as_offset_secs(3600)`
-    /// - `UTC-1` is `as_offset_secs(-3600)`.
-    fn as_offset_secs(&self, seconds: i32) -> Self;
+    /// - `UTC+1` is `offset_from_seconds(3600)`
+    /// - `UTC-1` is `offset_from_seconds(-3600)`.
+    fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError>;
+    /// Sets the offset from seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
+    ///
+    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
+    ///
+    /// Examples:
+    /// - `UTC+1` is `as_offset(3600)`
+    /// - `UTC-1` is `as_offset(-3600)`.
+    fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError>;
     /// Returns the offset as seconds.
-    fn get_offset_secs(&self) -> i32;
+    fn get_offset(&self) -> i32;
 }

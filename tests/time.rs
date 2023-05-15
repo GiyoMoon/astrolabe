@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod time_tests {
-    use astrolabe::{Time, TimeUtilities};
+    use astrolabe::{OffsetUtilities, Time, TimeUtilities};
 
     #[test]
     fn derive() {

@@ -25,10 +25,14 @@ pub(crate) fn nanos_to_subsecond(nanos: u64) -> (u32, u32, u32) {
 }
 
 /// Converts time units (hour, minute and seconds) to day seconds
-pub(crate) fn time_to_day_seconds(hour: u32, min: u32, sec: u32) -> Result<u32, AstrolabeError> {
-    validate_time(hour, min, sec)?;
+pub(crate) fn time_to_day_seconds(
+    hour: u32,
+    minute: u32,
+    second: u32,
+) -> Result<u32, AstrolabeError> {
+    validate_time(hour, minute, second)?;
 
-    Ok(hour * SECS_PER_HOUR + min * SECS_PER_MINUTE + sec)
+    Ok(hour * SECS_PER_HOUR + minute * SECS_PER_MINUTE + second)
 }
 
 /// Converts days and nanoseconds to seconds
