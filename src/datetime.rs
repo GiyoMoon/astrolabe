@@ -537,7 +537,7 @@ impl DateTime {
 
     /// Returns the duration between the provided DateTime.
     pub fn duration_between(&self, compare: &Self) -> Duration {
-        let days = self.days_since(compare).unsigned_abs() as u64;
+        let days = self.days_since(compare).unsigned_abs();
         let nanos = self.nanoseconds - compare.nanoseconds;
         Duration::from_nanos(days * SECS_PER_DAY_U64 + nanos)
     }
@@ -730,13 +730,29 @@ impl DateUtilities for DateTime {
         let other_year = days_to_date(compare.days).0;
         let other_doy = days_to_doy(compare.days);
 
-        let subtract_year = if self_doy == other_doy {
-            self.nanoseconds < compare.nanoseconds
+        let years_between = self_year - other_year;
+
+        let extra_year = if years_between == 0 {
+            0
+        } else if self.days > compare.days && self_doy < other_doy {
+            -1
+        } else if self.days < compare.days && self_doy > other_doy {
+            1
+        } else if self.days > compare.days
+            && self_doy == other_doy
+            && self.nanoseconds < compare.nanoseconds
+        {
+            -1
+        } else if self.days < compare.days
+            && self_doy == other_doy
+            && self.nanoseconds > compare.nanoseconds
+        {
+            1
         } else {
-            self_doy < other_doy
+            0
         };
 
-        self_year - other_year - if subtract_year { 1 } else { 0 }
+        years_between + extra_year
     }
 
     fn months_since(&self, compare: &Self) -> i32 {
@@ -753,17 +769,41 @@ impl DateUtilities for DateTime {
         let months_between =
             self_month as i32 - other_month as i32 - if subtract_year { 1 } else { 0 };
 
-        years_between * 12 + months_between
+        let total_months_between = years_between * 12 + months_between;
+
+        let extra_month = if total_months_between == 0 {
+            0
+        } else if self.days > compare.days && self_day < other_day {
+            -1
+        } else if self.days < compare.days && self_day > other_day {
+            1
+        } else if self.days > compare.days
+            && self_day == other_day
+            && self.nanoseconds < compare.nanoseconds
+        {
+            -1
+        } else if self.days < compare.days
+            && self_day == other_day
+            && self.nanoseconds > compare.nanoseconds
+        {
+            1
+        } else {
+            0
+        };
+
+        total_months_between + extra_month
     }
 
-    fn days_since(&self, compare: &Self) -> i32 {
-        self.days
-            - compare.days
-            - if self.nanoseconds < compare.nanoseconds {
-                1
-            } else {
-                0
-            }
+    fn days_since(&self, compare: &Self) -> i64 {
+        let extra_day = if self.days > compare.days && self.nanoseconds < compare.nanoseconds {
+            -1
+        } else if self.days < compare.days && self.nanoseconds > compare.nanoseconds {
+            1
+        } else {
+            0
+        };
+
+        self.days as i64 - compare.days as i64 + extra_day
     }
 }
 
