@@ -30,7 +30,12 @@ pub(crate) fn set_day_of_year(days: i32, day_of_year: u32) -> Result<i32, Astrol
 
 pub(crate) fn add_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
     let (year, month, mut day) = days_to_date(days);
-    let target_year: i32 = year + years as i32;
+    let mut target_year: i32 = year + years as i32;
+    // Skip year 0
+    if year < 0 && target_year >= 0 {
+        target_year += 1;
+    }
+
     if is_leap_year(year) && !is_leap_year(target_year) && month == 2 && day == 29 {
         day = 28;
     }
@@ -40,7 +45,12 @@ pub(crate) fn add_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
 
 pub(crate) fn sub_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
     let (year, month, mut day) = days_to_date(days);
-    let target_year: i32 = year - years as i32;
+    let mut target_year: i32 = year - years as i32;
+    // Skip year 0
+    if year > 0 && target_year <= 0 {
+        target_year -= 1;
+    }
+
     if is_leap_year(year) && !is_leap_year(target_year) && month == 2 && day == 29 {
         day = 28;
     }
@@ -50,16 +60,22 @@ pub(crate) fn sub_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
 
 pub(crate) fn add_months(days: i32, months: u32) -> Result<i32, AstrolabeError> {
     let (year, month, day) = days_to_date(days);
-    let target_year = (year * 12 + month as i32 + months as i32 - 1) / 12;
+    let mut total_months = year * 12 + month as i32 + months as i32 - 1;
+    // Skip year 0
+    if total_months <= 11 {
+        total_months += 12;
+    }
+
+    let target_year = total_months / 12;
     let target_month = if (month + months) % 12 == 0 {
         12
     } else {
-        month + months % 12
+        (month + months) % 12
     };
     let target_day = match day {
         day if day < 29 => day,
         _ => {
-            let (_, mdays) = year_month_to_doy(target_year, target_month)?;
+            let (_, mdays) = year_month_to_doy(target_year, target_month).unwrap();
             if day > mdays {
                 mdays
             } else {
@@ -72,16 +88,26 @@ pub(crate) fn add_months(days: i32, months: u32) -> Result<i32, AstrolabeError> 
 
 pub(crate) fn sub_months(days: i32, months: u32) -> Result<i32, AstrolabeError> {
     let (year, month, day) = days_to_date(days);
-    let target_year = (year * 12 + month as i32 - months as i32 - 1) / 12;
+    let mut total_months = year * 12 + month as i32 - months as i32 - 1;
+    // Skip year 0
+    if total_months <= 11 {
+        if year > 0 {
+            total_months -= 24;
+        } else {
+            total_months -= 12;
+        }
+    }
+
+    let target_year = total_months / 12;
     let target_month = if (month - months) % 12 == 0 {
         12
     } else {
-        month - months % 12
+        (month - months) % 12
     };
     let target_day = match day {
         day if day < 29 => day,
         _ => {
-            let (_, mdays) = year_month_to_doy(target_year, target_month)?;
+            let (_, mdays) = year_month_to_doy(target_year, target_month).unwrap();
             if day > mdays {
                 mdays
             } else {

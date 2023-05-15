@@ -95,7 +95,7 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
     doy += day - 1;
 
     Ok(if year.is_negative() {
-        doy = 365 - if is_leap_year(year) { doy + 1 } else { doy };
+        doy = if is_leap_year(year) { 366 } else { 365 } - doy;
         (year + 1) * 365 - leap_years as i32 - doy as i32
     } else {
         (year.abs() - 1) * 365 + leap_years as i32 + doy as i32
@@ -110,7 +110,7 @@ pub(crate) fn year_doy_to_days(year: i32, mut doy: u32) -> Result<i32, Astrolabe
     doy -= 1;
 
     Ok(if year.is_negative() {
-        doy = 365 - if is_leap_year(year) { doy + 1 } else { doy };
+        doy = if is_leap_year(year) { 366 } else { 365 } - doy;
         (year + 1) * 365 - leap_years as i32 - doy as i32
     } else {
         (year.abs() - 1) * 365 + leap_years as i32 + doy as i32

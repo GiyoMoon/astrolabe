@@ -91,7 +91,7 @@ pub trait DateUtilities: Sized {
     /// Returns full months since the provided date.
     fn months_since(&self, compare: &Self) -> i32;
     /// Returns full days since the provided date.
-    fn days_since(&self, compare: &Self) -> i32;
+    fn days_since(&self, compare: &Self) -> i64;
 }
 
 /// Defines functions to get and manipulate time units.

@@ -216,7 +216,7 @@ impl Date {
 
     /// Returns the duration between the provided date.
     pub fn duration_between(&self, compare: &Self) -> Duration {
-        Duration::from_secs((self.days_since(compare).unsigned_abs() as u64) * SECS_PER_DAY_U64)
+        Duration::from_secs(self.days_since(compare).unsigned_abs() * SECS_PER_DAY_U64)
     }
 }
 
@@ -343,7 +343,18 @@ impl DateUtilities for Date {
 
         let other_year = days_to_date(compare.days).0;
         let other_doy = days_to_doy(compare.days);
-        self_year - other_year - if self_doy < other_doy { 1 } else { 0 }
+
+        let years_between = self_year - other_year;
+        let extra_year = if years_between == 0 {
+            0
+        } else if self.days > compare.days && self_doy < other_doy {
+            -1
+        } else if self.days < compare.days && self_doy > other_doy {
+            1
+        } else {
+            0
+        };
+        years_between + extra_year
     }
 
     fn months_since(&self, compare: &Self) -> i32 {
@@ -351,12 +362,22 @@ impl DateUtilities for Date {
         let (other_year, other_month, other_day) = days_to_date(compare.days);
 
         let years_between = self_year - other_year;
-        let months_between = self_month - other_month - if self_day < other_day { 1 } else { 0 };
-        years_between * 12 + months_between as i32
+        let months_between = self_month as i32 - other_month as i32;
+        let total_months_between = years_between * 12 + months_between;
+        let extra_month =
+            if total_months_between != 0 && self.days > compare.days && self_day < other_day {
+                -1
+            } else if total_months_between != 0 && self.days < compare.days && self_day > other_day
+            {
+                1
+            } else {
+                0
+            };
+        total_months_between + extra_month
     }
 
-    fn days_since(&self, compare: &Self) -> i32 {
-        self.days - compare.days
+    fn days_since(&self, compare: &Self) -> i64 {
+        self.days as i64 - compare.days as i64
     }
 }
 
