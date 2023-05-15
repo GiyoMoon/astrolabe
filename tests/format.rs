@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod format_tests {
-    use astrolabe::{Date, DateTime, Time};
+    use astrolabe::{Date, DateTime, OffsetUtilities, Time};
 
     #[test]
     fn era() {

@@ -7,7 +7,8 @@ use crate::{
     util::{
         constants::{
             DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY,
-            SECS_PER_DAY_U64, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
+            SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
+            SECS_PER_MINUTE_U64,
         },
         date::{
             convert::{date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days},
@@ -40,7 +41,7 @@ use crate::{
             },
         },
     },
-    Date, DateUtilities, Offset, Precision, Time, TimeUtilities,
+    Date, DateUtilities, OffsetUtilities, Precision, Time, TimeUtilities,
 };
 use std::{
     cmp,
@@ -52,6 +53,10 @@ use std::{
 
 /// Combined date and time.
 /// Date is in the proleptic Gregorian calendar and clock time is with nanosecond precision.
+///
+/// See the [`DateUtilites`](#impl-DateUtilities-for-DateTime) and [`TimeUtilities`](#impl-TimeUtilities-for-DateTime) implementations for get, set and manipulation methods.
+///
+/// [`OffsetUtilities`](#impl-OffsetUtilities-for-DateTime) impements methods for setting and getting the offset.
 ///
 /// Range: `30. June -5879611 00:00:00`..=`12. July 5879611 23:59:59`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq)]
@@ -99,11 +104,11 @@ impl DateTime {
         month: u32,
         day: u32,
         hour: u32,
-        min: u32,
-        sec: u32,
+        minute: u32,
+        second: u32,
     ) -> Result<Self, AstrolabeError> {
         let days = date_to_days(year, month, day)?;
-        let seconds = time_to_day_seconds(hour, min, sec)? as u64;
+        let seconds = time_to_day_seconds(hour, minute, second)? as u64;
         Ok(Self {
             days,
             nanoseconds: seconds * NANOS_PER_SEC,
@@ -528,138 +533,6 @@ impl DateTime {
                     .collect::<Vec<char>>()
             })
             .collect::<String>()
-    }
-
-    /// Creates a new [`DateTime`] instance with a given timezone offset defined as time units (hour, minute and second). Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
-    ///
-    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// // Set offset to UTC+2
-    /// let with_offset = date_time.set_offset(7200).unwrap();
-    /// assert_eq!("2022/05/02 14:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn set_offset_time(
-        &self,
-        hour: u32,
-        minute: u32,
-        second: u32,
-        offset: Offset,
-    ) -> Result<Self, AstrolabeError> {
-        let mut seconds = time_to_day_seconds(hour, minute, second)? as i32;
-        seconds = if offset == Offset::West {
-            -seconds
-        } else {
-            seconds
-        };
-
-        self.set_offset(seconds)
-    }
-
-    /// Creates a new [`DateTime`] instance with a given timezone offset defined as seconds. Offset can range anywhere from `UTC-23:59:59` to `UTC+23:59:59`.
-    ///
-    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// // Set offset to UTC+2
-    /// let with_offset = date_time.set_offset(7200).unwrap();
-    /// assert_eq!("2022/05/02 14:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
-        if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
-            return Err(create_simple_oor(
-                "seconds",
-                -(SECS_PER_DAY as i128) + 1,
-                SECS_PER_DAY as i128 - 1,
-                seconds as i128,
-            ));
-        }
-
-        let offset_days = (self.as_seconds() + seconds as i64) / SECS_PER_DAY_U64 as i64;
-        let offset_nanos = (self.nanoseconds / NANOS_PER_SEC) as i64 + seconds as i64;
-        if offset_days < i32::MIN as i64
-            || offset_days > i32::MAX as i64
-            || (offset_days == i32::MIN as i64 && offset_nanos.is_negative())
-        {
-            return Err(create_custom_oor(
-                "Offset would result in an out of range date".to_string(),
-            ));
-        }
-
-        Ok(Self {
-            days: self.days,
-            nanoseconds: self.nanoseconds,
-            offset: seconds,
-        })
-    }
-
-    /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
-    ///
-    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::{DateTime, Offset};
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// // Set offset to UTC+2
-    /// let with_offset = date_time.as_offset_time(2, 0, 0, Offset::East).unwrap();
-    /// assert_eq!("2022/05/02 12:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn as_offset_time(
-        &self,
-        hour: u32,
-        minute: u32,
-        second: u32,
-        offset: Offset,
-    ) -> Result<Self, AstrolabeError> {
-        let mut seconds = time_to_day_seconds(hour, minute, second)? as i32;
-        seconds = if offset == Offset::West {
-            -seconds
-        } else {
-            seconds
-        };
-
-        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
-
-        Ok(Self::from_nanos(new_nanos)?.set_offset(seconds).unwrap())
-    }
-
-    /// Creates a new [`DateTime`] instance, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
-    ///
-    /// The offset affects all format functions and the `get` and `set` functions but does not change the datetime itself which always represents UTC.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is either not between `UTC-23:59:59` and `UTC+23:59:59` or if it would lead to an out of range date.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time = DateTime::from_ymdhms(2022, 5, 2, 12, 32, 1).unwrap();
-    /// // Set offset to UTC+2
-    /// let with_offset = date_time.as_offset(7200).unwrap();
-    /// assert_eq!("2022/05/02 12:32:01", with_offset.format("yyyy/MM/dd HH:mm:ss"));
-    /// ```
-    pub fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
-        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
-        Self::from_nanos(new_nanos)?.set_offset(seconds)
-    }
-
-    /// Returns the set offset in seconds.
-    ///
-    /// ```rust
-    /// # use astrolabe::DateTime;
-    /// let date_time = DateTime::now().set_offset(3600).unwrap();
-    /// assert_eq!(3600, date_time.get_offset());
-    /// ```
-    pub fn get_offset(&self) -> i32 {
-        self.offset
     }
 
     /// Returns the duration between the provided DateTime.
@@ -1397,13 +1270,90 @@ impl TimeUtilities for DateTime {
 
 // ########################################
 //
+//  OffsetUtility trait implementation
+//
+// ########################################
+
+impl OffsetUtilities for DateTime {
+    fn set_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
+        let mut seconds = time_to_day_seconds(hour.unsigned_abs(), minute, second)? as i32;
+        seconds = if hour.is_negative() {
+            -seconds
+        } else {
+            seconds
+        };
+
+        self.set_offset(seconds)
+    }
+
+    fn as_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
+        let mut seconds = time_to_day_seconds(hour.unsigned_abs(), minute, second)? as i32;
+        seconds = if hour.is_negative() {
+            -seconds
+        } else {
+            seconds
+        };
+
+        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
+
+        Ok(Self::from_nanos(new_nanos)?.set_offset(seconds).unwrap())
+    }
+
+    fn get_offset_hms(&self) -> (i32, u32, u32) {
+        let hour = self.offset / SECS_PER_HOUR as i32;
+        let minute = self.offset % SECS_PER_HOUR as i32 / SECS_PER_MINUTE as i32;
+        let second = self.offset % SECS_PER_MINUTE as i32;
+
+        (hour, minute.unsigned_abs(), second.unsigned_abs())
+    }
+
+    fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
+        if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
+            return Err(create_simple_oor(
+                "seconds",
+                -(SECS_PER_DAY as i128) + 1,
+                SECS_PER_DAY as i128 - 1,
+                seconds as i128,
+            ));
+        }
+
+        let offset_days = (self.as_seconds() + seconds as i64) / SECS_PER_DAY_U64 as i64;
+        let offset_nanos = (self.nanoseconds / NANOS_PER_SEC) as i64 + seconds as i64;
+        if offset_days < i32::MIN as i64
+            || offset_days > i32::MAX as i64
+            || (offset_days == i32::MIN as i64 && offset_nanos.is_negative())
+        {
+            return Err(create_custom_oor(
+                "Offset would result in an out of range date".to_string(),
+            ));
+        }
+
+        Ok(Self {
+            days: self.days,
+            nanoseconds: self.nanoseconds,
+            offset: seconds,
+        })
+    }
+
+    fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
+        let new_nanos = self.as_nanos() - seconds as i128 * NANOS_PER_SEC as i128;
+        Self::from_nanos(new_nanos)?.set_offset(seconds)
+    }
+
+    fn get_offset(&self) -> i32 {
+        self.offset
+    }
+}
+
+// ########################################
+//
 //  Private helper functions
 //
 // ########################################
 
 impl DateTime {
     /// Creates a new [`DateTime`] instance from seconds.
-    fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
+    pub(crate) fn from_seconds(seconds: i64) -> Result<Self, AstrolabeError> {
         let (days, nanoseconds) = secs_to_days_nanos(seconds)?;
 
         Ok(Self {
@@ -1414,12 +1364,12 @@ impl DateTime {
     }
 
     /// Returns the number of seconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
-    pub fn as_seconds(&self) -> i64 {
+    pub(crate) fn as_seconds(&self) -> i64 {
         days_nanos_to_secs(self.days, self.nanoseconds)
     }
 
     /// Creates a new [`DateTime`] instance from nanoseconds.
-    fn from_nanos(nanos: i128) -> Result<Self, AstrolabeError> {
+    pub(crate) fn from_nanos(nanos: i128) -> Result<Self, AstrolabeError> {
         let (days, nanoseconds) = nanos_to_days_nanos(nanos)?;
 
         Ok(Self {
@@ -1430,7 +1380,7 @@ impl DateTime {
     }
 
     /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
-    pub fn as_nanos(&self) -> i128 {
+    pub(crate) fn as_nanos(&self) -> i128 {
         days_nanos_to_nanos(self.days, self.nanoseconds)
     }
 }

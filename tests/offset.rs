@@ -1,43 +1,43 @@
 #[cfg(test)]
 mod offset_tests {
-    use astrolabe::{DateTime, DateUtilities, Offset, Time, TimeUtilities};
+    use astrolabe::{DateTime, DateUtilities, OffsetUtilities, Time, TimeUtilities};
 
     #[test]
-    fn set_offset_time() {
+    fn set_offset_hms() {
         let time = Time::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, time.get_offset());
-        let time = time.set_offset_time(1, 0, 0, Offset::East).unwrap();
+        let time = time.set_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, time.get_offset());
-        let time = time.set_offset_time(1, 0, 0, Offset::West).unwrap();
+        let time = time.set_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, time.get_offset());
-        let time = time.set_offset_time(23, 59, 59, Offset::East).unwrap();
+        let time = time.set_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, time.get_offset());
-        let time = time.set_offset_time(23, 59, 59, Offset::West).unwrap();
+        let time = time.set_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, time.get_offset());
 
-        assert!(time.set_offset_time(24, 0, 0, Offset::East).is_err());
-        assert!(time.set_offset_time(24, 0, 0, Offset::West).is_err());
+        assert!(time.set_offset_hms(24, 0, 0).is_err());
+        assert!(time.set_offset_hms(-24, 0, 0).is_err());
 
         let date_time = DateTime::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, date_time.get_offset());
-        let date_time = date_time.set_offset_time(1, 0, 0, Offset::East).unwrap();
+        let date_time = date_time.set_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, date_time.get_offset());
-        let date_time = date_time.set_offset_time(1, 0, 0, Offset::West).unwrap();
+        let date_time = date_time.set_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, date_time.get_offset());
-        let date_time = date_time.set_offset_time(23, 59, 59, Offset::East).unwrap();
+        let date_time = date_time.set_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, date_time.get_offset());
-        let date_time = date_time.set_offset_time(23, 59, 59, Offset::West).unwrap();
+        let date_time = date_time.set_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, date_time.get_offset());
 
-        assert!(date_time.set_offset_time(24, 0, 0, Offset::East).is_err());
-        assert!(date_time.set_offset_time(24, 0, 0, Offset::West).is_err());
+        assert!(date_time.set_offset_hms(24, 0, 0).is_err());
+        assert!(date_time.set_offset_hms(-24, 0, 0).is_err());
 
         let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 0, 0).unwrap();
-        assert!(date_time.set_offset_time(0, 59, 59, Offset::East).is_ok());
-        assert!(date_time.set_offset_time(1, 0, 0, Offset::East).is_err());
+        assert!(date_time.set_offset_hms(0, 59, 59).is_ok());
+        assert!(date_time.set_offset_hms(1, 0, 0).is_err());
         let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 1, 0, 0).unwrap();
-        assert!(date_time.set_offset_time(1, 0, 0, Offset::West).is_ok());
-        assert!(date_time.set_offset_time(1, 0, 1, Offset::West).is_err());
+        assert!(date_time.set_offset_hms(-1, 0, 0).is_ok());
+        assert!(date_time.set_offset_hms(-1, 0, 1).is_err());
     }
 
     #[test]
@@ -79,41 +79,41 @@ mod offset_tests {
     }
 
     #[test]
-    fn as_offset_time() {
+    fn as_offset_hms() {
         let time = Time::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, time.get_offset());
-        let time = time.as_offset_time(1, 0, 0, Offset::East).unwrap();
+        let time = time.as_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, time.get_offset());
-        let time = time.as_offset_time(1, 0, 0, Offset::West).unwrap();
+        let time = time.as_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, time.get_offset());
-        let time = time.as_offset_time(23, 59, 59, Offset::East).unwrap();
+        let time = time.as_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, time.get_offset());
-        let time = time.as_offset_time(23, 59, 59, Offset::West).unwrap();
+        let time = time.as_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, time.get_offset());
 
-        assert!(time.as_offset_time(24, 0, 0, Offset::East).is_err());
-        assert!(time.as_offset_time(24, 0, 0, Offset::West).is_err());
+        assert!(time.as_offset_hms(24, 0, 0).is_err());
+        assert!(time.as_offset_hms(-24, 0, 0).is_err());
 
         let date_time = DateTime::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, date_time.get_offset());
-        let date_time = date_time.as_offset_time(1, 0, 0, Offset::East).unwrap();
+        let date_time = date_time.as_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, date_time.get_offset());
-        let date_time = date_time.as_offset_time(1, 0, 0, Offset::West).unwrap();
+        let date_time = date_time.as_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, date_time.get_offset());
-        let date_time = date_time.as_offset_time(23, 59, 59, Offset::East).unwrap();
+        let date_time = date_time.as_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, date_time.get_offset());
-        let date_time = date_time.as_offset_time(23, 59, 59, Offset::West).unwrap();
+        let date_time = date_time.as_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, date_time.get_offset());
 
-        assert!(date_time.as_offset_time(24, 0, 0, Offset::East).is_err());
-        assert!(date_time.as_offset_time(24, 0, 0, Offset::West).is_err());
+        assert!(date_time.as_offset_hms(24, 0, 0).is_err());
+        assert!(date_time.as_offset_hms(-24, 0, 0).is_err());
 
         let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 0, 0).unwrap();
-        assert!(date_time.as_offset_time(0, 59, 59, Offset::West).is_ok());
-        assert!(date_time.as_offset_time(1, 0, 0, Offset::West).is_err());
+        assert!(date_time.as_offset_hms(-0, 59, 59).is_ok());
+        assert!(date_time.as_offset_hms(-1, 0, 0).is_err());
         let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 1, 0, 0).unwrap();
-        assert!(date_time.as_offset_time(1, 0, 0, Offset::East).is_ok());
-        assert!(date_time.as_offset_time(1, 0, 1, Offset::East).is_err());
+        assert!(date_time.as_offset_hms(1, 0, 0).is_ok());
+        assert!(date_time.as_offset_hms(1, 0, 1).is_err());
     }
 
     #[test]

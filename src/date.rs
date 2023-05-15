@@ -23,6 +23,8 @@ use std::{
 
 /// Date in the proleptic Gregorian calendar.
 ///
+/// See the [`DateUtilities`](#impl-DateUtilities-for-Date) implementation for get, set and manipulation methods.
+///
 /// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Date {

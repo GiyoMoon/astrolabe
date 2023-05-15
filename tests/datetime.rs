@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod datetime_tests {
-    use astrolabe::{Date, DateTime, DateUtilities, Precision, Time, TimeUtilities};
+    use astrolabe::{
+        Date, DateTime, DateUtilities, OffsetUtilities, Precision, Time, TimeUtilities,
+    };
 
     #[test]
     fn derive() {
@@ -120,16 +122,15 @@ mod datetime_tests {
 
     #[test]
     fn from_ymdhms() {
-        const SECS_PER_DAY: i64 = 86400;
         // check allowed limits
-        from_ymdhms_ok(0, 1, 1, 1, 0, 0, 0);
-        from_ymdhms_ok(334 * SECS_PER_DAY, 1, 12, 1, 0, 0, 0);
-        from_ymdhms_ok(30 * SECS_PER_DAY, 1, 1, 31, 0, 0, 0);
-        from_ymdhms_ok(58 * SECS_PER_DAY, 1, 2, 28, 0, 0, 0);
-        from_ymdhms_ok(1154 * SECS_PER_DAY, 4, 2, 29, 0, 0, 0);
-        from_ymdhms_ok(119 * SECS_PER_DAY, 1, 4, 30, 0, 0, 0);
-        from_ymdhms_ok(i32::MAX as i64 * SECS_PER_DAY, 5_879_611, 7, 12, 0, 0, 0);
-        from_ymdhms_ok(i32::MIN as i64 * SECS_PER_DAY, -5_879_611, 6, 23, 0, 0, 0);
+        from_ymdhms_ok(1, 1, 1, 0, 0, 0);
+        from_ymdhms_ok(1, 12, 1, 0, 0, 0);
+        from_ymdhms_ok(1, 1, 31, 0, 0, 0);
+        from_ymdhms_ok(1, 2, 28, 0, 0, 0);
+        from_ymdhms_ok(4, 2, 29, 0, 0, 0);
+        from_ymdhms_ok(1, 4, 30, 0, 0, 0);
+        from_ymdhms_ok(5_879_611, 7, 12, 0, 0, 0);
+        from_ymdhms_ok(-5_879_611, 6, 23, 0, 0, 0);
 
         // check invalid limits
         from_ymdhms_err(1, 0, 1, 0, 0, 0);
@@ -147,11 +148,11 @@ mod datetime_tests {
         from_ymdhms_err(-5_879_611, 5, 1, 0, 0, 0);
 
         // check allowed limits
-        from_ymdhms_ok(0, 1, 1, 1, 0, 0, 0);
-        from_ymdhms_ok(82800, 1, 1, 1, 23, 0, 0);
-        from_ymdhms_ok(3540, 1, 1, 1, 0, 59, 0);
-        from_ymdhms_ok(59, 1, 1, 1, 0, 0, 59);
-        from_ymdhms_ok(86399, 1, 1, 1, 23, 59, 59);
+        from_ymdhms_ok(1, 1, 1, 0, 0, 0);
+        from_ymdhms_ok(1, 1, 1, 23, 0, 0);
+        from_ymdhms_ok(1, 1, 1, 0, 59, 0);
+        from_ymdhms_ok(1, 1, 1, 0, 0, 59);
+        from_ymdhms_ok(1, 1, 1, 23, 59, 59);
 
         // check invalid limits
         from_ymdhms_err(1, 1, 1, 24, 0, 0);
@@ -160,20 +161,12 @@ mod datetime_tests {
         from_ymdhms_err(1, 1, 1, 24, 60, 60);
     }
 
-    fn from_ymdhms_ok(
-        expected: i64,
-        year: i32,
-        month: u32,
-        day: u32,
-        hour: u32,
-        minute: u32,
-        second: u32,
-    ) {
+    fn from_ymdhms_ok(year: i32, month: u32, day: u32, hour: u32, minute: u32, second: u32) {
         assert_eq!(
-            expected,
+            (year, month, day, hour, minute, second),
             DateTime::from_ymdhms(year, month, day, hour, minute, second)
                 .unwrap()
-                .as_seconds()
+                .as_ymdhms()
         );
     }
 
@@ -399,7 +392,7 @@ mod datetime_tests {
         date_time = date_time.sub_micros(6).unwrap();
         date_time = date_time.sub_nanos(7).unwrap();
 
-        assert_eq!(0, date_time.as_nanos());
+        assert_eq!(0, Time::from(date_time).as_nanos());
 
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
         assert!(date_time.add_years(i32::MAX as u32 + 1).is_err());
@@ -523,11 +516,11 @@ mod datetime_tests {
     #[test]
     fn implementations() {
         let default = DateTime::default();
-        assert_eq!(0, default.as_nanos());
+        assert_eq!(0, Time::from(default).as_nanos());
         let date_time = DateTime::from(Time::from_nanos(12345).unwrap());
         let date_time_copy = DateTime::from(&date_time);
-        assert_eq!(12345, date_time.as_nanos());
-        assert_eq!(12345, date_time_copy.as_nanos());
+        assert_eq!(12345, Time::from(date_time).as_nanos());
+        assert_eq!(12345, Time::from(date_time_copy).as_nanos());
     }
 
     #[test]
