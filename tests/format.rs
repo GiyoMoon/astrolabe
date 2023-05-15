@@ -539,7 +539,7 @@ mod format_tests {
 
     #[test]
     fn subsecond_values() {
-        let time = Time::from_nanoseconds(1123456789).unwrap();
+        let time = Time::from_nanos(1123456789).unwrap();
         assert_eq!("1", time.format("n"));
         assert_eq!("12", time.format("nn"));
         assert_eq!("123", time.format("nnn"));
@@ -547,7 +547,7 @@ mod format_tests {
         assert_eq!("123456789", time.format("nnnnn"));
         assert_eq!("123", time.format("nnnnnn"));
 
-        let time = Time::from_nanoseconds(1).unwrap();
+        let time = Time::from_nanos(1).unwrap();
         assert_eq!("0", time.format("n"));
         assert_eq!("00", time.format("nn"));
         assert_eq!("000", time.format("nnn"));

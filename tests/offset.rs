@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod offset_tests {
-    use astrolabe::{DateTime, DateUtilities, Offset, Time, TimeUnit, TimeUtilities};
+    use astrolabe::{DateTime, DateUtilities, Offset, Time, TimeUtilities};
 
     #[test]
     fn set_offset_time() {
@@ -186,7 +186,7 @@ mod offset_tests {
     #[test]
     fn apply() {
         let time = Time::from_hms(0, 0, 0).unwrap().set_offset(3661).unwrap();
-        assert_eq!(3661, time.apply(1, TimeUnit::Hour).unwrap().get_offset());
+        assert_eq!(3661, time.add_hours(1).unwrap().get_offset());
         let time = DateTime::from_hms(0, 0, 0)
             .unwrap()
             .set_offset(3661)

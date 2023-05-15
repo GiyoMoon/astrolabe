@@ -151,7 +151,7 @@ pub trait TimeUtilities: Sized {
     /// Adds the provided minutes.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_minutes(&self, mins: u32) -> Result<Self, AstrolabeError>;
+    fn add_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError>;
     /// Adds the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -159,15 +159,15 @@ pub trait TimeUtilities: Sized {
     /// Adds the provided milliseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_millis(&self, millis: u64) -> Result<Self, AstrolabeError>;
+    fn add_millis(&self, millis: u32) -> Result<Self, AstrolabeError>;
     /// Adds the provided microseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_micros(&self, micros: u64) -> Result<Self, AstrolabeError>;
+    fn add_micros(&self, micros: u32) -> Result<Self, AstrolabeError>;
     /// Adds the provided nanoseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_nanos(&self, nanos: u64) -> Result<Self, AstrolabeError>;
+    fn add_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError>;
 
     /// Subtracts the provided hours.
     ///
@@ -176,7 +176,7 @@ pub trait TimeUtilities: Sized {
     /// Subtracts the provided minutes.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_minutes(&self, mins: u32) -> Result<Self, AstrolabeError>;
+    fn sub_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError>;
     /// Subtracts the provided seconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
@@ -184,15 +184,15 @@ pub trait TimeUtilities: Sized {
     /// Subtracts the provided milliseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_millis(&self, millis: u64) -> Result<Self, AstrolabeError>;
+    fn sub_millis(&self, millis: u32) -> Result<Self, AstrolabeError>;
     /// Subtracts the provided microseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_micros(&self, micros: u64) -> Result<Self, AstrolabeError>;
+    fn sub_micros(&self, micros: u32) -> Result<Self, AstrolabeError>;
     /// Subtracts the provided nanoseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_nanos(&self, nanos: u64) -> Result<Self, AstrolabeError>;
+    fn sub_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError>;
 
     /// Clears date/time units until the hour (inclusive).
     fn clear_until_hour(&self) -> Self;
@@ -207,7 +207,7 @@ pub trait TimeUtilities: Sized {
     /// Clears date/time units until the nanosecond (inclusive).
     fn clear_until_nano(&self) -> Self;
 
-    /// Return type for the `hour_`, `mins_` and `secs_since` functions. Is `i32` for [`Time`](crate::Time) and `i64` for [`DateTime`](crate::DateTime).
+    /// Return type for the `hour_`, `minutes_` and `seconds_since` functions. Is `i32` for [`Time`](crate::Time) and `i64` for [`DateTime`](crate::DateTime).
     type SubDayReturn;
     /// Returns full hours since the provided time.
     fn hours_since(&self, compare: &Self) -> Self::SubDayReturn;

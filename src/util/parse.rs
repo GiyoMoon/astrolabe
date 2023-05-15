@@ -526,7 +526,6 @@ pub(crate) fn parse_time_part(
             1 => match string.chars().nth(1) {
                 Some(char) if char.is_ascii_digit() => {
                     let hour = pick_part::<u32>(2, string, "hour")?;
-                    println!("{}", hour);
                     Some(ParsedPart {
                         value: hour as i64,
                         unit: ParseUnit::Hour,

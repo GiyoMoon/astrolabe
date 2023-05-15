@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod time_tests {
-    use astrolabe::{Time, TimeUnit, TimeUtilities};
+    use astrolabe::{Time, TimeUtilities};
 
     #[test]
     fn derive() {
@@ -20,7 +20,7 @@ mod time_tests {
         // PartialOrd
         assert_eq!(std::cmp::Ordering::Equal, time.cmp(&clone));
 
-        let clone = time.apply(1, TimeUnit::Nanos).unwrap();
+        let clone = time.add_nanos(1).unwrap();
         // PartialEq
         assert!(time != clone);
 
@@ -29,7 +29,7 @@ mod time_tests {
         // PartialOrd
         assert_eq!(std::cmp::Ordering::Less, time.cmp(&clone));
 
-        let clone2 = clone.apply(-1, TimeUnit::Nanos).unwrap();
+        let clone2 = clone.sub_nanos(1).unwrap();
         // Ord
         assert!(clone > clone2);
         // PartialOrd
@@ -41,15 +41,6 @@ mod time_tests {
         assert!(time == clone);
         // PartialOrd
         assert_eq!(std::cmp::Ordering::Equal, time.cmp(&clone));
-
-        let unit = TimeUnit::Sec;
-        // Debug
-        println!("{:?}", unit);
-        // Clone
-        #[allow(clippy::redundant_clone)]
-        let clone = unit.clone();
-        // PartialEq
-        assert!(unit == clone);
 
         assert!("12:32:01".parse::<Time>().is_ok());
         assert!("blabla".parse::<Time>().is_err());
@@ -96,14 +87,12 @@ mod time_tests {
 
     #[test]
     fn nanoseconds() {
-        assert_eq!(0, Time::from_nanoseconds(0).unwrap().as_nanoseconds());
+        assert_eq!(0, Time::from_nanos(0).unwrap().as_nanos());
         assert_eq!(
             86_399_999_999_999,
-            Time::from_nanoseconds(86_399_999_999_999)
-                .unwrap()
-                .as_nanoseconds()
+            Time::from_nanos(86_399_999_999_999).unwrap().as_nanos()
         );
-        assert!(Time::from_nanoseconds(86_400_000_000_000).is_err())
+        assert!(Time::from_nanos(86_400_000_000_000).is_err())
     }
 
     #[test]
@@ -116,7 +105,7 @@ mod time_tests {
 
     #[test]
     fn get() {
-        let time = Time::from_nanoseconds(10_921_123_456_789).unwrap();
+        let time = Time::from_nanos(10_921_123_456_789).unwrap();
 
         assert_eq!(3, time.hour());
         assert_eq!(2, time.minute());
@@ -128,44 +117,40 @@ mod time_tests {
 
     #[test]
     fn apply() {
-        let mut time = Time::default().apply(1, TimeUnit::Hour).unwrap();
+        let mut time = Time::default().add_hours(1).unwrap();
 
-        time = time.apply(1, TimeUnit::Hour).unwrap();
-        time = time.apply(2, TimeUnit::Min).unwrap();
-        time = time.apply(3, TimeUnit::Sec).unwrap();
-        time = time.apply(4, TimeUnit::Centis).unwrap();
-        time = time.apply(5, TimeUnit::Millis).unwrap();
-        time = time.apply(6, TimeUnit::Micros).unwrap();
-        time = time.apply(7, TimeUnit::Nanos).unwrap();
+        time = time.add_hours(1).unwrap();
+        time = time.add_minutes(2).unwrap();
+        time = time.add_seconds(3).unwrap();
+        time = time.add_millis(5).unwrap();
+        time = time.add_micros(6).unwrap();
+        time = time.add_nanos(7).unwrap();
 
         assert_eq!(2, time.hour());
         assert_eq!(2, time.minute());
         assert_eq!(3, time.second());
-        assert_eq!(45, time.milli());
-        assert_eq!(45_006, time.micro());
-        assert_eq!(45_006_007, time.nano());
+        assert_eq!(5, time.milli());
+        assert_eq!(5_006, time.micro());
+        assert_eq!(5_006_007, time.nano());
 
-        time = time.apply(-2, TimeUnit::Hour).unwrap();
-        time = time.apply(-2, TimeUnit::Min).unwrap();
-        time = time.apply(-3, TimeUnit::Sec).unwrap();
-        time = time.apply(-4, TimeUnit::Centis).unwrap();
-        time = time.apply(-5, TimeUnit::Millis).unwrap();
-        time = time.apply(-6, TimeUnit::Micros).unwrap();
-        time = time.apply(-7, TimeUnit::Nanos).unwrap();
+        time = time.sub_hours(2).unwrap();
+        time = time.sub_minutes(2).unwrap();
+        time = time.sub_seconds(3).unwrap();
+        time = time.sub_millis(5).unwrap();
+        time = time.sub_micros(6).unwrap();
+        time = time.sub_nanos(7).unwrap();
 
-        assert_eq!(0, time.as_nanoseconds());
+        assert_eq!(0, time.as_nanos());
 
-        assert!(time.apply(-1, TimeUnit::Nanos).is_err());
-        assert!(time.apply(24, TimeUnit::Hour).is_err());
+        assert!(time.sub_nanos(1).is_err());
+        assert!(time.add_hours(24).is_err());
     }
 
     #[test]
     fn set() {
-        let mut time = Time::default()
-            .apply(34_661_123_456_789, TimeUnit::Nanos)
-            .unwrap();
+        let mut time = Time::default().add_nanos(u32::MAX).unwrap();
 
-        time = time.set_minute(1).unwrap();
+        time = time.set_hour(1).unwrap();
         time = time.set_minute(2).unwrap();
         time = time.set_second(3).unwrap();
 
@@ -186,10 +171,10 @@ mod time_tests {
     #[test]
     fn implementations() {
         let default = Time::default();
-        assert_eq!(0, default.as_nanoseconds());
-        let time = Time::from_nanoseconds(12345).unwrap();
+        assert_eq!(0, default.as_nanos());
+        let time = Time::from_nanos(12345).unwrap();
         let time_copy = Time::from(&time);
-        assert_eq!(12345, time.as_nanoseconds());
-        assert_eq!(12345, time_copy.as_nanoseconds());
+        assert_eq!(12345, time.as_nanos());
+        assert_eq!(12345, time_copy.as_nanos());
     }
 }

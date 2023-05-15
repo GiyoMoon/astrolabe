@@ -109,7 +109,7 @@ mod datetime_tests {
     fn from_hms_ok(expected: u64, hour: u32, minute: u32, second: u32) {
         assert_eq!(
             expected,
-            Time::from(DateTime::from_hms(hour, minute, second).unwrap()).as_nanoseconds()
+            Time::from(DateTime::from_hms(hour, minute, second).unwrap()).as_nanos()
                 / 1_000_000_000
         );
     }
@@ -300,14 +300,12 @@ mod datetime_tests {
     fn time() {
         assert_eq!(
             0,
-            Time::from(DateTime::default().set_time(Time::default())).as_nanoseconds()
+            Time::from(DateTime::default().set_time(Time::default())).as_nanos()
         );
         assert_eq!(
             86_399_999_999_999,
-            Time::from(
-                DateTime::default().set_time(Time::from_nanoseconds(86_399_999_999_999).unwrap())
-            )
-            .as_nanoseconds()
+            Time::from(DateTime::default().set_time(Time::from_nanos(86_399_999_999_999).unwrap()))
+                .as_nanos()
         );
     }
 
@@ -327,7 +325,7 @@ mod datetime_tests {
         assert_eq!(5, date_time.month());
         assert_eq!(10, date_time.day());
 
-        let date_time = DateTime::from(Time::from_nanoseconds(10_921_123_456_789).unwrap());
+        let date_time = DateTime::from(Time::from_nanos(10_921_123_456_789).unwrap());
 
         assert_eq!(3, date_time.hour());
         assert_eq!(2, date_time.minute());
@@ -401,7 +399,7 @@ mod datetime_tests {
         date_time = date_time.sub_micros(6).unwrap();
         date_time = date_time.sub_nanos(7).unwrap();
 
-        assert_eq!(0, date_time.as_nanoseconds());
+        assert_eq!(0, date_time.as_nanos());
 
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
         assert!(date_time.add_years(i32::MAX as u32 + 1).is_err());
@@ -434,7 +432,7 @@ mod datetime_tests {
         assert!(date_time.set_day(32).is_err());
         assert!(date_time.set_year(0).is_err());
 
-        let mut date_time = DateTime::default().add_nanos(34_661_123_456_789).unwrap();
+        let mut date_time = DateTime::default().add_nanos(u32::MAX).unwrap();
 
         date_time = date_time.set_hour(1).unwrap();
         date_time = date_time.set_minute(2).unwrap();
@@ -525,11 +523,11 @@ mod datetime_tests {
     #[test]
     fn implementations() {
         let default = DateTime::default();
-        assert_eq!(0, default.as_nanoseconds());
-        let date_time = DateTime::from(Time::from_nanoseconds(12345).unwrap());
+        assert_eq!(0, default.as_nanos());
+        let date_time = DateTime::from(Time::from_nanos(12345).unwrap());
         let date_time_copy = DateTime::from(&date_time);
-        assert_eq!(12345, date_time.as_nanoseconds());
-        assert_eq!(12345, date_time_copy.as_nanoseconds());
+        assert_eq!(12345, date_time.as_nanos());
+        assert_eq!(12345, date_time_copy.as_nanos());
     }
 
     #[test]
