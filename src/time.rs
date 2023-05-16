@@ -17,7 +17,7 @@ use crate::{
                 days_nanos_to_minutes, days_nanos_to_nanos, days_nanos_to_seconds,
                 nanos_to_subhour_nanos, nanos_to_submicro_nanos, nanos_to_submilli_nanos,
                 nanos_to_subminute_nanos, nanos_to_subsecond, nanos_to_subsecond_nanos,
-                nanos_to_time, time_to_day_seconds,
+                nanos_to_time, since_i32, since_i64, time_to_day_seconds,
             },
             manipulate::{
                 add_hours, add_micros, add_millis, add_minutes, add_seconds,
@@ -647,13 +647,12 @@ impl TimeUtilities for Time {
         let compare_total_hours = days_nanos_to_hours(0, compare.nanoseconds) as i32;
         let compare_subhour_nanos = nanos_to_subhour_nanos(compare.nanoseconds);
 
-        self_total_hours
-            - compare_total_hours
-            - if self_subhour_nanos < compare_subhour_nanos {
-                1
-            } else {
-                0
-            }
+        since_i32(
+            self_total_hours,
+            self_subhour_nanos,
+            compare_total_hours,
+            compare_subhour_nanos,
+        )
     }
 
     fn minutes_since(&self, compare: &Self) -> Self::SubDayReturn {
@@ -663,13 +662,12 @@ impl TimeUtilities for Time {
         let compare_total_minutes = days_nanos_to_minutes(0, compare.nanoseconds) as i32;
         let compare_subminute_nanos = nanos_to_subminute_nanos(compare.nanoseconds);
 
-        self_total_minutes
-            - compare_total_minutes
-            - if self_subminute_nanos < compare_subminute_nanos {
-                1
-            } else {
-                0
-            }
+        since_i32(
+            self_total_minutes,
+            self_subminute_nanos,
+            compare_total_minutes,
+            compare_subminute_nanos,
+        )
     }
 
     fn seconds_since(&self, compare: &Self) -> Self::SubDayReturn {
@@ -679,13 +677,12 @@ impl TimeUtilities for Time {
         let compare_total_seconds = days_nanos_to_seconds(0, compare.nanoseconds) as i32;
         let compare_subsecond_nanos = nanos_to_subsecond_nanos(compare.nanoseconds);
 
-        self_total_seconds
-            - compare_total_seconds
-            - if self_subsecond_nanos < compare_subsecond_nanos {
-                1
-            } else {
-                0
-            }
+        since_i32(
+            self_total_seconds,
+            self_subsecond_nanos,
+            compare_total_seconds,
+            compare_subsecond_nanos,
+        )
     }
 
     type SubSecReturn = i64;
@@ -697,13 +694,12 @@ impl TimeUtilities for Time {
         let compare_total_millis = days_nanos_to_millis(0, compare.nanoseconds) as i64;
         let compare_submilli_nanos = nanos_to_submilli_nanos(compare.nanoseconds);
 
-        self_total_millis
-            - compare_total_millis
-            - if self_submilli_nanos < compare_submilli_nanos {
-                1
-            } else {
-                0
-            }
+        since_i64(
+            self_total_millis,
+            self_submilli_nanos,
+            compare_total_millis,
+            compare_submilli_nanos,
+        )
     }
 
     fn micros_since(&self, compare: &Self) -> Self::SubSecReturn {
@@ -713,13 +709,12 @@ impl TimeUtilities for Time {
         let compare_total_micros = days_nanos_to_micros(0, compare.nanoseconds) as i64;
         let compare_submicro_nanos = nanos_to_submicro_nanos(compare.nanoseconds);
 
-        self_total_micros
-            - compare_total_micros
-            - if self_submicro_nanos < compare_submicro_nanos {
-                1
-            } else {
-                0
-            }
+        since_i64(
+            self_total_micros,
+            self_submicro_nanos,
+            compare_total_micros,
+            compare_submicro_nanos,
+        )
     }
 
     fn nanos_since(&self, compare: &Self) -> Self::SubSecReturn {
