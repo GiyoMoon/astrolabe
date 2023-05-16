@@ -43,21 +43,6 @@ pub(crate) fn add_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
     date_to_days(target_year, month, day)
 }
 
-pub(crate) fn sub_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
-    let (year, month, mut day) = days_to_date(days);
-    let mut target_year: i32 = year - years as i32;
-    // Skip year 0
-    if year > 0 && target_year <= 0 {
-        target_year -= 1;
-    }
-
-    if is_leap_year(year) && !is_leap_year(target_year) && month == 2 && day == 29 {
-        day = 28;
-    }
-
-    date_to_days(target_year, month, day)
-}
-
 pub(crate) fn add_months(days: i32, months: u32) -> Result<i32, AstrolabeError> {
     let (year, month, day) = days_to_date(days);
     let mut total_months = year * 12 + month as i32 + months as i32 - 1;
@@ -84,6 +69,30 @@ pub(crate) fn add_months(days: i32, months: u32) -> Result<i32, AstrolabeError> 
         }
     };
     date_to_days(target_year, target_month, target_day)
+}
+
+pub(crate) fn add_days(old_days: i32, days: u32) -> Result<i32, AstrolabeError> {
+    old_days.checked_add(days as i32).ok_or_else(|| {
+        create_custom_oor(format!(
+            "Instance would result into an overflow if {} days were added.",
+            days,
+        ))
+    })
+}
+
+pub(crate) fn sub_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {
+    let (year, month, mut day) = days_to_date(days);
+    let mut target_year: i32 = year - years as i32;
+    // Skip year 0
+    if year > 0 && target_year <= 0 {
+        target_year -= 1;
+    }
+
+    if is_leap_year(year) && !is_leap_year(target_year) && month == 2 && day == 29 {
+        day = 28;
+    }
+
+    date_to_days(target_year, month, day)
 }
 
 pub(crate) fn sub_months(days: i32, months: u32) -> Result<i32, AstrolabeError> {
@@ -116,15 +125,6 @@ pub(crate) fn sub_months(days: i32, months: u32) -> Result<i32, AstrolabeError> 
         }
     };
     date_to_days(target_year, target_month, target_day)
-}
-
-pub(crate) fn add_days(old_days: i32, days: u32) -> Result<i32, AstrolabeError> {
-    old_days.checked_add(days as i32).ok_or_else(|| {
-        create_custom_oor(format!(
-            "Instance would result into an overflow if {} days were added.",
-            days,
-        ))
-    })
 }
 
 pub(crate) fn sub_days(old_days: i32, days: u32) -> Result<i32, AstrolabeError> {
