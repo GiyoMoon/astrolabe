@@ -4,8 +4,8 @@ use crate::{
         constants::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
         date::{
             convert::{
-                date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days,
-                years_between,
+                date_to_days, days_to_date, days_to_doy, days_to_wday, months_between,
+                year_doy_to_days, years_between,
             },
             manipulate::{
                 add_days, add_months, add_years, set_day, set_day_of_year, set_month, set_year,
@@ -341,17 +341,11 @@ impl DateUtilities for Date {
     }
 
     fn years_since(&self, compare: &Self) -> i32 {
-        let self_year = days_to_date(self.days).0;
-        let self_doy = days_to_doy(self.days);
-
-        let other_year = days_to_date(compare.days).0;
-        let other_doy = days_to_doy(compare.days);
-
-        years_between(self_year, self_doy, 0, other_year, other_doy, 0)
+        years_between(self.days, 0, compare.days, 0)
     }
 
-    fn months_since(&self, _compare: &Self) -> i32 {
-        todo!()
+    fn months_since(&self, compare: &Self) -> i32 {
+        months_between(self.days, 0, compare.days, 0)
     }
 
     fn days_since(&self, compare: &Self) -> i64 {

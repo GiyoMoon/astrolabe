@@ -195,15 +195,22 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
     }
 }
 
+/// Returns the years between two dates, considering day of year and subday nanoseconds
 pub(crate) fn years_between(
-    first_year: i32,
-    first_doy: u32,
+    first_days: i32,
     first_nanos: u64,
-    second_year: i32,
-    second_doy: u32,
+    second_days: i32,
     second_nanos: u64,
 ) -> i32 {
+    let first_year = days_to_date(first_days).0;
+    let first_doy = days_to_doy(first_days);
+
+    let second_year = days_to_date(second_days).0;
+    let second_doy = days_to_doy(second_days);
+
     let mut years_between = first_year - second_year;
+
+    // Fix needed as year 0 doesn't exist
     if first_year >= 1 && second_year < 1 {
         years_between -= 1
     } else if first_year < 1 && second_year >= 1 {
@@ -225,4 +232,42 @@ pub(crate) fn years_between(
     };
 
     years_between + extra_year
+}
+
+/// Returns the months between two dates, considering day of month and subday nanoseconds
+pub(crate) fn months_between(
+    first_days: i32,
+    first_nanos: u64,
+    second_days: i32,
+    second_nanos: u64,
+) -> i32 {
+    let (first_year, first_month, first_day) = days_to_date(first_days);
+    let (second_year, second_month, second_day) = days_to_date(second_days);
+
+    let mut years_between = first_year - second_year;
+
+    // Fix needed as year 0 doesn't exist
+    if first_year >= 1 && second_year < 1 {
+        years_between -= 1
+    } else if first_year < 1 && second_year >= 1 {
+        years_between += 1
+    };
+
+    let months_between = years_between * 12 + first_month as i32 - second_month as i32;
+
+    let extra_month = if months_between == 0 {
+        0
+    } else if first_year > second_year
+        && (first_day < second_day || (first_day == second_day && first_nanos < second_nanos))
+    {
+        -1
+    } else if first_year < second_year
+        && (first_day > second_day || (first_day == second_day && first_nanos > second_nanos))
+    {
+        1
+    } else {
+        0
+    };
+
+    months_between + extra_month
 }

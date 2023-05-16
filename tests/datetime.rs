@@ -1046,7 +1046,7 @@ mod datetime_tests {
         // tests the years_since, months_since, days_since methods
         let date_time = DateTime::from_ymd(2022, 5, 10).unwrap();
         assert_eq!(0, date_time.years_since(&date_time));
-        // assert_eq!(0, date_time.months_since(&date_time));
+        assert_eq!(0, date_time.months_since(&date_time));
         assert_eq!(0, date_time.days_since(&date_time));
         assert_eq!(0, date_time.hours_since(&date_time));
         assert_eq!(0, date_time.minutes_since(&date_time));
@@ -1056,7 +1056,7 @@ mod datetime_tests {
         assert_eq!(0, date_time.nanos_since(&date_time));
         let date_time2 = DateTime::from_ymd(2023, 5, 10).unwrap();
         assert_eq!(1, date_time2.years_since(&date_time));
-        // assert_eq!(12, date_time2.months_since(&date_time));
+        assert_eq!(12, date_time2.months_since(&date_time));
         assert_eq!(365, date_time2.days_since(&date_time));
         assert_eq!(8760, date_time2.hours_since(&date_time));
         assert_eq!(525_600, date_time2.minutes_since(&date_time));
@@ -1065,7 +1065,7 @@ mod datetime_tests {
         assert_eq!(31_536_000_000_000, date_time2.micros_since(&date_time));
         assert_eq!(31_536_000_000_000_000, date_time2.nanos_since(&date_time));
         assert_eq!(-1, date_time.years_since(&date_time2));
-        // assert_eq!(-12, date_time.months_since(&date_time2));
+        assert_eq!(-12, date_time.months_since(&date_time2));
         assert_eq!(-365, date_time.days_since(&date_time2));
         assert_eq!(-8760, date_time.hours_since(&date_time2));
         assert_eq!(-525_600, date_time.minutes_since(&date_time2));
@@ -1075,7 +1075,7 @@ mod datetime_tests {
         assert_eq!(-31_536_000_000_000_000, date_time.nanos_since(&date_time2));
         let date_time2 = DateTime::from_ymd(2022, 6, 10).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(1, date_time2.months_since(&date_time));
+        assert_eq!(1, date_time2.months_since(&date_time));
         assert_eq!(31, date_time2.days_since(&date_time));
         assert_eq!(744, date_time2.hours_since(&date_time));
         assert_eq!(44_640, date_time2.minutes_since(&date_time));
@@ -1084,7 +1084,7 @@ mod datetime_tests {
         assert_eq!(2_678_400_000_000, date_time2.micros_since(&date_time));
         assert_eq!(2_678_400_000_000_000, date_time2.nanos_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(-1, date_time.months_since(&date_time2));
+        assert_eq!(-1, date_time.months_since(&date_time2));
         assert_eq!(-31, date_time.days_since(&date_time2));
         assert_eq!(-744, date_time.hours_since(&date_time2));
         assert_eq!(-44_640, date_time.minutes_since(&date_time2));
@@ -1094,38 +1094,38 @@ mod datetime_tests {
         assert_eq!(-2_678_400_000_000_000, date_time.nanos_since(&date_time2));
         let date_time2 = DateTime::from_ymd(2022, 5, 11).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(0, date_time2.months_since(&date_time));
+        assert_eq!(0, date_time2.months_since(&date_time));
         assert_eq!(1, date_time2.days_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(0, date_time.months_since(&date_time2));
+        assert_eq!(0, date_time.months_since(&date_time2));
         assert_eq!(-1, date_time.days_since(&date_time2));
         let date_time2 = DateTime::from_ymd(2023, 5, 9).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(11, date_time2.months_since(&date_time));
+        assert_eq!(11, date_time2.months_since(&date_time));
         assert_eq!(364, date_time2.days_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(-11, date_time.months_since(&date_time2));
+        assert_eq!(-11, date_time.months_since(&date_time2));
         assert_eq!(-364, date_time.days_since(&date_time2));
         let date_time = DateTime::from_ymd(2022, 12, 1).unwrap();
         let date_time2 = DateTime::from_ymd(2023, 1, 1).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(1, date_time2.months_since(&date_time));
+        assert_eq!(1, date_time2.months_since(&date_time));
         assert_eq!(31, date_time2.days_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(-1, date_time.months_since(&date_time2));
+        assert_eq!(-1, date_time.months_since(&date_time2));
         assert_eq!(-31, date_time.days_since(&date_time2));
         let date_time = DateTime::from_ymd(2022, 12, 31).unwrap();
         let date_time2 = DateTime::from_ymd(2023, 1, 1).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(0, date_time2.months_since(&date_time));
+        assert_eq!(0, date_time2.months_since(&date_time));
         assert_eq!(1, date_time2.days_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(0, date_time.months_since(&date_time2));
+        assert_eq!(0, date_time.months_since(&date_time2));
         assert_eq!(-1, date_time.days_since(&date_time2));
         let date_time = DateTime::from_ymd(-1, 12, 31).unwrap();
         let date_time2 = DateTime::from_ymd(1, 1, 1).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(0, date_time2.months_since(&date_time));
+        assert_eq!(0, date_time2.months_since(&date_time));
         assert_eq!(1, date_time2.days_since(&date_time));
         assert_eq!(24, date_time2.hours_since(&date_time));
         assert_eq!(1_440, date_time2.minutes_since(&date_time));
@@ -1134,7 +1134,7 @@ mod datetime_tests {
         assert_eq!(86_400_000_000, date_time2.micros_since(&date_time));
         assert_eq!(86_400_000_000_000, date_time2.nanos_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(0, date_time.months_since(&date_time2));
+        assert_eq!(0, date_time.months_since(&date_time2));
         assert_eq!(-1, date_time.days_since(&date_time2));
         assert_eq!(-24, date_time.hours_since(&date_time2));
         assert_eq!(-1_440, date_time.minutes_since(&date_time2));
@@ -1145,7 +1145,7 @@ mod datetime_tests {
         let date_time = DateTime::from_ymdhms(-1, 12, 31, 1, 0, 0).unwrap();
         let date_time2 = DateTime::from_ymdhms(1, 1, 1, 0, 0, 0).unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(0, date_time2.months_since(&date_time));
+        assert_eq!(0, date_time2.months_since(&date_time));
         assert_eq!(0, date_time2.days_since(&date_time));
         assert_eq!(23, date_time2.hours_since(&date_time));
         assert_eq!(1_380, date_time2.minutes_since(&date_time));
@@ -1154,7 +1154,7 @@ mod datetime_tests {
         assert_eq!(82_800_000_000, date_time2.micros_since(&date_time));
         assert_eq!(82_800_000_000_000, date_time2.nanos_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(0, date_time.months_since(&date_time2));
+        assert_eq!(0, date_time.months_since(&date_time2));
         assert_eq!(0, date_time.days_since(&date_time2));
         assert_eq!(-23, date_time.hours_since(&date_time2));
         assert_eq!(-1_380, date_time.minutes_since(&date_time2));
@@ -1171,7 +1171,7 @@ mod datetime_tests {
             .set_nano(000_000_000)
             .unwrap();
         assert_eq!(0, date_time2.years_since(&date_time));
-        // assert_eq!(0, date_time2.months_since(&date_time));
+        assert_eq!(0, date_time2.months_since(&date_time));
         assert_eq!(0, date_time2.days_since(&date_time));
         assert_eq!(0, date_time2.hours_since(&date_time));
         assert_eq!(0, date_time2.minutes_since(&date_time));
@@ -1180,7 +1180,7 @@ mod datetime_tests {
         assert_eq!(0, date_time2.micros_since(&date_time));
         assert_eq!(1, date_time2.nanos_since(&date_time));
         assert_eq!(0, date_time.years_since(&date_time2));
-        // assert_eq!(0, date_time.months_since(&date_time2));
+        assert_eq!(0, date_time.months_since(&date_time2));
         assert_eq!(0, date_time.days_since(&date_time2));
         assert_eq!(0, date_time.hours_since(&date_time2));
         assert_eq!(0, date_time.minutes_since(&date_time2));
