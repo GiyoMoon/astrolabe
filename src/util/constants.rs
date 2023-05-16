@@ -52,3 +52,5 @@ pub(crate) const WDAY_WIDE: [&str; 7] = [
 ];
 pub(crate) const WDAY_NARROW: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
 pub(crate) const WDAY_SHORT: [&str; 7] = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+pub(crate) const BUG_MSG: &str = "This shouldn't happen. Please report this bug on GitHub (https://github.com/GiyoMoon/astrolabe/issues). Thanks!";

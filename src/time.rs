@@ -5,7 +5,7 @@ use crate::{
     },
     util::{
         constants::{
-            NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR,
+            BUG_MSG, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR,
             SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
         },
         format::format_time_part,
@@ -21,9 +21,10 @@ use crate::{
             },
             manipulate::{
                 add_hours, add_micros, add_millis, add_minutes, add_seconds,
-                clear_nanos_until_micro, clear_nanos_until_milli, clear_nanos_until_nanos,
-                clear_nanos_until_second, set_hour, set_micro, set_milli, set_minute, set_nano,
-                set_second, sub_hours, sub_micros, sub_millis, sub_minutes, sub_seconds,
+                clear_nanos_until_micro, clear_nanos_until_milli, clear_nanos_until_minute,
+                clear_nanos_until_nanos, clear_nanos_until_second, set_hour, set_micro, set_milli,
+                set_minute, set_nano, set_second, sub_hours, sub_micros, sub_millis, sub_minutes,
+                sub_seconds,
             },
         },
     },
@@ -506,7 +507,8 @@ impl TimeUtilities for Time {
                         hours
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -520,7 +522,8 @@ impl TimeUtilities for Time {
                         minutes
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -534,7 +537,8 @@ impl TimeUtilities for Time {
                         seconds
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -548,7 +552,8 @@ impl TimeUtilities for Time {
                         millis
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -562,7 +567,8 @@ impl TimeUtilities for Time {
                         micros
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -576,7 +582,8 @@ impl TimeUtilities for Time {
                         nanos
                     ))
                 })?,
-        )?
+        )
+        .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
@@ -591,7 +598,7 @@ impl TimeUtilities for Time {
     fn clear_until_minute(&self) -> Self {
         let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_nanos(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_minute(nanoseconds), self.offset);
         Self {
             nanoseconds,
             offset: self.offset,
