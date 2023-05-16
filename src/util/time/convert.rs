@@ -172,3 +172,54 @@ pub(crate) fn days_nanos_to_micros(days: i32, nanos: u64) -> i128 {
 pub(crate) fn nanos_to_submicro_nanos(nanoseconds: u64) -> i64 {
     (nanoseconds % 1_000) as i64
 }
+
+pub(crate) fn since_i32(
+    self_total: i32,
+    self_sub_nanos: i64,
+    compare_total: i32,
+    compare_sub_nanos: i64,
+) -> i32 {
+    self_total
+        - compare_total
+        - if self_total > compare_total && self_sub_nanos < compare_sub_nanos {
+            1
+        } else if self_total < compare_total && self_sub_nanos > compare_sub_nanos {
+            -1
+        } else {
+            0
+        }
+}
+
+pub(crate) fn since_i64(
+    self_total: i64,
+    self_sub_nanos: i64,
+    compare_total: i64,
+    compare_sub_nanos: i64,
+) -> i64 {
+    self_total
+        - compare_total
+        - if self_total > compare_total && self_sub_nanos < compare_sub_nanos {
+            1
+        } else if self_total < compare_total && self_sub_nanos > compare_sub_nanos {
+            -1
+        } else {
+            0
+        }
+}
+
+pub(crate) fn since_i128(
+    self_total: i128,
+    self_sub_nanos: i64,
+    compare_total: i128,
+    compare_sub_nanos: i64,
+) -> i128 {
+    self_total
+        - compare_total
+        - if self_total > compare_total && self_sub_nanos < compare_sub_nanos {
+            1
+        } else if self_total < compare_total && self_sub_nanos > compare_sub_nanos {
+            -1
+        } else {
+            0
+        }
+}
