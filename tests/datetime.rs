@@ -21,6 +21,12 @@ mod datetime_tests {
         assert_eq!(1, date_time.year());
         assert_eq!(1, date_time.month());
         assert_eq!(1, date_time.day());
+        assert_eq!(0, date_time.hour());
+        assert_eq!(0, date_time.minute());
+        assert_eq!(0, date_time.second());
+        assert_eq!(0, date_time.milli());
+        assert_eq!(0, date_time.micro());
+        assert_eq!(0, date_time.nano());
     }
 
     #[test]
