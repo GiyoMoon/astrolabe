@@ -3,7 +3,10 @@ use crate::{
     util::{
         constants::{DAYS_TO_1970, DAYS_TO_1970_I64, SECS_PER_DAY_U64},
         date::{
-            convert::{date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days},
+            convert::{
+                date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days,
+                years_between,
+            },
             manipulate::{
                 add_days, add_months, add_years, set_day, set_day_of_year, set_month, set_year,
                 sub_days, sub_months, sub_years,
@@ -344,36 +347,11 @@ impl DateUtilities for Date {
         let other_year = days_to_date(compare.days).0;
         let other_doy = days_to_doy(compare.days);
 
-        let years_between = self_year - other_year;
-        let extra_year = if years_between == 0 {
-            0
-        } else if self.days > compare.days && self_doy < other_doy {
-            -1
-        } else if self.days < compare.days && self_doy > other_doy {
-            1
-        } else {
-            0
-        };
-        years_between + extra_year
+        years_between(self_year, self_doy, 0, other_year, other_doy, 0)
     }
 
-    fn months_since(&self, compare: &Self) -> i32 {
-        let (self_year, self_month, self_day) = days_to_date(self.days);
-        let (other_year, other_month, other_day) = days_to_date(compare.days);
-
-        let years_between = self_year - other_year;
-        let months_between = self_month as i32 - other_month as i32;
-        let total_months_between = years_between * 12 + months_between;
-        let extra_month =
-            if total_months_between != 0 && self.days > compare.days && self_day < other_day {
-                -1
-            } else if total_months_between != 0 && self.days < compare.days && self_day > other_day
-            {
-                1
-            } else {
-                0
-            };
-        total_months_between + extra_month
+    fn months_since(&self, _compare: &Self) -> i32 {
+        todo!()
     }
 
     fn days_since(&self, compare: &Self) -> i64 {

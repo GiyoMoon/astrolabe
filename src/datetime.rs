@@ -11,7 +11,10 @@ use crate::{
             SECS_PER_MINUTE_U64,
         },
         date::{
-            convert::{date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days},
+            convert::{
+                date_to_days, days_to_date, days_to_doy, days_to_wday, year_doy_to_days,
+                years_between,
+            },
             manipulate::{
                 add_days, add_months, add_years, set_day, set_day_of_year, set_month, set_year,
                 sub_days, sub_months, sub_years,
@@ -131,8 +134,8 @@ impl DateTime {
     /// ```
     pub fn as_ymdhms(&self) -> (i32, u32, u32, u32, u32, u32) {
         let (year, month, day) = self.as_ymd();
-        let (hour, min, sec) = self.as_hms();
-        (year, month, day, hour, min, sec)
+        let (hour, minute, second) = self.as_hms();
+        (year, month, day, hour, minute, second)
     }
 
     /// Creates a new [`DateTime`] instance from year, month and day (day of month).
@@ -249,10 +252,10 @@ impl DateTime {
         let hour = string[11..13].parse::<u32>().map_err(|_| {
             create_invalid_format("Failed parsing hour from RFC 3339 string".to_string())
         })?;
-        let min = string[14..16].parse::<u32>().map_err(|_| {
+        let minute = string[14..16].parse::<u32>().map_err(|_| {
             create_invalid_format("Failed parsing minute from RFC 3339 string".to_string())
         })?;
-        let sec = string[17..19].parse::<u32>().map_err(|_| {
+        let second = string[17..19].parse::<u32>().map_err(|_| {
             create_invalid_format("Failed parsing second from RFC 3339 string".to_string())
         })?;
 
@@ -280,7 +283,7 @@ impl DateTime {
         };
 
         let days = date_to_days(year, month, day)?;
-        let seconds = time_to_day_seconds(hour, min, sec)? as u64;
+        let seconds = time_to_day_seconds(hour, minute, second)? as u64;
 
         Self {
             days,
@@ -361,8 +364,8 @@ impl DateTime {
                             Period::PM
                         })
                     }
-                    ParseUnit::Min => time.min = Some(parsed_part.value as u64),
-                    ParseUnit::Sec => time.sec = Some(parsed_part.value as u64),
+                    ParseUnit::Minute => time.minute = Some(parsed_part.value as u64),
+                    ParseUnit::Second => time.second = Some(parsed_part.value as u64),
                     ParseUnit::Decis => time.decis = Some(parsed_part.value as u64),
                     ParseUnit::Centis => time.centis = Some(parsed_part.value as u64),
                     ParseUnit::Millis => time.millis = Some(parsed_part.value as u64),
@@ -398,8 +401,8 @@ impl DateTime {
                 * SECS_PER_HOUR_U64
                 * NANOS_PER_SEC;
         }
-        nanoseconds += time.min.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
-        nanoseconds += time.sec.unwrap_or(0) * NANOS_PER_SEC;
+        nanoseconds += time.minute.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
+        nanoseconds += time.second.unwrap_or(0) * NANOS_PER_SEC;
         nanoseconds += time.decis.unwrap_or(0) * 100_000_000;
         nanoseconds += time.centis.unwrap_or(0) * 10_000_000;
         nanoseconds += time.millis.unwrap_or(0) * 1_000_000;
@@ -539,7 +542,9 @@ impl DateTime {
     pub fn duration_between(&self, compare: &Self) -> Duration {
         let days = self.days_since(compare).unsigned_abs();
         let nanos = self.nanoseconds - compare.nanoseconds;
-        Duration::from_nanos(days * SECS_PER_DAY_U64 + nanos)
+        let days_duration = Duration::from_secs(days * SECS_PER_DAY_U64);
+        let nanos_duration = Duration::from_nanos(nanos);
+        days_duration + nanos_duration
     }
 }
 
@@ -730,68 +735,18 @@ impl DateUtilities for DateTime {
         let other_year = days_to_date(compare.days).0;
         let other_doy = days_to_doy(compare.days);
 
-        let years_between = self_year - other_year;
-
-        let extra_year = if years_between == 0 {
-            0
-        } else if self.days > compare.days && self_doy < other_doy {
-            -1
-        } else if self.days < compare.days && self_doy > other_doy {
-            1
-        } else if self.days > compare.days
-            && self_doy == other_doy
-            && self.nanoseconds < compare.nanoseconds
-        {
-            -1
-        } else if self.days < compare.days
-            && self_doy == other_doy
-            && self.nanoseconds > compare.nanoseconds
-        {
-            1
-        } else {
-            0
-        };
-
-        years_between + extra_year
+        years_between(
+            self_year,
+            self_doy,
+            self.nanoseconds,
+            other_year,
+            other_doy,
+            compare.nanoseconds,
+        )
     }
 
-    fn months_since(&self, compare: &Self) -> i32 {
-        let (self_year, self_month, self_day) = days_to_date(self.days);
-        let (other_year, other_month, other_day) = days_to_date(compare.days);
-
-        let subtract_year = if self_day == other_day {
-            self.nanoseconds < compare.nanoseconds
-        } else {
-            self_day < other_day
-        };
-
-        let years_between = self_year - other_year;
-        let months_between =
-            self_month as i32 - other_month as i32 - if subtract_year { 1 } else { 0 };
-
-        let total_months_between = years_between * 12 + months_between;
-
-        let extra_month = if total_months_between == 0 {
-            0
-        } else if self.days > compare.days && self_day < other_day {
-            -1
-        } else if self.days < compare.days && self_day > other_day {
-            1
-        } else if self.days > compare.days
-            && self_day == other_day
-            && self.nanoseconds < compare.nanoseconds
-        {
-            -1
-        } else if self.days < compare.days
-            && self_day == other_day
-            && self.nanoseconds > compare.nanoseconds
-        {
-            1
-        } else {
-            0
-        };
-
-        total_months_between + extra_month
+    fn months_since(&self, _compare: &Self) -> i32 {
+        todo!()
     }
 
     fn days_since(&self, compare: &Self) -> i64 {

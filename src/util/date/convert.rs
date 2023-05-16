@@ -194,3 +194,35 @@ pub(crate) fn days_to_wyear(days: i32) -> u32 {
         _ => (n / 7 + 1) as u32,
     }
 }
+
+pub(crate) fn years_between(
+    first_year: i32,
+    first_doy: u32,
+    first_nanos: u64,
+    second_year: i32,
+    second_doy: u32,
+    second_nanos: u64,
+) -> i32 {
+    let mut years_between = first_year - second_year;
+    if first_year >= 1 && second_year < 1 {
+        years_between -= 1
+    } else if first_year < 1 && second_year >= 1 {
+        years_between += 1
+    };
+
+    let extra_year = if years_between == 0 {
+        0
+    } else if first_year > second_year
+        && (first_doy < second_doy || (first_doy == second_doy && first_nanos < second_nanos))
+    {
+        -1
+    } else if first_year < second_year
+        && (first_doy > second_doy || (first_doy == second_doy && first_nanos > second_nanos))
+    {
+        1
+    } else {
+        0
+    };
+
+    years_between + extra_year
+}

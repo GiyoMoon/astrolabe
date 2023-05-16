@@ -7,13 +7,13 @@ use crate::{
     },
 };
 
-/// Converts nanoseconds to time units (hour, min, sec)
+/// Converts nanoseconds to time units (hour, minute, second)
 pub(crate) fn nanos_to_time(nanos: u64) -> (u32, u32, u32) {
     let as_seconds = (nanos / NANOS_PER_SEC) as u32;
     let hour = as_seconds / SECS_PER_HOUR;
-    let min = as_seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
-    let sec = as_seconds % SECS_PER_MINUTE;
-    (hour, min, sec)
+    let minute = as_seconds / SECS_PER_MINUTE % SECS_PER_MINUTE;
+    let second = as_seconds % SECS_PER_MINUTE;
+    (hour, minute, second)
 }
 
 /// Converts nanoseconds to subsecond units (millis, micros, nanos)
@@ -157,7 +157,7 @@ pub(crate) fn nanos_to_subsecond_nanos(nanoseconds: u64) -> i64 {
 
 pub(crate) fn days_nanos_to_millis(days: i32, nanos: u64) -> i128 {
     let total_seconds = days_nanos_to_seconds(days, nanos);
-    total_seconds as i128 * 1_000 + nanos as i128 / 1_000_000
+    total_seconds as i128 * 1_000 + nanos as i128 % NANOS_PER_SEC as i128 / 1_000_000
 }
 
 pub(crate) fn nanos_to_submilli_nanos(nanoseconds: u64) -> i64 {
@@ -166,7 +166,7 @@ pub(crate) fn nanos_to_submilli_nanos(nanoseconds: u64) -> i64 {
 
 pub(crate) fn days_nanos_to_micros(days: i32, nanos: u64) -> i128 {
     let total_seconds = days_nanos_to_seconds(days, nanos);
-    total_seconds as i128 * 1_000_000 + nanos as i128 / 1_000
+    total_seconds as i128 * 1_000_000 + nanos as i128 % NANOS_PER_SEC as i128 / 1_000
 }
 
 pub(crate) fn nanos_to_submicro_nanos(nanoseconds: u64) -> i64 {
