@@ -96,8 +96,8 @@ pub(crate) enum ParseUnit {
     Hour,
     Period,
     PeriodHour,
-    Min,
-    Sec,
+    Minute,
+    Second,
     Decis,
     Centis,
     Millis,
@@ -119,8 +119,8 @@ pub(crate) struct ParsedTime {
     pub(crate) hour: Option<u64>,
     pub(crate) period_hour: Option<u64>,
     pub(crate) period: Option<Period>,
-    pub(crate) min: Option<u64>,
-    pub(crate) sec: Option<u64>,
+    pub(crate) minute: Option<u64>,
+    pub(crate) second: Option<u64>,
     pub(crate) decis: Option<u64>,
     pub(crate) centis: Option<u64>,
     pub(crate) millis: Option<u64>,
@@ -604,14 +604,14 @@ pub(crate) fn parse_time_part(
                     let minute = pick_part::<u32>(2, string, "minute")?;
                     Some(ParsedPart {
                         value: minute as i64,
-                        unit: ParseUnit::Min,
+                        unit: ParseUnit::Minute,
                     })
                 }
                 _ => {
                     let minute = pick_part::<u32>(1, string, "minute")?;
                     Some(ParsedPart {
                         value: minute as i64,
-                        unit: ParseUnit::Min,
+                        unit: ParseUnit::Minute,
                     })
                 }
             },
@@ -619,7 +619,7 @@ pub(crate) fn parse_time_part(
                 let minute = pick_part::<u32>(2, string, "minute")?;
                 Some(ParsedPart {
                     value: minute as i64,
-                    unit: ParseUnit::Min,
+                    unit: ParseUnit::Minute,
                 })
             }
         },
@@ -629,14 +629,14 @@ pub(crate) fn parse_time_part(
                     let seconds = pick_part::<u32>(2, string, "seconds")?;
                     Some(ParsedPart {
                         value: seconds as i64,
-                        unit: ParseUnit::Sec,
+                        unit: ParseUnit::Second,
                     })
                 }
                 _ => {
                     let seconds = pick_part::<u32>(1, string, "seconds")?;
                     Some(ParsedPart {
                         value: seconds as i64,
-                        unit: ParseUnit::Sec,
+                        unit: ParseUnit::Second,
                     })
                 }
             },
@@ -644,7 +644,7 @@ pub(crate) fn parse_time_part(
                 let seconds = pick_part::<u32>(2, string, "seconds")?;
                 Some(ParsedPart {
                     value: seconds as i64,
-                    unit: ParseUnit::Sec,
+                    unit: ParseUnit::Second,
                 })
             }
         },

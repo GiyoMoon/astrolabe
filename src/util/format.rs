@@ -218,8 +218,8 @@ fn format_zone(length: usize, offset: i32, with_z: bool) -> String {
     }
 
     let hour = offset.unsigned_abs() / SECS_PER_HOUR;
-    let min = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
-    let sec = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
+    let minute = offset.unsigned_abs() % SECS_PER_HOUR / SECS_PER_MINUTE;
+    let second = offset.unsigned_abs() % SECS_PER_HOUR % SECS_PER_MINUTE;
     let prefix = if offset.is_negative() { "-" } else { "+" };
 
     match length {
@@ -228,24 +228,29 @@ fn format_zone(length: usize, offset: i32, with_z: bool) -> String {
                 "{}{}{}",
                 prefix,
                 zero_padded(hour, 2),
-                if min != 0 {
-                    zero_padded(min, 2)
+                if minute != 0 {
+                    zero_padded(minute, 2)
                 } else {
                     "".to_string()
                 }
             )
         }
         2 => {
-            format!("{}{}{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+            format!(
+                "{}{}{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(minute, 2)
+            )
         }
         4 => {
             format!(
                 "{}{}{}{}",
                 prefix,
                 zero_padded(hour, 2),
-                zero_padded(min, 2),
-                if sec != 0 {
-                    zero_padded(sec, 2)
+                zero_padded(minute, 2),
+                if second != 0 {
+                    zero_padded(second, 2)
                 } else {
                     "".to_string()
                 }
@@ -256,16 +261,21 @@ fn format_zone(length: usize, offset: i32, with_z: bool) -> String {
                 "{}{}:{}{}",
                 prefix,
                 zero_padded(hour, 2),
-                zero_padded(min, 2),
-                if sec != 0 {
-                    format!(":{}", zero_padded(sec, 2))
+                zero_padded(minute, 2),
+                if second != 0 {
+                    format!(":{}", zero_padded(second, 2))
                 } else {
                     "".to_string()
                 }
             )
         }
         _ => {
-            format!("{}{}:{}", prefix, zero_padded(hour, 2), zero_padded(min, 2))
+            format!(
+                "{}{}:{}",
+                prefix,
+                zero_padded(hour, 2),
+                zero_padded(minute, 2)
+            )
         }
     }
 }

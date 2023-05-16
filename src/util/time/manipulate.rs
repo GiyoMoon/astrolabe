@@ -168,20 +168,10 @@ pub(crate) fn clear_nanos_until_milli(nanos: u64) -> u64 {
 
 pub(crate) fn clear_nanos_until_micro(nanos: u64) -> u64 {
     let (hour, minute, second) = nanos_to_time(nanos);
-    time_nanos_to_nanos(
-        hour,
-        minute,
-        second,
-        nanos / NANOS_PER_SEC * 1_000 * NANOS_PER_SEC * 1_000,
-    )
+    time_nanos_to_nanos(hour, minute, second, nanos / 1_000_000 * 1_000_000)
 }
 
 pub(crate) fn clear_nanos_until_nanos(nanos: u64) -> u64 {
     let (hour, minute, second) = nanos_to_time(nanos);
-    time_nanos_to_nanos(
-        hour,
-        minute,
-        second,
-        nanos / NANOS_PER_SEC * 1_000_000 * NANOS_PER_SEC * 1_000_000,
-    )
+    time_nanos_to_nanos(hour, minute, second, nanos / 1_000 * 1_000)
 }

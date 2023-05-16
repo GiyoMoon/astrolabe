@@ -216,8 +216,8 @@ impl Time {
                             Period::PM
                         })
                     }
-                    ParseUnit::Min => time.min = Some(parsed_part.value as u64),
-                    ParseUnit::Sec => time.sec = Some(parsed_part.value as u64),
+                    ParseUnit::Minute => time.minute = Some(parsed_part.value as u64),
+                    ParseUnit::Second => time.second = Some(parsed_part.value as u64),
                     ParseUnit::Decis => time.decis = Some(parsed_part.value as u64),
                     ParseUnit::Centis => time.centis = Some(parsed_part.value as u64),
                     ParseUnit::Millis => time.millis = Some(parsed_part.value as u64),
@@ -239,8 +239,8 @@ impl Time {
                 * SECS_PER_HOUR_U64
                 * NANOS_PER_SEC;
         }
-        nanoseconds += time.min.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
-        nanoseconds += time.sec.unwrap_or(0) * NANOS_PER_SEC;
+        nanoseconds += time.minute.unwrap_or(0) * SECS_PER_MINUTE_U64 * NANOS_PER_SEC;
+        nanoseconds += time.second.unwrap_or(0) * NANOS_PER_SEC;
         nanoseconds += time.decis.unwrap_or(0) * 100_000_000;
         nanoseconds += time.centis.unwrap_or(0) * 10_000_000;
         nanoseconds += time.millis.unwrap_or(0) * 1_000_000;

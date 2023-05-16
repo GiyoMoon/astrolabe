@@ -6,28 +6,38 @@ mod offset_tests {
     fn set_offset_hms() {
         let time = Time::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, time.get_offset());
+        assert_eq!((0, 0, 0), time.get_offset_hms());
         let time = time.set_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, time.get_offset());
+        assert_eq!((1, 0, 0), time.get_offset_hms());
         let time = time.set_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, time.get_offset());
+        assert_eq!((-1, 0, 0), time.get_offset_hms());
         let time = time.set_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, time.get_offset());
+        assert_eq!((23, 59, 59), time.get_offset_hms());
         let time = time.set_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, time.get_offset());
+        assert_eq!((-23, 59, 59), time.get_offset_hms());
 
         assert!(time.set_offset_hms(24, 0, 0).is_err());
         assert!(time.set_offset_hms(-24, 0, 0).is_err());
 
         let date_time = DateTime::from_hms(0, 0, 0).unwrap();
         assert_eq!(0, date_time.get_offset());
+        assert_eq!((0, 0, 0), date_time.get_offset_hms());
         let date_time = date_time.set_offset_hms(1, 0, 0).unwrap();
         assert_eq!(3600, date_time.get_offset());
+        assert_eq!((1, 0, 0), date_time.get_offset_hms());
         let date_time = date_time.set_offset_hms(-1, 0, 0).unwrap();
         assert_eq!(-3600, date_time.get_offset());
+        assert_eq!((-1, 0, 0), date_time.get_offset_hms());
         let date_time = date_time.set_offset_hms(23, 59, 59).unwrap();
         assert_eq!(86399, date_time.get_offset());
+        assert_eq!((23, 59, 59), date_time.get_offset_hms());
         let date_time = date_time.set_offset_hms(-23, 59, 59).unwrap();
         assert_eq!(-86399, date_time.get_offset());
+        assert_eq!((-23, 59, 59), date_time.get_offset_hms());
 
         assert!(date_time.set_offset_hms(24, 0, 0).is_err());
         assert!(date_time.set_offset_hms(-24, 0, 0).is_err());
