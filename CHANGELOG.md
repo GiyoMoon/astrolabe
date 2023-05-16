@@ -8,8 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - Unreleased
 ### Added
-- Traits `DateUtilities`, `TimeUtilities`, `OffsetUtilities`
-  - Define get and manipulation functions for date and time units and offset functions.
+- Structs
+  - [`CronSchedule`](https://docs.rs/astrolabe/0.4.0/astrolabe/struct.CronSchedule.html)
+- Traits
+  - [`DateUtilities`](https://docs.rs/astrolabe/0.4.0/astrolabe/trait.DateUtilities.html) and [`TimeUtilities`](https://docs.rs/astrolabe/0.4.0/astrolabe/trait.TimeUtilities.html)
+    - Defines get and manipulation functions for date and time units functions.
+  - [`OffsetUtilities`](https://docs.rs/astrolabe/0.4.0/astrolabe/trait.OffsetUtilities.html)
+    - Defines get and manipulation functions for the offset.
 - `DateTime`
   - Impl `From<Date>`, `From<&Date>`, `From<Time>` and `From<&Time>`
   - Impl `Add<Time>`, `AddAssign<Time>`, `Sub<Time>` and `AddAssign<Time>`
