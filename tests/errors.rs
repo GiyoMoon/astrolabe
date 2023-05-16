@@ -11,6 +11,10 @@ mod errors_tests {
         let out_of_range = DateTime::from_ymd(1, 0, 1).unwrap_err();
         // Debug
         println!("{:?}", out_of_range);
+        // From<AstrolabeError> for String
+        println!("{}", String::from(out_of_range.clone()));
+        // From<&AstrolabeError> for String
+        println!("{}", String::from(&out_of_range));
         // Display
         println!("{}", out_of_range);
         // Hash
@@ -37,6 +41,10 @@ mod errors_tests {
         println!("{:?}", invalid_format);
         // Display
         println!("{}", invalid_format);
+        // From<AstrolabeError> for String
+        println!("{}", String::from(invalid_format.clone()));
+        // From<AstrolabeError> for String
+        println!("{}", String::from(&invalid_format));
         // Hash
         let mut hasher = DefaultHasher::new();
         invalid_format.hash(&mut hasher);

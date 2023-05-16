@@ -22,3 +22,15 @@ impl fmt::Display for AstrolabeError {
         }
     }
 }
+
+impl From<AstrolabeError> for String {
+    fn from(e: AstrolabeError) -> Self {
+        e.to_string()
+    }
+}
+
+impl From<&AstrolabeError> for String {
+    fn from(e: &AstrolabeError) -> Self {
+        e.to_string()
+    }
+}
