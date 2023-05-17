@@ -1,3 +1,5 @@
+#[cfg(not(test))]
+use crate::util::constants::DAYS_TO_1970;
 use crate::{
     errors::{
         invalid_format::create_invalid_format,
@@ -6,9 +8,8 @@ use crate::{
     },
     util::{
         constants::{
-            DAYS_TO_1970, DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY,
-            SECS_PER_DAY_U64, SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE,
-            SECS_PER_MINUTE_U64,
+            DAYS_TO_1970_I64, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64,
+            SECS_PER_HOUR, SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
         },
         date::{
             convert::{
@@ -46,12 +47,14 @@ use crate::{
     },
     Date, DateUtilities, OffsetUtilities, Precision, Time, TimeUtilities,
 };
+#[cfg(not(test))]
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     cmp,
     fmt::Display,
     ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 
 /// Combined date and time.
@@ -77,6 +80,7 @@ impl DateTime {
     /// let date_time = DateTime::now();
     /// assert!(2021 < date_time.year());
     /// ```
+    #[cfg(not(test))]
     pub fn now() -> Self {
         let duration = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -91,6 +95,14 @@ impl DateTime {
             nanoseconds,
             offset: 0,
         }
+    }
+
+    /// Mock function of [`DateTime::now()`] for testing.
+    #[cfg(test)]
+    pub fn now() -> Self {
+        let now_string = std::env::var("ASTROLABE_TEST_NOW")
+            .expect("ASTROLABE_TEST_NOW must be set when testing DateTime::now()");
+        DateTime::parse(&now_string, "yyyy/MM/dd HH:mm:ss").unwrap()
     }
 
     /// Creates a new [`DateTime`] instance from year, month, day (day of month), hour, minute and seconds.
