@@ -85,7 +85,7 @@ enum CronPartType {
     DayOfWeek,
 }
 
-/// Implements a cron expression parser and [`std::Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) to generate corresponding [`DateTime`] structs.
+/// A cron expression parser. Implements [`std::Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) to generate corresponding [`DateTime`] structs.
 #[derive(Debug, Clone)]
 pub struct CronSchedule {
     minutes: HashSet<u8>,
@@ -110,7 +110,11 @@ impl CronSchedule {
     /// | hour         | 0-23                         |
     /// | day of month | 1-31                         |
     /// | month        | 1-12, Jan-Dec                |
-    /// | day of week  | 0-7 (0/7 is Sunday), Mon-Sun |
+    /// | day of week  | 0-7 (0/7 is Sunday), Sun-Sat |
+    ///
+    /// - Use `*` (asterisk) to indicate that all values of the field are valid.
+    /// - very field also allows `,` (comma) and `-` (hyphen) to specify multiple values and ranges.
+    /// - Step values are also supported, for example `*/5` in the minute field means every 5 minutes.
     ///
     /// ```rust
     /// # use astrolabe::CronSchedule;
@@ -191,10 +195,6 @@ impl Iterator for CronSchedule {
         let dow_restricted = self.days_of_week.len() != 7;
 
         loop {
-            if next.year() - last.year() > 4 {
-                return None;
-            }
-
             if !self.months.contains(&(next.month() as u8)) {
                 next = next.add_months(1).ok()?.clear_until_day();
                 continue;
@@ -257,19 +257,24 @@ fn parse_cron_part(
         if part == "*" {
             values.extend(min..=max);
         } else if let Some(step) = part.strip_prefix("*/") {
-            let step = step
+            let step: u8 = step
                 .parse()
                 .map_err(|_| format!("Can't parse step value to u8: {step}"))?;
-            values.extend((min..=max).step_by(step));
+            if step == 0 {
+                return Err("Step value can't be 0".to_string());
+            }
+            values.extend((min..=max).step_by(step as usize));
         } else if part.contains('-') {
             let mut range_parts = part.split('-');
-            let start = range_parts
-                .next()
-                .ok_or("Can't find start number of range".to_string())?;
+            let start = range_parts.next().unwrap_or_default();
+            if start.is_empty() {
+                return Err("Can't find start number of range".to_string());
+            }
             let start = parse_value(start, cron_type)?;
-            let end = range_parts
-                .next()
-                .ok_or("Can't find end number of range".to_string())?;
+            let end = range_parts.next().unwrap_or_default();
+            if end.is_empty() {
+                return Err("Can't find end number of range".to_string());
+            }
             let end = parse_value(end, cron_type)?;
 
             if start > end {
@@ -326,4 +331,135 @@ fn is_numeric_part(part: &str) -> bool {
 
 fn is_numeric_char(char: &char) -> bool {
     char.is_ascii_digit() || char == &'*' || char == &',' || char == &'-' || char == &'/'
+}
+
+#[cfg(test)]
+#[cfg(feature = "cron")]
+mod cron_tests {
+    use crate::{CronSchedule, DateTime};
+
+    #[test]
+    fn iterator() {
+        set_now(2022, 1, 1, 0, 0, 0);
+
+        let expected = vec!["2022/01/01 00:01:00", "2022/01/01 00:02:00"];
+        cron_next("* * * * *", expected);
+
+        // Steps
+        let expected = vec!["2022/01/01 00:05:00", "2022/01/01 00:10:00"];
+        cron_next("*/5 * * * *", expected);
+        let expected = vec![
+            "2022/01/01 05:00:00",
+            "2022/01/01 10:00:00",
+            "2022/01/01 15:00:00",
+            "2022/01/01 20:00:00",
+        ];
+        cron_next("0 */5 * * *", expected);
+
+        // Multiple values
+        let expected = vec![
+            "2022/01/01 00:04:00",
+            "2022/01/01 00:05:00",
+            "2022/01/01 00:08:00",
+            "2022/01/01 01:04:00",
+        ];
+        cron_next("4,5,8 * * * *", expected);
+
+        // Range
+        let expected = vec![
+            "2022/01/01 00:09:00",
+            "2022/01/01 00:10:00",
+            "2022/01/01 00:11:00",
+            "2022/01/01 00:12:00",
+            "2022/01/01 01:09:00",
+        ];
+        cron_next("9-12 * * * *", expected);
+
+        // Months
+        let expected = vec![
+            "2022/02/01 00:00:00",
+            "2022/03/01 00:00:00",
+            "2022/04/01 00:00:00",
+            "2022/05/01 00:00:00",
+            "2022/06/01 00:00:00",
+            "2022/07/01 00:00:00",
+            "2022/08/01 00:00:00",
+            "2022/09/01 00:00:00",
+            "2022/10/01 00:00:00",
+            "2022/11/01 00:00:00",
+            "2022/12/01 00:00:00",
+            "2023/01/01 00:00:00",
+        ];
+        cron_next(
+            "0 0 1 jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec *",
+            expected,
+        );
+        let expected = vec![
+            "2022/02/01 00:00:00",
+            "2022/07/01 00:00:00",
+            "2022/12/01 00:00:00",
+            "2023/01/01 00:00:00",
+        ];
+        cron_next("0 0 1 jan,feb,jul,dec *", expected);
+        assert!(CronSchedule::parse("* * * bla *").is_err());
+
+        // Day of week
+        let expected = vec![
+            "2022/01/02 00:00:00",
+            "2022/01/03 00:00:00",
+            "2022/01/04 00:00:00",
+            "2022/01/05 00:00:00",
+            "2022/01/06 00:00:00",
+            "2022/01/07 00:00:00",
+            "2022/01/08 00:00:00",
+            "2022/01/09 00:00:00",
+        ];
+        cron_next("0 0 * * sun,mon,tue,wed,thu,fri,sat", expected);
+        let expected = vec![
+            "2022/01/02 00:00:00",
+            "2022/01/04 00:00:00",
+            "2022/01/08 00:00:00",
+            "2022/01/09 00:00:00",
+        ];
+        cron_next("0 0 * * sun,tue,sat", expected);
+        assert!(CronSchedule::parse("* * * * bla").is_err());
+
+        // Day of month and day of week combinationes
+        let expected = vec![
+            "2022/01/03 00:00:00",
+            "2022/01/10 00:00:00",
+            "2022/01/17 00:00:00",
+            "2022/01/20 00:00:00",
+        ];
+        cron_next("0 0 20 * mon", expected);
+
+        // Test if iterator returns none at overflow
+        set_now(5_879_611, 7, 12, 23, 59, 0);
+        cron_next_none("* * * * *");
+        set_now(5_879_611, 7, 12, 23, 58, 0);
+        cron_next_none("* * * 8 *");
+        cron_next_none("* * 13 * *");
+        cron_next_none("* 0 * * *");
+        cron_next_none("0 * * * *");
+    }
+
+    fn set_now(year: i32, month: u32, day: u32, hour: u32, minute: u32, second: u32) {
+        let now = DateTime::from_ymdhms(year, month, day, hour, minute, second)
+            .unwrap()
+            .format("yyyy/MM/dd HH:mm:ss");
+        std::env::set_var("ASTROLABE_TEST_NOW", now);
+    }
+
+    fn cron_next(cron: &str, expected: Vec<&str>) {
+        let mut schedule = CronSchedule::parse(cron).unwrap();
+
+        for expected in expected {
+            let next = schedule.next().unwrap();
+            assert_eq!(expected, next.format("yyyy/MM/dd HH:mm:ss"));
+        }
+    }
+
+    fn cron_next_none(cron: &str) {
+        assert!(CronSchedule::parse(cron).unwrap().next().is_none());
+    }
 }
