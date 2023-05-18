@@ -1,6 +1,6 @@
 [package]
 name = "astrolabe"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Date and time library for Rust. Aims to be feature rich, lightweight and easy-to-use."
 homepage = "https://github.com/giyomoon/astrolabe"
