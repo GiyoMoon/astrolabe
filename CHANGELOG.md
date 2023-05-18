@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2023-05-18
 ### Added
 - Structs
   - [`CronSchedule`](https://docs.rs/astrolabe/0.4.0/astrolabe/struct.CronSchedule.html)
@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All offset functions now come from the `OffsetUtilities` trait
 - Renamed `set_offset_time()` to `set_offset_hms()`
 - Renamed `as_offset_time()` to `as_offset_hms()`
+- Renamed `Time::from_nanoseconds` to `Time::from_nanos`
+- Renamed `Time::as_nanoseconds` to `Time::as_nanos`
 
 ### Removed
 - `DateTime`
