@@ -164,7 +164,7 @@ impl Date {
     /// |            | ww       | 08, 27                        | *                                        |
     /// | days       | d        | 1                             | Day of month                             |
     /// |            | dd       | 01                            | *                                        |
-    /// |            | D        | 1, 24, 135                     | Day of year, *                           |
+    /// |            | D        | 1, 24, 135                    | Day of year, *                           |
     /// |            | DD       | 01, 24, 135                   |                                          |
     /// |            | DDD      | 001, 024, 135                 |                                          |
     /// | week day   | e        | 3                             | 1-7, 1 is Sunday, *                      |

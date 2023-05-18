@@ -16,6 +16,7 @@ pub enum Precision {
 }
 
 /// Defines functions to get and manipulate date units.
+///
 /// Used by [`DateTime`](crate::DateTime) and [`Date`](crate::Date).
 pub trait DateUtilities: Sized {
     /// Returns the year.
@@ -95,6 +96,7 @@ pub trait DateUtilities: Sized {
 }
 
 /// Defines functions to get and manipulate time units.
+///
 /// Used by [`DateTime`](crate::DateTime) and [`Time`](crate::Time).
 pub trait TimeUtilities: Sized {
     /// Returns the hour (`0-23`).

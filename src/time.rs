@@ -860,7 +860,7 @@ impl FromStr for Time {
     type Err = AstrolabeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Time::parse(s, "HH:mm:ss")
+        Self::parse(s, "HH:mm:ss")
     }
 }
 

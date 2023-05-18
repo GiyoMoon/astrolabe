@@ -1,4 +1,4 @@
-use super::convert::{nanos_to_time, set_subsecond_value, time_nanos_to_nanos};
+use super::convert::{nanos_to_time, time_nanos_to_nanos};
 use crate::{
     errors::{out_of_range::create_conditional_oor, AstrolabeError},
     util::constants::{NANOS_PER_SEC, SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64},
@@ -47,6 +47,13 @@ pub(crate) fn set_second(nanos: u64, second: u32) -> Result<u64, AstrolabeError>
     let (hour, minute, _) = nanos_to_time(nanos);
 
     Ok(time_nanos_to_nanos(hour, minute, second, nanos))
+}
+
+/// Inserts a subsecond value into nanoseconds. For example, it inserts milliseconds (e.g. `999`) with a divisor of `1_000_000` into nanoseconds (e.g. `1_222_333_444`) and returns `1_999_333_444`.
+pub(crate) fn set_subsecond_value(nanos: u64, value: u64, divisor: u64) -> u64 {
+    let upper_nanos = nanos / NANOS_PER_SEC * NANOS_PER_SEC;
+    let subdevider_nanos = nanos % divisor;
+    upper_nanos + value * divisor + subdevider_nanos
 }
 
 pub(crate) fn set_milli(nanos: u64, milli: u32) -> Result<u64, AstrolabeError> {
