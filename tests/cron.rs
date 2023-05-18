@@ -1,6 +1,8 @@
 #[cfg(test)]
 #[cfg(feature = "cron")]
 mod cron_tests {
+    use std::str::FromStr;
+
     use astrolabe::CronSchedule;
 
     #[test]
@@ -18,6 +20,7 @@ mod cron_tests {
             "* * * jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec sun,mon,tue,wed,thu,fri,sat"
         )
         .is_ok());
+        assert!(CronSchedule::from_str("* * * * *").is_ok());
 
         // Test invalid cron expressions
         assert!(CronSchedule::parse("").is_err());
@@ -42,6 +45,7 @@ mod cron_tests {
         assert!(CronSchedule::parse("0- * * * *").is_err());
         assert!(CronSchedule::parse("* * * bla *").is_err());
         assert!(CronSchedule::parse("* * * * bla").is_err());
+        assert!(CronSchedule::from_str("").is_err());
     }
 
     #[test]

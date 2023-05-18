@@ -113,7 +113,7 @@ impl CronSchedule {
     /// | day of week  | 0-7 (0/7 is Sunday), Sun-Sat |
     ///
     /// - Use `*` (asterisk) to indicate that all values of the field are valid.
-    /// - very field also allows `,` (comma) and `-` (hyphen) to specify multiple values and ranges.
+    /// - Every field also allows `,` (comma) and `-` (hyphen) to specify multiple values and ranges. You can also combine them, for example `1,3-5,10-15`.
     /// - Step values are also supported, for example `*/5` in the minute field means every 5 minutes.
     ///
     /// ```rust
@@ -135,9 +135,9 @@ impl CronSchedule {
     ///    println!("{}", date.format("yyyy-MM-dd HH:mm:ss eeee"));
     /// }
     /// // Prints for example:
-    /// // 2022-05-02 10:00:00 Monday
     /// // 2022-05-03 10:00:00 Tuesday
     /// // 2022-05-04 10:00:00 Wednesday
+    /// // 2022-05-05 10:00:00 Thursday
     /// ```
     pub fn parse(expression: &str) -> Result<Self, AstrolabeError> {
         let fields: Vec<&str> = expression.split_whitespace().collect();
@@ -235,6 +235,14 @@ impl Iterator for CronSchedule {
 
         self.last_schedule = Some(next);
         Some(next)
+    }
+}
+
+impl FromStr for CronSchedule {
+    type Err = AstrolabeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
     }
 }
 
