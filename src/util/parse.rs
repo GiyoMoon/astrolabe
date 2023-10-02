@@ -164,7 +164,7 @@ pub(crate) fn parse_date_part(
     let first_char = chars.chars().next().unwrap();
     Ok(match first_char {
         'G' => match chars.len() {
-            1 | 2 | 3 => {
+            1..=3 => {
                 remove_part(2, string)?;
                 None
             }

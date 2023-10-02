@@ -1,4 +1,3 @@
-#[cfg(not(test))]
 use crate::util::constants::DAYS_TO_1970;
 use crate::{
     errors::{
@@ -47,7 +46,6 @@ use crate::{
     },
     Date, DateUtilities, OffsetUtilities, Precision, Time, TimeUtilities,
 };
-#[cfg(not(test))]
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     cmp,
@@ -62,7 +60,7 @@ use std::{
 ///
 /// See the [`DateUtilites`](#impl-DateUtilities-for-DateTime) and [`TimeUtilities`](#impl-TimeUtilities-for-DateTime) implementations for get, set and manipulation methods.
 ///
-/// [`OffsetUtilities`](#impl-OffsetUtilities-for-DateTime) impements methods for setting and getting the offset.
+/// [`OffsetUtilities`](#impl-OffsetUtilities-for-DateTime) implements methods for setting and getting the offset.
 ///
 /// Range: `30. June -5879611 00:00:00`..=`12. July 5879611 23:59:59`. Please note that year 0 does not exist. After year -1 follows year 1.
 #[derive(Debug, Default, Copy, Clone, Eq)]
@@ -80,7 +78,6 @@ impl DateTime {
     /// let date_time = DateTime::now();
     /// assert!(2021 < date_time.year());
     /// ```
-    #[cfg(not(test))]
     pub fn now() -> Self {
         let duration = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -95,14 +92,6 @@ impl DateTime {
             nanoseconds,
             offset: 0,
         }
-    }
-
-    /// Mock function of [`DateTime::now()`] for testing.
-    #[cfg(test)]
-    pub fn now() -> Self {
-        let now_string = std::env::var("ASTROLABE_TEST_NOW")
-            .expect("ASTROLABE_TEST_NOW must be set when testing DateTime::now()");
-        DateTime::parse(&now_string, "yyyy/MM/dd HH:mm:ss").unwrap()
     }
 
     /// Creates a new [`DateTime`] instance from year, month, day (day of month), hour, minute and seconds.
@@ -1451,7 +1440,7 @@ impl PartialEq for DateTime {
 }
 impl PartialOrd for DateTime {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.as_nanos().partial_cmp(&other.as_nanos())
+        Some(self.cmp(other))
     }
 }
 

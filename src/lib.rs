@@ -4,7 +4,7 @@
 //! - **Formatting** and **parsing** with format strings based on [Unicode Date Field Symbols](https://www.unicode.org/reports/tr35/tr35-dates.html#Date_Field_Symbol_Table)
 //! - **RFC 3339** timestamp parsing and formatting
 //! - **Manipulation** functions to add, subtract, set and clear date units
-//! - **Cron** expression parser (With feature flag `cron`)
+//! - **Cron** expression parser
 //! - **Timezone** offset
 //! - **Zero** dependencies
 //! - **Serde** serializing and deserializing (With feature flag `serde`)
@@ -41,8 +41,6 @@
 #![allow(clippy::many_single_char_names)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[cfg(feature = "cron")]
-#[cfg_attr(docsrs, doc(cfg(feature = "cron")))]
 mod cron;
 mod date;
 mod datetime;
@@ -51,7 +49,6 @@ mod shared;
 mod time;
 mod util;
 
-#[cfg(feature = "cron")]
 pub use self::cron::CronSchedule;
 pub use self::date::Date;
 pub use self::datetime::DateTime;

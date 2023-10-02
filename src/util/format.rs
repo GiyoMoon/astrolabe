@@ -28,7 +28,7 @@ pub(crate) fn format_date_part(chars: &str, days: i32) -> String {
     let first_char = chars.chars().next().unwrap();
     match first_char {
         'G' => match chars.len() {
-            1 | 2 | 3 => {
+            1..=3 => {
                 if days.is_negative() {
                     "BC".to_string()
                 } else {

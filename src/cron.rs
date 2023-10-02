@@ -94,6 +94,8 @@ pub struct CronSchedule {
     months: HashSet<u8>,
     days_of_week: HashSet<u8>,
     last_schedule: Option<DateTime>,
+    #[cfg(test)]
+    now: Option<DateTime>,
 }
 
 impl CronSchedule {
@@ -118,7 +120,6 @@ impl CronSchedule {
     ///
     /// ```rust
     /// # use astrolabe::CronSchedule;
-    ///
     /// // Every 5 minutes
     /// let schedule = CronSchedule::parse("*/5 * * * *").unwrap();
     /// for date in schedule.take(3) {
@@ -139,51 +140,86 @@ impl CronSchedule {
     /// // 2022-05-04 10:00:00 Wednesday
     /// // 2022-05-05 10:00:00 Thursday
     /// ```
+    #[cfg(not(test))]
     pub fn parse(expression: &str) -> Result<Self, AstrolabeError> {
-        let fields: Vec<&str> = expression.split_whitespace().collect();
-
-        if fields.len() != 5 {
-            return Err(create_invalid_format(
-                "Invalid number of cron fields, has to consists of 5 fields".to_string(),
-            ));
-        }
-
-        let minutes = parse_cron_part(fields[0], 0, 59, &CronPartType::Numeric).map_err(|err| {
-            create_invalid_format(format!("Failed parsing minute field: {}", err))
-        })?;
-
-        let hours = parse_cron_part(fields[1], 0, 23, &CronPartType::Numeric)
-            .map_err(|err| create_invalid_format(format!("Failed parsing hour field: {}", err)))?;
-
-        let days_of_month =
-            parse_cron_part(fields[2], 1, 31, &CronPartType::Numeric).map_err(|err| {
-                create_invalid_format(format!("Failed parsing day of month field: {}", err))
-            })?;
-
-        let months = parse_cron_part(fields[3], 1, 12, &CronPartType::Month)
-            .map_err(|err| create_invalid_format(format!("Failed parsing month field: {}", err)))?;
-
-        let days_of_week =
-            parse_cron_part(fields[4], 0, 6, &CronPartType::DayOfWeek).map_err(|err| {
-                create_invalid_format(format!("Failed parsing day of week field: {}", err))
-            })?;
+        let fields = parse_expression(expression)?;
 
         Ok(CronSchedule {
-            minutes,
-            hours,
-            days_of_month,
-            months,
-            days_of_week,
+            minutes: fields.0,
+            hours: fields.1,
+            days_of_month: fields.2,
+            months: fields.3,
+            days_of_week: fields.4,
             last_schedule: None,
         })
     }
+
+    /// Mock function of [`CronSchedule::parse`] for testing.
+    /// Allows to set a custom [`DateTime`] as the current time.
+    #[cfg(test)]
+    pub fn parse(expression: &str, now: Option<DateTime>) -> Result<Self, AstrolabeError> {
+        let fields = parse_expression(expression)?;
+
+        Ok(CronSchedule {
+            minutes: fields.0,
+            hours: fields.1,
+            days_of_month: fields.2,
+            months: fields.3,
+            days_of_week: fields.4,
+            last_schedule: None,
+            now,
+        })
+    }
+}
+
+type CronParts = (
+    HashSet<u8>,
+    HashSet<u8>,
+    HashSet<u8>,
+    HashSet<u8>,
+    HashSet<u8>,
+);
+
+fn parse_expression(expression: &str) -> Result<CronParts, AstrolabeError> {
+    let fields: Vec<&str> = expression.split_whitespace().collect();
+
+    if fields.len() != 5 {
+        return Err(create_invalid_format(
+            "Invalid number of cron fields, has to consists of 5 fields".to_string(),
+        ));
+    }
+
+    let minutes = parse_cron_part(fields[0], 0, 59, &CronPartType::Numeric)
+        .map_err(|err| create_invalid_format(format!("Failed parsing minute field: {}", err)))?;
+
+    let hours = parse_cron_part(fields[1], 0, 23, &CronPartType::Numeric)
+        .map_err(|err| create_invalid_format(format!("Failed parsing hour field: {}", err)))?;
+
+    let days_of_month =
+        parse_cron_part(fields[2], 1, 31, &CronPartType::Numeric).map_err(|err| {
+            create_invalid_format(format!("Failed parsing day of month field: {}", err))
+        })?;
+
+    let months = parse_cron_part(fields[3], 1, 12, &CronPartType::Month)
+        .map_err(|err| create_invalid_format(format!("Failed parsing month field: {}", err)))?;
+
+    let days_of_week =
+        parse_cron_part(fields[4], 0, 6, &CronPartType::DayOfWeek).map_err(|err| {
+            create_invalid_format(format!("Failed parsing day of week field: {}", err))
+        })?;
+
+    Ok((minutes, hours, days_of_month, months, days_of_week))
 }
 
 impl Iterator for CronSchedule {
     type Item = DateTime;
 
     fn next(&mut self) -> Option<Self::Item> {
+        #[cfg(not(test))]
         let now = DateTime::now().clear_until_second();
+        #[cfg(test)]
+        let now = self.now.unwrap_or(DateTime::now()).clear_until_second();
+
         let last = match self.last_schedule {
             Some(last) if last >= now => last,
             _ => now,
@@ -242,7 +278,10 @@ impl FromStr for CronSchedule {
     type Err = AstrolabeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
+        #[cfg(not(test))]
+        return Self::parse(s);
+        #[cfg(test)]
+        return Self::parse(s, None);
     }
 }
 
@@ -342,27 +381,26 @@ fn is_numeric_char(char: &char) -> bool {
 }
 
 #[cfg(test)]
-#[cfg(feature = "cron")]
 mod cron_tests {
     use crate::{CronSchedule, DateTime};
 
     #[test]
     fn iterator() {
-        set_now(2022, 1, 1, 0, 0, 0);
+        let now = DateTime::from_ymdhms(2022, 1, 1, 0, 0, 0).unwrap();
 
         let expected = vec!["2022/01/01 00:01:00", "2022/01/01 00:02:00"];
-        cron_next("* * * * *", expected);
+        cron_next("* * * * *", expected, now);
 
         // Steps
         let expected = vec!["2022/01/01 00:05:00", "2022/01/01 00:10:00"];
-        cron_next("*/5 * * * *", expected);
+        cron_next("*/5 * * * *", expected, now);
         let expected = vec![
             "2022/01/01 05:00:00",
             "2022/01/01 10:00:00",
             "2022/01/01 15:00:00",
             "2022/01/01 20:00:00",
         ];
-        cron_next("0 */5 * * *", expected);
+        cron_next("0 */5 * * *", expected, now);
 
         // Multiple values
         let expected = vec![
@@ -371,7 +409,7 @@ mod cron_tests {
             "2022/01/01 00:08:00",
             "2022/01/01 01:04:00",
         ];
-        cron_next("4,5,8 * * * *", expected);
+        cron_next("4,5,8 * * * *", expected, now);
 
         // Range
         let expected = vec![
@@ -381,7 +419,7 @@ mod cron_tests {
             "2022/01/01 00:12:00",
             "2022/01/01 01:09:00",
         ];
-        cron_next("9-12 * * * *", expected);
+        cron_next("9-12 * * * *", expected, now);
 
         // Months
         let expected = vec![
@@ -401,6 +439,7 @@ mod cron_tests {
         cron_next(
             "0 0 1 jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec *",
             expected,
+            now,
         );
         let expected = vec![
             "2022/02/01 00:00:00",
@@ -408,8 +447,8 @@ mod cron_tests {
             "2022/12/01 00:00:00",
             "2023/01/01 00:00:00",
         ];
-        cron_next("0 0 1 jan,feb,jul,dec *", expected);
-        assert!(CronSchedule::parse("* * * bla *").is_err());
+        cron_next("0 0 1 jan,feb,jul,dec *", expected, now);
+        assert!(CronSchedule::parse("* * * bla *", Some(now)).is_err());
 
         // Day of week
         let expected = vec![
@@ -422,15 +461,15 @@ mod cron_tests {
             "2022/01/08 00:00:00",
             "2022/01/09 00:00:00",
         ];
-        cron_next("0 0 * * sun,mon,tue,wed,thu,fri,sat", expected);
+        cron_next("0 0 * * sun,mon,tue,wed,thu,fri,sat", expected, now);
         let expected = vec![
             "2022/01/02 00:00:00",
             "2022/01/04 00:00:00",
             "2022/01/08 00:00:00",
             "2022/01/09 00:00:00",
         ];
-        cron_next("0 0 * * sun,tue,sat", expected);
-        assert!(CronSchedule::parse("* * * * bla").is_err());
+        cron_next("0 0 * * sun,tue,sat", expected, now);
+        assert!(CronSchedule::parse("* * * * bla", Some(now)).is_err());
 
         // Day of month and day of week combinationes
         let expected = vec![
@@ -439,27 +478,20 @@ mod cron_tests {
             "2022/01/17 00:00:00",
             "2022/01/20 00:00:00",
         ];
-        cron_next("0 0 20 * mon", expected);
+        cron_next("0 0 20 * mon", expected, now);
 
         // Test if iterator returns none at overflow
-        set_now(5_879_611, 7, 12, 23, 59, 0);
-        cron_next_none("* * * * *");
-        set_now(5_879_611, 7, 12, 23, 58, 0);
-        cron_next_none("* * * 8 *");
-        cron_next_none("* * 13 * *");
-        cron_next_none("* 0 * * *");
-        cron_next_none("0 * * * *");
+        let now = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 0).unwrap();
+        cron_next_none("* * * * *", now);
+        let now = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 58, 0).unwrap();
+        cron_next_none("* * * 8 *", now);
+        cron_next_none("* * 13 * *", now);
+        cron_next_none("* 0 * * *", now);
+        cron_next_none("0 * * * *", now);
     }
 
-    fn set_now(year: i32, month: u32, day: u32, hour: u32, minute: u32, second: u32) {
-        let now = DateTime::from_ymdhms(year, month, day, hour, minute, second)
-            .unwrap()
-            .format("yyyy/MM/dd HH:mm:ss");
-        std::env::set_var("ASTROLABE_TEST_NOW", now);
-    }
-
-    fn cron_next(cron: &str, expected: Vec<&str>) {
-        let mut schedule = CronSchedule::parse(cron).unwrap();
+    fn cron_next(cron: &str, expected: Vec<&str>, now: DateTime) {
+        let mut schedule = CronSchedule::parse(cron, Some(now)).unwrap();
 
         for expected in expected {
             let next = schedule.next().unwrap();
@@ -467,7 +499,10 @@ mod cron_tests {
         }
     }
 
-    fn cron_next_none(cron: &str) {
-        assert!(CronSchedule::parse(cron).unwrap().next().is_none());
+    fn cron_next_none(cron: &str, now: DateTime) {
+        assert!(CronSchedule::parse(cron, Some(now))
+            .unwrap()
+            .next()
+            .is_none());
     }
 }

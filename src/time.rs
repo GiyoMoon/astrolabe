@@ -42,7 +42,7 @@ use std::{
 ///
 /// See the [`TimeUtilities`](#impl-TimeUtilities-for-Time) implementation for get, set and manipulation methods.
 ///
-/// [`OffsetUtilities`](#impl-OffsetUtilities-for-Time) impements methods for setting and getting the offset.
+/// [`OffsetUtilities`](#impl-OffsetUtilities-for-Time) implements methods for setting and getting the offset.
 #[derive(Debug, Default, Copy, Clone, Eq)]
 pub struct Time {
     pub(crate) nanoseconds: u64,
@@ -846,7 +846,7 @@ impl PartialEq for Time {
 }
 impl PartialOrd for Time {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.nanoseconds.partial_cmp(&other.nanoseconds)
+        Some(self.cmp(other))
     }
 }
 

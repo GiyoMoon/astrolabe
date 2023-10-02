@@ -1,5 +1,4 @@
 #[cfg(test)]
-#[cfg(feature = "cron")]
 mod cron_tests {
     use std::str::FromStr;
 
