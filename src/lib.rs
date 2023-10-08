@@ -46,7 +46,7 @@
 //! println!("{}", now.format_rfc3339(Precision::Seconds));
 //! assert_eq!(Offset::Local, now.get_offset());
 //! ```
-//! See [`DateTime::Offset`](https://docs.rs/astrolabe/latest/astrolabe/enum.Offset.html)
+//! See [`Offset`](https://docs.rs/astrolabe/latest/astrolabe/enum.Offset.html)
 //!
 //! ### CRON parsing
 //! ```rust
