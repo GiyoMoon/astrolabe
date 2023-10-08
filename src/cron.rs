@@ -225,14 +225,14 @@ impl Iterator for CronSchedule {
             _ => now,
         };
 
-        let mut next = last.add_minutes(1).ok()?;
+        let mut next = last.add_minutes(1);
 
         let dom_restricted = self.days_of_month.len() != 31;
         let dow_restricted = self.days_of_week.len() != 7;
 
         loop {
             if !self.months.contains(&(next.month() as u8)) {
-                next = next.add_months(1).ok()?.clear_until_day();
+                next = next.add_months(1).clear_until_day();
                 continue;
             }
 
@@ -252,17 +252,17 @@ impl Iterator for CronSchedule {
                     && !self.days_of_month.contains(&day_of_month))
                 || (dow_restricted && !dom_restricted && !self.days_of_week.contains(&day_of_week))
             {
-                next = next.add_days(1).ok()?.clear_until_hour();
+                next = next.add_days(1).clear_until_hour();
                 continue;
             }
 
             if !self.hours.contains(&(next.hour() as u8)) {
-                next = next.add_hours(1).ok()?.clear_until_minute();
+                next = next.add_hours(1).clear_until_minute();
                 continue;
             }
 
             if !self.minutes.contains(&(next.minute() as u8)) {
-                next = next.add_minutes(1).ok()?.clear_until_second();
+                next = next.add_minutes(1).clear_until_second();
                 continue;
             }
 
@@ -306,7 +306,7 @@ fn parse_cron_part(
         } else if let Some(step) = part.strip_prefix("*/") {
             let step: u8 = step
                 .parse()
-                .map_err(|_| format!("Can't parse step value to u8: {step}"))?;
+                .map_err(|_| format!("Can't parse step value to u8: {}", step))?;
             if step == 0 {
                 return Err("Step value can't be 0".to_string());
             }
@@ -368,7 +368,7 @@ fn parse_value(value: &str, cron_type: &CronPartType) -> Result<u8, String> {
         CronPartType::DayOfWeek if value == "7" => 0,
         _ => value
             .parse::<u8>()
-            .map_err(|_| format!("Can't parse value to u8: {value}"))?,
+            .map_err(|_| format!("Can't parse value to u8: {}", value))?,
     })
 }
 
@@ -479,15 +479,14 @@ mod cron_tests {
             "2022/01/20 00:00:00",
         ];
         cron_next("0 0 20 * mon", expected, now);
+    }
 
-        // Test if iterator returns none at overflow
+    #[test]
+    #[should_panic]
+    // Test if iterator returns none at overflow
+    fn overflow() {
         let now = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 0).unwrap();
-        cron_next_none("* * * * *", now);
-        let now = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 58, 0).unwrap();
-        cron_next_none("* * * 8 *", now);
-        cron_next_none("* * 13 * *", now);
-        cron_next_none("* 0 * * *", now);
-        cron_next_none("0 * * * *", now);
+        CronSchedule::parse("* * * * *", Some(now)).unwrap().next();
     }
 
     fn cron_next(cron: &str, expected: Vec<&str>, now: DateTime) {
@@ -497,12 +496,5 @@ mod cron_tests {
             let next = schedule.next().unwrap();
             assert_eq!(expected, next.format("yyyy/MM/dd HH:mm:ss"));
         }
-    }
-
-    fn cron_next_none(cron: &str, now: DateTime) {
-        assert!(CronSchedule::parse(cron, Some(now))
-            .unwrap()
-            .next()
-            .is_none());
     }
 }

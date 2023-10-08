@@ -42,7 +42,7 @@ mod date_tests {
     #[test]
     fn ord() {
         let date = Date::default();
-        let date_2 = date.add_days(1).unwrap();
+        let date_2 = date.add_days(1);
         assert!(date < date_2);
         assert_eq!(std::cmp::Ordering::Less, date.cmp(&date_2));
     }
@@ -161,167 +161,151 @@ mod date_tests {
 
     #[test]
     fn timestamp() {
-        assert_eq!(0, Date::from_timestamp(0).unwrap().timestamp());
-        assert_eq!(
-            "1970/01/01",
-            Date::from_timestamp(0).unwrap().format("yyyy/MM/dd")
-        );
-        assert_eq!(
-            "1969/12/31",
-            Date::from_timestamp(-1).unwrap().format("yyyy/MM/dd")
-        );
+        assert_eq!(0, Date::from_timestamp(0).timestamp());
+        assert_eq!("1970/01/01", Date::from_timestamp(0).format("yyyy/MM/dd"));
+        assert_eq!("1969/12/31", Date::from_timestamp(-1).format("yyyy/MM/dd"));
         assert_eq!(
             185_480_451_504_000,
-            Date::from_timestamp(185_480_451_590_399)
-                .unwrap()
-                .timestamp()
+            Date::from_timestamp(185_480_451_590_399).timestamp()
         );
         assert_eq!(
             "5879611/07/12",
-            Date::from_timestamp(185_480_451_590_399)
-                .unwrap()
-                .format("yyyy/MM/dd")
+            Date::from_timestamp(185_480_451_590_399).format("yyyy/MM/dd")
         );
 
         assert_eq!(
             -185_604_722_784_000,
-            Date::from_timestamp(-185_604_722_784_000)
-                .unwrap()
-                .timestamp()
+            Date::from_timestamp(-185_604_722_784_000).timestamp()
         );
         assert_eq!(
             "-5879611/06/23",
-            Date::from_timestamp(-185_604_722_784_000)
-                .unwrap()
-                .format("yyyy/MM/dd")
+            Date::from_timestamp(-185_604_722_784_000).format("yyyy/MM/dd")
         );
+    }
 
-        assert!(Date::from_timestamp(185_480_451_590_400).is_err());
-        assert!(Date::from_timestamp(-185_604_722_784_001).is_err());
+    #[test]
+    #[should_panic]
+    fn timestamp_overflow() {
+        Date::from_timestamp(185_480_451_590_400);
+    }
+
+    #[test]
+    #[should_panic]
+    fn timestamp_underflow() {
+        Date::from_timestamp(-185_604_722_784_001);
     }
 
     #[test]
     fn add_sub() {
         let date = Date::from_ymd(1970, 1, 1).unwrap();
 
-        let modified = date.add_days(123).unwrap();
+        let modified = date.add_days(123);
         assert_eq!(10627200, modified.timestamp());
-        let modified = date.add_months(11).unwrap();
+        let modified = date.add_months(11);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
-        let modified = date.add_months(12).unwrap();
+        let modified = date.add_months(12);
         assert_eq!("1971-01-01", modified.format("yyyy-MM-dd"));
-        let modified = date.add_months(14).unwrap();
+        let modified = date.add_months(14);
         assert_eq!("1971-03-01", modified.format("yyyy-MM-dd"));
 
         // Leap year cases
-        let modified = date.add_days(30).unwrap();
+        let modified = date.add_days(30);
         assert_eq!("1970-01-31", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_months(1).unwrap();
+        let modified = modified.add_months(1);
         assert_eq!("1970-02-28", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_years(2).unwrap();
+        let modified = modified.add_years(2);
         assert_eq!("1972-02-28", modified.format("yyyy-MM-dd"));
-        let modified = date.add_years(2).unwrap().add_days(30).unwrap();
+        let modified = date.add_years(2).add_days(30);
         assert_eq!("1972-01-31", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_months(1).unwrap();
+        let modified = modified.add_months(1);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(1971, 1, 1).unwrap();
-        let modified = date.sub_months(1).unwrap();
+        let modified = date.sub_months(1);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(1972, 3, 31).unwrap();
-        let modified = date.sub_months(1).unwrap();
+        let modified = date.sub_months(1);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
-        let modified = modified.sub_months(1).unwrap();
+        let modified = modified.sub_months(1);
         assert_eq!("1972-01-29", modified.format("yyyy-MM-dd"));
 
-        let date = Date::from_ymd(5_879_611, 7, 12).unwrap();
-        assert!(date.add_days(1).is_err());
-        let date = Date::from_ymd(5_879_611, 6, 13).unwrap();
-        assert!(date.add_months(1).is_err());
-        let date = Date::from_ymd(5_879_610, 7, 13).unwrap();
-        assert!(date.add_years(1).is_err());
-
-        let date = Date::from_ymd(-5_879_611, 6, 23).unwrap();
-        assert!(date.sub_days(1).is_err());
-        let date = Date::from_ymd(-5_879_611, 7, 22).unwrap();
-        assert!(date.sub_months(1).is_err());
-        let date = Date::from_ymd(-5_879_610, 6, 22).unwrap();
-        assert!(date.sub_years(1).is_err());
-
         let date = Date::from_ymd(1, 1, 1).unwrap();
-        assert_eq!(
-            "-0001-12-31",
-            date.sub_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-31", date.sub_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-12-01",
-            date.sub_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-01", date.sub_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-01-01",
-            date.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-01-01", date.sub_years(1).format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(-1, 12, 31).unwrap();
-        assert_eq!(
-            "-0001-12-30",
-            date.sub_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-30", date.sub_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-11-30",
-            date.sub_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-11-30", date.sub_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0002-12-31",
-            date.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0002-12-31", date.sub_years(1).format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(1, 1, 1).unwrap();
-        assert_eq!("0001-01-02", date.add_days(1).unwrap().format("yyyy-MM-dd"));
+        assert_eq!("0001-01-02", date.add_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-02-01",
-            date.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-02-01", date.add_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0002-01-01",
-            date.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0002-01-01", date.add_years(1).format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(-1, 12, 31).unwrap();
-        assert_eq!("0001-01-01", date.add_days(1).unwrap().format("yyyy-MM-dd"));
+        assert_eq!("0001-01-01", date.add_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-01-31",
-            date.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-01-31", date.add_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-12-31",
-            date.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-12-31", date.add_years(1).format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(2020, 2, 29).unwrap();
-        assert_eq!(
-            "2021-02-28",
-            date.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
-        assert_eq!(
-            "2019-02-28",
-            date.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("2021-02-28", date.add_years(1).format("yyyy-MM-dd"));
+        assert_eq!("2019-02-28", date.sub_years(1).format("yyyy-MM-dd"));
 
         let date = Date::from_ymd(1, 1, 1).unwrap();
-        assert_eq!(
-            "0001-02-01",
-            date.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-02-01", date.add_months(1).format("yyyy-MM-dd"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_days() {
+        let date = Date::from_ymd(5_879_611, 7, 12).unwrap();
+        date.add_days(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_months() {
+        let date = Date::from_ymd(5_879_611, 6, 13).unwrap();
+        date.add_months(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_years() {
+        let date = Date::from_ymd(5_879_610, 7, 13).unwrap();
+        date.add_years(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_days() {
+        let date = Date::from_ymd(-5_879_611, 6, 23).unwrap();
+        date.sub_days(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_months() {
+        let date = Date::from_ymd(-5_879_611, 7, 22).unwrap();
+        date.sub_months(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_years() {
+        let date = Date::from_ymd(-5_879_610, 6, 22).unwrap();
+        date.sub_years(1);
     }
 
     #[test]

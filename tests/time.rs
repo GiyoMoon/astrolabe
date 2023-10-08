@@ -7,7 +7,10 @@ mod time_tests {
     #[test]
     fn debug() {
         let time = Time::default();
-        assert_eq!("Time { nanoseconds: 0, offset: 0 }", format!("{:?}", time));
+        assert_eq!(
+            "Time { nanoseconds: 0, offset: Fixed(0) }",
+            format!("{:?}", time)
+        );
     }
 
     #[test]
@@ -46,7 +49,7 @@ mod time_tests {
     #[test]
     fn ord() {
         let time = Time::default();
-        let time_2 = time.add_hours(1).unwrap();
+        let time_2 = time.add_hours(1);
         assert!(time < time_2);
         assert_eq!(std::cmp::Ordering::Less, time.cmp(&time_2));
     }
@@ -54,6 +57,7 @@ mod time_tests {
     #[test]
     fn now() {
         let _ = Time::now();
+        let _ = Time::now_local();
     }
 
     #[test]
@@ -160,14 +164,14 @@ mod time_tests {
 
     #[test]
     fn add_sub() {
-        let mut time = Time::default().add_hours(1).unwrap();
+        let mut time = Time::default().add_hours(1);
 
-        time = time.add_hours(1).unwrap();
-        time = time.add_minutes(2).unwrap();
-        time = time.add_seconds(3).unwrap();
-        time = time.add_millis(5).unwrap();
-        time = time.add_micros(6).unwrap();
-        time = time.add_nanos(7).unwrap();
+        time = time.add_hours(1);
+        time = time.add_minutes(2);
+        time = time.add_seconds(3);
+        time = time.add_millis(5);
+        time = time.add_micros(6);
+        time = time.add_nanos(7);
 
         assert_eq!(2, time.hour());
         assert_eq!(2, time.minute());
@@ -176,41 +180,57 @@ mod time_tests {
         assert_eq!(5_006, time.micro());
         assert_eq!(5_006_007, time.nano());
 
-        time = time.sub_hours(2).unwrap();
-        time = time.sub_minutes(2).unwrap();
-        time = time.sub_seconds(3).unwrap();
-        time = time.sub_millis(5).unwrap();
-        time = time.sub_micros(6).unwrap();
-        time = time.sub_nanos(7).unwrap();
+        time = time.sub_hours(2);
+        time = time.sub_minutes(2);
+        time = time.sub_seconds(3);
+        time = time.sub_millis(5);
+        time = time.sub_micros(6);
+        time = time.sub_nanos(7);
 
         assert_eq!(0, time.as_nanos());
 
-        assert!(time.sub_nanos(1).is_err());
-        assert!(time.add_hours(24).is_err());
+        assert_eq!(86_399_999_999_999, time.sub_nanos(1).as_nanos());
+        assert_eq!(0, time.add_hours(24).as_nanos());
+        assert_eq!(23 * 3600 * 1_000_000_000, time.add_hours(23).as_nanos());
 
         let time = Time::from_hms(23, 59, 59)
             .unwrap()
             .set_nano(999_999_999)
             .unwrap();
-        assert!(time.add_hours(1).is_err());
-        assert!(time.add_minutes(1).is_err());
-        assert!(time.add_seconds(1).is_err());
-        assert!(time.add_millis(1).is_err());
-        assert!(time.add_micros(1).is_err());
-        assert!(time.add_nanos(1).is_err());
+        assert_eq!(3600 * 1_000_000_000 - 1, time.add_hours(1).as_nanos());
+        assert_eq!(60 * 1_000_000_000 - 1, time.add_minutes(1).as_nanos());
+        assert_eq!(1_000_000_000 - 1, time.add_seconds(1).as_nanos());
+        assert_eq!(1_000_000 - 1, time.add_millis(1).as_nanos());
+        assert_eq!(1_000 - 1, time.add_micros(1).as_nanos());
+        assert_eq!(0, time.add_nanos(1).as_nanos());
 
         let time = Time::default();
-        assert!(time.sub_hours(1).is_err());
-        assert!(time.sub_minutes(1).is_err());
-        assert!(time.sub_seconds(1).is_err());
-        assert!(time.sub_millis(1).is_err());
-        assert!(time.sub_micros(1).is_err());
-        assert!(time.sub_nanos(1).is_err());
+        assert_eq!(
+            86_399_999_999_999 - 3600 * 1_000_000_000 + 1,
+            time.sub_hours(1).as_nanos()
+        );
+        assert_eq!(
+            86_399_999_999_999 - 60 * 1_000_000_000 + 1,
+            time.sub_minutes(1).as_nanos()
+        );
+        assert_eq!(
+            86_399_999_999_999 - 1_000_000_000 + 1,
+            time.sub_seconds(1).as_nanos()
+        );
+        assert_eq!(
+            86_399_999_999_999 - 1_000_000 + 1,
+            time.sub_millis(1).as_nanos()
+        );
+        assert_eq!(
+            86_399_999_999_999 - 1_000 + 1,
+            time.sub_micros(1).as_nanos()
+        );
+        assert_eq!(86_399_999_999_999, time.sub_nanos(1).as_nanos());
     }
 
     #[test]
     fn set() {
-        let mut time = Time::default().add_nanos(u32::MAX).unwrap();
+        let mut time = Time::default().add_nanos(u32::MAX);
 
         time = time.set_hour(1).unwrap();
         time = time.set_minute(2).unwrap();

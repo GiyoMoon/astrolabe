@@ -29,7 +29,7 @@ use std::{
 /// See the [`DateUtilities`](#impl-DateUtilities-for-Date) implementation for get, set and manipulation methods.
 ///
 /// Range: `30. June -5879611`..=`12. July 5879611`. Please note that year 0 does not exist. After year -1 follows year 1.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Date {
     pub(crate) days: i32,
 }
@@ -123,7 +123,7 @@ impl Date {
 
         // Use day of year if present, otherwise use month + day of month
         Ok(if date.day_of_year.is_some() {
-            let days = year_doy_to_days(date.year.unwrap_or(1), date.day_of_year.unwrap())?;
+            let days = year_doy_to_days(date.year.unwrap_or(1), date.day_of_year.unwrap(), false)?;
             Self { days }
         } else {
             Self::from_ymd(
@@ -250,7 +250,7 @@ impl DateUtilities for Date {
         days_to_wday(self.days, false) as u8
     }
 
-    fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError> {
+    fn from_timestamp(timestamp: i64) -> Self {
         let days = (timestamp / SECS_PER_DAY_U64 as i64 + DAYS_TO_1970_I64
             - i64::from(
                 timestamp.is_negative() && timestamp.unsigned_abs() % SECS_PER_DAY_U64 != 0,
@@ -265,9 +265,14 @@ impl DateUtilities for Date {
                     - 1,
                 timestamp as i128,
             )
-        })?;
+        });
 
-        Ok(Self { days })
+        let days = match days {
+            Ok(days) => days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days }
     }
 
     fn timestamp(&self) -> i64 {
@@ -294,34 +299,70 @@ impl DateUtilities for Date {
         Ok(Self { days: new_days })
     }
 
-    fn add_years(&self, years: u32) -> Result<Self, AstrolabeError> {
-        let new_days = add_years(self.days, years)?;
-        Ok(Self { days: new_days })
+    fn add_years(&self, years: u32) -> Self {
+        let new_days = add_years(self.days, years);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
-    fn add_months(&self, months: u32) -> Result<Self, AstrolabeError> {
-        let new_days = add_months(self.days, months)?;
-        Ok(Self { days: new_days })
+    fn add_months(&self, months: u32) -> Self {
+        let new_days = add_months(self.days, months);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
-    fn add_days(&self, days: u32) -> Result<Self, AstrolabeError> {
-        let new_days = add_days(self.days, days)?;
-        Ok(Self { days: new_days })
+    fn add_days(&self, days: u32) -> Self {
+        let new_days = add_days(self.days, days);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
-    fn sub_years(&self, years: u32) -> Result<Self, AstrolabeError> {
-        let new_days = sub_years(self.days, years)?;
-        Ok(Self { days: new_days })
+    fn sub_years(&self, years: u32) -> Self {
+        let new_days = sub_years(self.days, years);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
-    fn sub_months(&self, months: u32) -> Result<Self, AstrolabeError> {
-        let new_days = sub_months(self.days, months)?;
-        Ok(Self { days: new_days })
+    fn sub_months(&self, months: u32) -> Self {
+        let new_days = sub_months(self.days, months);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
-    fn sub_days(&self, days: u32) -> Result<Self, AstrolabeError> {
-        let new_days = sub_days(self.days, days)?;
-        Ok(Self { days: new_days })
+    fn sub_days(&self, days: u32) -> Self {
+        let new_days = sub_days(self.days, days);
+
+        let new_days = match new_days {
+            Ok(new_days) => new_days,
+            Err(e) => panic!("{}", e),
+        };
+
+        Self { days: new_days }
     }
 
     fn clear_until_year(&self) -> Self {

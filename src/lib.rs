@@ -6,6 +6,7 @@
 //! - **Manipulation** functions to add, subtract, set and clear date units
 //! - **Cron** expression parser
 //! - **Timezone** offset
+//! - **Local** system timezone on UNIX platforms
 //! - **Zero** dependencies
 //! - **Serde** serializing and deserializing (With feature flag `serde`)
 //!
@@ -22,9 +23,7 @@
 //!
 //! // Create a new instance with a modified DateTime
 //! // The previous instance is not modified and is still in scope
-//! let modified_dt = date_time
-//!     .add_hours(11).unwrap()
-//!     .add_minutes(23).unwrap();
+//! let modified_dt = date_time.add_hours(11).add_minutes(23);
 //!
 //! assert_eq!("2022/05/02 11:23:00", modified_dt.format("yyyy/MM/dd HH:mm:ss"));
 //! assert_eq!("2022-05-02T11:23:00Z", modified_dt.format_rfc3339(Precision::Seconds));
@@ -45,6 +44,8 @@ mod cron;
 mod date;
 mod datetime;
 pub mod errors;
+mod local;
+mod offset;
 mod shared;
 mod time;
 mod util;
@@ -52,5 +53,6 @@ mod util;
 pub use self::cron::CronSchedule;
 pub use self::date::Date;
 pub use self::datetime::DateTime;
+pub use self::offset::Offset;
 pub use self::shared::{DateUtilities, OffsetUtilities, Precision, TimeUtilities};
 pub use self::time::Time;
