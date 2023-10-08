@@ -6,8 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.5.0] - 2023-10-xx
-Astrolabe can now get the local system timezone offset on UNIX systems.
+## [0.5.0] - 2023-10-08
+Astrolabe can now get the local timezone offset on UNIX systems.
 ```rust
 use astrolabe::{DateTime, Offset, OffsetUtilities, Precision};
 
@@ -26,8 +26,9 @@ Also, we decided to panic in case of a date overflow. This should not happen if 
   - [`Offset`](https://docs.rs/astrolabe/0.5.0/astrolabe/enum.Offset.html) - Represents an offset from UTC. `Fixed` or `Local`
 
 ### Changed
-The [`OffsetUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.OffsetUtilities.html) trait which [`DateTime`](https://docs.rs/astrolabe/0.5.0/astrolabe/struct.DateTime.html#impl-OffsetUtilities-for-DateTime) and [`Time`](https://docs.rs/astrolabe/0.5.0/astrolabe/struct.Time.html#impl-OffsetUtilities-for-Time) implement now only contains `get_offset`, `set_offset` and `as_offset`. All functions work with the `Offset` enum.
-- The `add_*` and `sub_*` functions from the `DateUtilities` and `TimeUtilities` traits now return `Self` instead of `Result`
+- Updated the [`OffsetUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.OffsetUtilities.html) trait to use the [`Offset`](https://docs.rs/astrolabe/0.5.0/astrolabe/enum.Offset.html) enum
+- The `add_*` and `sub_*` functions from the [`DateUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.DateUtilities.html) and [`TimeUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.TimeUtilities.html) traits now return `Self` instead of `Result`
+- `from_timestamp` from the [`DateUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.DateUtilities.html) trait now return `Self` instead of `Result`
 
 ## [0.4.0] - 2023-05-18
 ### Added

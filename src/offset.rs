@@ -15,7 +15,7 @@ use crate::{
 pub enum Offset {
     /// Fixed offset in seconds
     Fixed(i32),
-    /// Local system timezone. Only works on UNIX systems. On other systems, this is equivalent to `Fixed(0)`.
+    /// Local timezone. Only works on UNIX systems. On other systems, this is equivalent to `Fixed(0)`.
     Local,
 }
 

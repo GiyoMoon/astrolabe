@@ -6,12 +6,14 @@
 //! - **Manipulation** functions to add, subtract, set and clear date units
 //! - **Cron** expression parser
 //! - **Timezone** offset
-//! - **Local** system timezone on UNIX platforms
+//! - **Local** timezone on UNIX platforms
 //! - **Zero** dependencies
 //! - **Serde** serializing and deserializing (With feature flag `serde`)
 //!
-//! ### Example
-//! A basic example which demonstrates creating, formatting and manipulating a [`DateTime`] instance.
+//! ## Examples
+//! ### Basic
+//! A basic example which demonstrates creating, formatting and manipulating a `DateTime` instance.
+//!
 //! ```rust
 //! use astrolabe::{DateTime, TimeUtilities, Precision};
 //!
@@ -28,7 +30,50 @@
 //! assert_eq!("2022/05/02 11:23:00", modified_dt.format("yyyy/MM/dd HH:mm:ss"));
 //! assert_eq!("2022-05-02T11:23:00Z", modified_dt.format_rfc3339(Precision::Seconds));
 //! ```
-//! To see all implementations for the [`DateTime`] struct, check out it's [documentation](DateTime).
+//! To see all implementations for the `DateTime` struct, check out it's [documentation](https://docs.rs/astrolabe/latest/astrolabe/struct.DateTime.html).
+//!
+//! ### Local timezone (UNIX systems only)
+//! Astrolabe can parse the timezone from `/etc/localtime` to get the local UTC offset. This only works on UNIX systems.
+//!
+//! ```rust
+//! use astrolabe::{DateTime, Offset, OffsetUtilities, Precision};
+//!
+//! // Equivalent to `DateTime::now().set_offset(Offset::Local)`
+//! let now = DateTime::now_local();
+//!
+//! // Prints for example:
+//! // 2023-10-08T08:30:00+02:00
+//! println!("{}", now.format_rfc3339(Precision::Seconds));
+//! assert_eq!(Offset::Local, now.get_offset());
+//! ```
+//! See [`DateTime::Offset`](https://docs.rs/astrolabe/latest/astrolabe/enum.Offset.html)
+//!
+//! ### CRON parsing
+//! ```rust
+//! use astrolabe::CronSchedule;
+//!
+//! // Every 5 minutes
+//! let schedule = CronSchedule::parse("*/5 * * * *").unwrap();
+//! for date in schedule.take(3) {
+//!    println!("{}", date);
+//! }
+//! // Prints for example:
+//! // 2022-05-02 16:15:00
+//! // 2022-05-02 16:20:00
+//! // 2022-05-02 16:25:00
+//!
+//! // Every weekday at 10:00
+//! let schedule = CronSchedule::parse("0 10 * * Mon-Fri").unwrap();
+//! for date in schedule.take(3) {
+//!    println!("{}", date.format("yyyy-MM-dd HH:mm:ss eeee"));
+//! }
+//! // Prints for example:
+//! // 2022-05-03 10:00:00 Tuesday
+//! // 2022-05-04 10:00:00 Wednesday
+//! // 2022-05-05 10:00:00 Thursday
+//! ```
+//! See [`CronSchedule`](https://docs.rs/astrolabe/latest/astrolabe/struct.CronSchedule.html)
+//!
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/giyomoon/astrolabe/main/assets/logo.svg",

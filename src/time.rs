@@ -66,7 +66,7 @@ impl Time {
         }
     }
 
-    /// Creates a new [`Time`] instance with [`SystemTime::now()`] with the local system timezone as the offset.
+    /// Creates a new [`Time`] instance with [`SystemTime::now()`] with the local timezone as the offset.
     ///
     /// ```rust
     /// # use astrolabe::{Time, Offset, OffsetUtilities};

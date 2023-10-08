@@ -204,14 +204,14 @@ pub trait OffsetUtilities: Sized {
     /// Examples:
     /// - `UTC+1` is `set_offset(Offset::Fixed(3600))`
     /// - `UTC-1` is `set_offset(Offset::Fixed(-3600))`
-    /// - To set the offset to the local system timezone, use `set_offset(Offset::Local)`
+    /// - To set the offset to the local timezone, use `set_offset(Offset::Local)`
     fn set_offset(&self, offset: Offset) -> Self;
     /// Sets the offset, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
     ///
     /// Examples:
     /// - `UTC+1` is `as_offset(Offset::Fixed(3600))`
     /// - `UTC-1` is `as_offset(Offset::Fixed(-3600))`.
-    /// - To set the offset to the local system timezone, use `as_offset(Offset::Local)`
+    /// - To set the offset to the local timezone, use `as_offset(Offset::Local)`
     fn as_offset(&self, offset: Offset) -> Self;
     /// Returns the offset
     fn get_offset(&self) -> Offset;

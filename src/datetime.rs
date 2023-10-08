@@ -91,7 +91,7 @@ impl DateTime {
         }
     }
 
-    /// Creates a new [`DateTime`] instance with [`SystemTime::now()`] with the local system timezone as the offset.
+    /// Creates a new [`DateTime`] instance with [`SystemTime::now()`] with the local timezone as the offset.
     ///
     /// ```rust
     /// # use astrolabe::{DateTime, DateUtilities, Offset, OffsetUtilities};
