@@ -103,11 +103,20 @@ pub(crate) fn date_to_days(year: i32, month: u32, day: u32) -> Result<i32, Astro
 }
 
 /// Converts year and day of year to days since 01. January 0001
-pub(crate) fn year_doy_to_days(year: i32, mut doy: u32) -> Result<i32, AstrolabeError> {
+pub(crate) fn year_doy_to_days(
+    year: i32,
+    mut doy: u32,
+    ignore_leap: bool,
+) -> Result<i32, AstrolabeError> {
     validate_doy(year, doy)?;
     let leap_years = leap_years(year);
 
     doy -= 1;
+
+    // Ignores leap day if ignore_leap is true
+    if ignore_leap && is_leap_year(year) && doy >= 60 {
+        doy += 1;
+    }
 
     Ok(if year.is_negative() {
         doy = if is_leap_year(year) { 366 } else { 365 } - doy;
@@ -166,6 +175,33 @@ pub(crate) fn days_to_doy(days: i32) -> u32 {
 /// Converts days to day of week
 pub(crate) fn days_to_wday(days: i32, monday_first: bool) -> u32 {
     (days.unsigned_abs() % 7 + if monday_first { 0 } else { 1 }) % 7
+}
+
+/// Get a list of specific weekdays in a month
+pub(crate) fn weekdays_in_month(year: i32, month: u32, weekday: u8) -> Vec<u32> {
+    let (_, days) = year_month_to_doy(year, month).unwrap();
+
+    let start_days = date_to_days(year, month, 1).unwrap();
+
+    let mut weekday_index = 0;
+    for index in 0..=6 {
+        if days_to_wday(start_days + index as i32, false) == weekday as u32 {
+            weekday_index = index;
+            break;
+        }
+    }
+
+    let mut weekdays = Vec::new();
+    for index in 0..=5 {
+        let day = weekday_index + 1 + index * 7;
+        if day <= days {
+            weekdays.push(day);
+        } else {
+            break;
+        }
+    }
+
+    weekdays
 }
 
 /// Converts days to week of year

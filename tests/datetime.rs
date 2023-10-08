@@ -3,14 +3,14 @@ mod datetime_tests {
     use std::time::Duration;
 
     use astrolabe::{
-        Date, DateTime, DateUtilities, OffsetUtilities, Precision, Time, TimeUtilities,
+        Date, DateTime, DateUtilities, Offset, OffsetUtilities, Precision, Time, TimeUtilities,
     };
 
     #[test]
     fn debug() {
         let date_time = DateTime::default();
         assert_eq!(
-            "DateTime { days: 0, nanoseconds: 0, offset: 0 }",
+            "DateTime { days: 0, nanoseconds: 0, offset: Fixed(0) }",
             format!("{:?}", date_time)
         );
     }
@@ -54,7 +54,7 @@ mod datetime_tests {
     #[test]
     fn ord() {
         let date_time = DateTime::default();
-        let date_time_2 = date_time.add_days(1).unwrap();
+        let date_time_2 = date_time.add_days(1);
         assert!(date_time < date_time_2);
         assert_eq!(std::cmp::Ordering::Less, date_time.cmp(&date_time_2));
     }
@@ -62,6 +62,7 @@ mod datetime_tests {
     #[test]
     fn now() {
         assert!(2021 < DateTime::now().year());
+        assert!(2021 < DateTime::now_local().year());
     }
 
     #[test]
@@ -271,41 +272,40 @@ mod datetime_tests {
 
     #[test]
     fn timestamp() {
-        assert_eq!(0, DateTime::from_timestamp(0).unwrap().timestamp());
+        assert_eq!(0, DateTime::from_timestamp(0).timestamp());
         assert_eq!(
             185_480_451_590_399,
-            DateTime::from_timestamp(185_480_451_590_399)
-                .unwrap()
-                .timestamp()
+            DateTime::from_timestamp(185_480_451_590_399).timestamp()
         );
         assert_eq!(
             "5879611/07/12 23:59:59",
-            DateTime::from_timestamp(185_480_451_590_399)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
+            DateTime::from_timestamp(185_480_451_590_399).format("yyyy/MM/dd HH:mm:ss")
         );
 
         assert_eq!(
             -185_604_722_784_000,
-            DateTime::from_timestamp(-185_604_722_784_000)
-                .unwrap()
-                .timestamp()
+            DateTime::from_timestamp(-185_604_722_784_000).timestamp()
         );
         assert_eq!(
             "-5879611/06/23 00:00:00",
-            DateTime::from_timestamp(-185_604_722_784_000)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
+            DateTime::from_timestamp(-185_604_722_784_000).format("yyyy/MM/dd HH:mm:ss")
         );
         assert_eq!(
             "-5879611/06/23 00:00:01",
-            DateTime::from_timestamp(-185_604_722_783_999)
-                .unwrap()
-                .format("yyyy/MM/dd HH:mm:ss")
+            DateTime::from_timestamp(-185_604_722_783_999).format("yyyy/MM/dd HH:mm:ss")
         );
+    }
 
-        assert!(DateTime::from_timestamp(185_480_451_590_400).is_err());
-        assert!(DateTime::from_timestamp(-185_604_722_784_001).is_err());
+    #[test]
+    #[should_panic]
+    fn timestamp_overflow() {
+        DateTime::from_timestamp(185_480_451_590_400);
+    }
+
+    #[test]
+    #[should_panic]
+    fn timestamp_underflow() {
+        DateTime::from_timestamp(-185_604_722_784_001);
     }
 
     #[test]
@@ -315,7 +315,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20Z",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(0, date_time.get_offset());
+        assert_eq!(0, date_time.get_offset().resolve());
         assert_eq!(1651505420, date_time.timestamp());
 
         let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20+12:34").unwrap();
@@ -323,7 +323,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20+12:34",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(45240, date_time.get_offset());
+        assert_eq!(45240, date_time.get_offset().resolve());
         assert_eq!(1651460180, date_time.timestamp());
 
         let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20-12:34").unwrap();
@@ -331,7 +331,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20-12:34",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(-45240, date_time.get_offset());
+        assert_eq!(-45240, date_time.get_offset().resolve());
         assert_eq!(1651550660, date_time.timestamp());
 
         let date_time = DateTime::parse_rfc3339("2022-05-02T15:30:20.1Z").unwrap();
@@ -339,7 +339,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20Z",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(0, date_time.get_offset());
+        assert_eq!(0, date_time.get_offset().resolve());
         assert_eq!(1651505420, date_time.timestamp());
         assert_eq!(100000000, date_time.nano());
 
@@ -348,7 +348,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20Z",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(0, date_time.get_offset());
+        assert_eq!(0, date_time.get_offset().resolve());
         assert_eq!(1651505420, date_time.timestamp());
         assert_eq!(123456789, date_time.nano());
 
@@ -357,7 +357,7 @@ mod datetime_tests {
             "2022-05-02T15:30:20+12:34",
             date_time.format_rfc3339(Precision::Seconds)
         );
-        assert_eq!(45240, date_time.get_offset());
+        assert_eq!(45240, date_time.get_offset().resolve());
         assert_eq!(1651460180, date_time.timestamp());
         assert_eq!(123456789, date_time.nano());
 
@@ -437,13 +437,12 @@ mod datetime_tests {
 
         let with_offset = DateTime::from_ymdhms(1970, 1, 2, 0, 0, 0)
             .unwrap()
-            .set_offset(3660)
-            .unwrap();
+            .set_offset(Offset::from_seconds(3660).unwrap());
         assert_eq!(
             "1970-01-02T01:01:00+01:01",
             with_offset.format_rfc3339(Precision::Seconds)
         );
-        let with_offset = with_offset.set_offset(-3660).unwrap();
+        let with_offset = with_offset.set_offset(Offset::from_seconds(-3660).unwrap());
         assert_eq!(
             "1970-01-01T22:59:00-01:01",
             with_offset.format_rfc3339(Precision::Seconds)
@@ -476,257 +475,111 @@ mod datetime_tests {
     fn add_sub_date() {
         let date_time = DateTime::from_ymd(1970, 1, 1).unwrap();
 
-        let modified = date_time.add_days(123).unwrap();
+        let modified = date_time.add_days(123);
         assert_eq!(10627200, modified.timestamp());
-        let modified = date_time.add_months(11).unwrap();
+        let modified = date_time.add_months(11);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
-        let modified = date_time.add_months(12).unwrap();
+        let modified = date_time.add_months(12);
         assert_eq!("1971-01-01", modified.format("yyyy-MM-dd"));
-        let modified = date_time.add_months(14).unwrap();
+        let modified = date_time.add_months(14);
         assert_eq!("1971-03-01", modified.format("yyyy-MM-dd"));
 
         // Leap year cases
-        let modified = date_time.add_days(30).unwrap();
+        let modified = date_time.add_days(30);
         assert_eq!("1970-01-31", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_months(1).unwrap();
+        let modified = modified.add_months(1);
         assert_eq!("1970-02-28", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_years(2).unwrap();
+        let modified = modified.add_years(2);
         assert_eq!("1972-02-28", modified.format("yyyy-MM-dd"));
-        let modified = date_time.add_years(2).unwrap().add_days(30).unwrap();
+        let modified = date_time.add_years(2).add_days(30);
         assert_eq!("1972-01-31", modified.format("yyyy-MM-dd"));
-        let modified = modified.add_months(1).unwrap();
+        let modified = modified.add_months(1);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1971, 1, 1).unwrap();
-        let modified = date_time.sub_months(1).unwrap();
+        let modified = date_time.sub_months(1);
         assert_eq!("1970-12-01", modified.format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1972, 3, 31).unwrap();
-        let modified = date_time.sub_months(1).unwrap();
+        let modified = date_time.sub_months(1);
         assert_eq!("1972-02-29", modified.format("yyyy-MM-dd"));
-        let modified = modified.sub_months(1).unwrap();
+        let modified = modified.sub_months(1);
         assert_eq!("1972-01-29", modified.format("yyyy-MM-dd"));
 
-        let date_time = DateTime::from_ymd(5_879_611, 7, 12).unwrap();
-        assert!(date_time.add_days(1).is_err());
-        let date_time = DateTime::from_ymd(5_879_611, 6, 13).unwrap();
-        assert!(date_time.add_months(1).is_err());
-        let date_time = DateTime::from_ymd(5_879_610, 7, 13).unwrap();
-        assert!(date_time.add_years(1).is_err());
-
-        let date_time = DateTime::from_ymd(-5_879_611, 6, 23).unwrap();
-        assert!(date_time.sub_days(1).is_err());
-        let date_time = DateTime::from_ymd(-5_879_611, 7, 22).unwrap();
-        assert!(date_time.sub_months(1).is_err());
-        let date_time = DateTime::from_ymd(-5_879_610, 6, 22).unwrap();
-        assert!(date_time.sub_years(1).is_err());
-
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
-        assert_eq!(
-            "-0001-12-31",
-            date_time.sub_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-31", date_time.sub_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-12-01",
-            date_time.sub_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-01", date_time.sub_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-01-01",
-            date_time.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-01-01", date_time.sub_years(1).format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(-1, 12, 31).unwrap();
-        assert_eq!(
-            "-0001-12-30",
-            date_time.sub_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-12-30", date_time.sub_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0001-11-30",
-            date_time.sub_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0001-11-30", date_time.sub_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "-0002-12-31",
-            date_time.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("-0002-12-31", date_time.sub_years(1).format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
-        assert_eq!(
-            "0001-01-02",
-            date_time.add_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-01-02", date_time.add_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-02-01",
-            date_time.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-02-01", date_time.add_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0002-01-01",
-            date_time.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0002-01-01", date_time.add_years(1).format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(-1, 12, 31).unwrap();
-        assert_eq!(
-            "0001-01-01",
-            date_time.add_days(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-01-01", date_time.add_days(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-01-31",
-            date_time.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-01-31", date_time.add_months(1).format("yyyy-MM-dd"));
 
-        assert_eq!(
-            "0001-12-31",
-            date_time.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-12-31", date_time.add_years(1).format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(2020, 2, 29).unwrap();
-        assert_eq!(
-            "2021-02-28",
-            date_time.add_years(1).unwrap().format("yyyy-MM-dd")
-        );
-        assert_eq!(
-            "2019-02-28",
-            date_time.sub_years(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("2021-02-28", date_time.add_years(1).format("yyyy-MM-dd"));
+        assert_eq!("2019-02-28", date_time.sub_years(1).format("yyyy-MM-dd"));
 
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
-        assert_eq!(
-            "0001-02-01",
-            date_time.add_months(1).unwrap().format("yyyy-MM-dd")
-        );
+        assert_eq!("0001-02-01", date_time.add_months(1).format("yyyy-MM-dd"));
     }
 
     #[test]
     fn add_sub_time() {
-        let date_time = DateTime::from_ymd(5_879_611, 7, 12).unwrap();
-        assert!(date_time.add_days(1).is_err());
-        let date_time = DateTime::from_ymd(5_879_611, 6, 13).unwrap();
-        assert!(date_time.add_months(1).is_err());
-        let date_time = DateTime::from_ymd(5_879_610, 7, 13).unwrap();
-        assert!(date_time.add_years(1).is_err());
-
-        let date_time = DateTime::from_ymd(-5_879_611, 6, 23).unwrap();
-        assert!(date_time.sub_days(1).is_err());
-        let date_time = DateTime::from_ymd(-5_879_611, 7, 22).unwrap();
-        assert!(date_time.sub_months(1).is_err());
-        let date_time = DateTime::from_ymd(-5_879_610, 6, 22).unwrap();
-        assert!(date_time.sub_years(1).is_err());
-
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 0, 0).unwrap();
-        assert!(date_time.add_hours(1).is_err());
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 0).unwrap();
-        assert!(date_time.add_minutes(1).is_err());
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59).unwrap();
-        assert!(date_time.add_seconds(1).is_err());
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
-            .unwrap()
-            .set_nano(999_000_000)
-            .unwrap();
-        assert!(date_time.add_millis(1).is_err());
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
-            .unwrap()
-            .set_nano(999_999_000)
-            .unwrap();
-
-        assert!(date_time.add_micros(1).is_err());
-        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
-            .unwrap()
-            .set_nano(999_999_999)
-            .unwrap();
-        assert!(date_time.add_nanos(1).is_err());
-
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 59, 59).unwrap();
-        assert!(date_time.sub_hours(1).is_err());
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 59).unwrap();
-        assert!(date_time.sub_minutes(1).is_err());
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0).unwrap();
-        assert!(date_time.sub_seconds(1).is_err());
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
-            .unwrap()
-            .set_nano(999_999)
-            .unwrap();
-        assert!(date_time.sub_millis(1).is_err());
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
-            .unwrap()
-            .set_nano(999)
-            .unwrap();
-
-        assert!(date_time.sub_micros(1).is_err());
-        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
-            .unwrap()
-            .set_nano(0)
-            .unwrap();
-        assert!(date_time.sub_nanos(1).is_err());
-
         let date_time = DateTime::from_ymd(1, 1, 1).unwrap();
         assert_eq!(
             "-0001-12-31T23:59:59.999999999Z",
-            date_time
-                .sub_nanos(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_nanos(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T23:59:59.999999000Z",
-            date_time
-                .sub_micros(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_micros(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T23:59:59.999000000Z",
-            date_time
-                .sub_millis(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_millis(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T23:59:59.000000000Z",
-            date_time
-                .sub_seconds(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_seconds(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T23:59:00.000000000Z",
-            date_time
-                .sub_minutes(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_minutes(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T23:00:00.000000000Z",
-            date_time
-                .sub_hours(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_hours(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-31T00:00:00.000000000Z",
-            date_time
-                .sub_days(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_days(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-12-01T00:00:00.000000000Z",
-            date_time
-                .sub_months(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_months(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "-0001-01-01T00:00:00.000000000Z",
-            date_time
-                .sub_years(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.sub_years(1).format_rfc3339(Precision::Nanos)
         );
 
         let date_time = DateTime::from_ymdhms(-1, 12, 31, 23, 59, 59)
@@ -735,67 +588,184 @@ mod datetime_tests {
             .unwrap();
         assert_eq!(
             "0001-01-01T00:00:00.000000000Z",
-            date_time
-                .add_nanos(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_nanos(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T00:00:00.000000999Z",
-            date_time
-                .add_micros(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_micros(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T00:00:00.000999999Z",
-            date_time
-                .add_millis(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_millis(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T00:00:00.999999999Z",
-            date_time
-                .add_seconds(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_seconds(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T00:00:59.999999999Z",
-            date_time
-                .add_minutes(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_minutes(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T00:59:59.999999999Z",
-            date_time
-                .add_hours(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_hours(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-01T23:59:59.999999999Z",
-            date_time
-                .add_days(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_days(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-01-31T23:59:59.999999999Z",
-            date_time
-                .add_months(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_months(1).format_rfc3339(Precision::Nanos)
         );
         assert_eq!(
             "0001-12-31T23:59:59.999999999Z",
-            date_time
-                .add_years(1)
-                .unwrap()
-                .format_rfc3339(Precision::Nanos)
+            date_time.add_years(1).format_rfc3339(Precision::Nanos)
         );
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_days() {
+        let date_time = DateTime::from_ymd(5_879_611, 7, 12).unwrap();
+        date_time.add_days(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_months() {
+        let date_time = DateTime::from_ymd(5_879_611, 6, 13).unwrap();
+        date_time.add_months(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_years() {
+        let date_time = DateTime::from_ymd(5_879_610, 7, 13).unwrap();
+        date_time.add_years(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_overflow_days() {
+        let date_time = DateTime::from_ymd(-5_879_611, 6, 23).unwrap();
+        date_time.sub_days(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_overflow_months() {
+        let date_time = DateTime::from_ymd(-5_879_611, 7, 22).unwrap();
+        date_time.sub_months(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_overflow_years() {
+        let date_time = DateTime::from_ymd(-5_879_610, 6, 22).unwrap();
+        date_time.sub_years(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_hours() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 0, 0).unwrap();
+        date_time.add_hours(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_minutes() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 0).unwrap();
+        date_time.add_minutes(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_seconds() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59).unwrap();
+        date_time.add_seconds(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_millis() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
+            .unwrap()
+            .set_nano(999_000_000)
+            .unwrap();
+        date_time.add_millis(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_micros() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
+            .unwrap()
+            .set_nano(999_999_000)
+            .unwrap();
+        date_time.add_micros(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_overflow_nanos() {
+        let date_time = DateTime::from_ymdhms(5_879_611, 7, 12, 23, 59, 59)
+            .unwrap()
+            .set_nano(999_999_999)
+            .unwrap();
+        date_time.add_nanos(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_hours() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 59, 59).unwrap();
+        date_time.sub_hours(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_minutes() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 59).unwrap();
+        date_time.sub_minutes(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_seconds() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0).unwrap();
+        date_time.sub_seconds(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_millis() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
+            .unwrap()
+            .set_nano(999_999)
+            .unwrap();
+        date_time.sub_millis(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_micros() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
+            .unwrap()
+            .set_nano(999)
+            .unwrap();
+        date_time.sub_micros(1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sub_underflow_nanos() {
+        let date_time = DateTime::from_ymdhms(-5_879_611, 6, 23, 0, 0, 0)
+            .unwrap()
+            .set_nano(0)
+            .unwrap();
+        date_time.sub_nanos(1);
     }
 
     #[test]

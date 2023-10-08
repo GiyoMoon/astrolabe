@@ -1,4 +1,4 @@
-use crate::errors::AstrolabeError;
+use crate::{errors::AstrolabeError, offset::Offset};
 
 /// Used for specifing the precision for RFC 3339 timestamps.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,53 +32,51 @@ pub trait DateUtilities: Sized {
 
     /// Creates a date from a unix timestamp (non-leap seconds since January 1, 1970 00:00:00 UTC).
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided timestamp would result in an out of range date.
-    fn from_timestamp(timestamp: i64) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided timestamp would result in an out of range date.
+    fn from_timestamp(timestamp: i64) -> Self;
     /// Returns the number of non-leap seconds since January 1, 1970 00:00:00 UTC. (Negative if date is before)
     fn timestamp(&self) -> i64;
 
-    /// Sets the year to the provided value.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
+    /// Sets the year to the provided value. Has to be in range `-5879611..=5879611`.
     fn set_year(&self, year: i32) -> Result<Self, AstrolabeError>;
-    /// Sets the month of the year to the provided value.
+    /// Sets the month of the year to the provided value. Has to be in range `1..=12`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_month(&self, month: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the day of the month to the provided value.
+    /// Sets the day of the month to the provided value. Has to be in range `1..=31` and cannot be greater than the number of days in the current month.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_day(&self, day: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the day of the year to the provided value.
+    /// Sets the day of the year to the provided value. Has to be in range `1..=365` or `1..=366` in case of a leap year.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_day_of_year(&self, day_of_year: u32) -> Result<Self, AstrolabeError>;
 
     /// Adds the provided years to the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn add_years(&self, years: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn add_years(&self, years: u32) -> Self;
     /// Adds the provided months to the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn add_months(&self, months: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn add_months(&self, months: u32) -> Self;
     /// Adds the provided days to the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn add_days(&self, days: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn add_days(&self, days: u32) -> Self;
 
     /// Subtracts the provided years from the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn sub_years(&self, years: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn sub_years(&self, years: u32) -> Self;
     /// Subtracts the provided months from the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn sub_months(&self, months: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn sub_months(&self, months: u32) -> Self;
     /// Subtracts the provided days from the current date.
     ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range date.
-    fn sub_days(&self, days: u32) -> Result<Self, AstrolabeError>;
+    /// Panics if the provided value would result in an out of range date.
+    fn sub_days(&self, days: u32) -> Self;
 
     /// Clears date/time units until the year (inclusive).
     fn clear_until_year(&self) -> Self;
@@ -112,80 +110,56 @@ pub trait TimeUtilities: Sized {
     /// Returns the nanosecond of the second (`0-999_999_999`).
     fn nano(&self) -> u32;
 
-    /// Sets the hour to the provided value.
+    /// Sets the hour to the provided value. Has to be in range `0..=23`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_hour(&self, hour: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the minute to the provided value.
+    /// Sets the minute to the provided value. Has to be in range `0..=59`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_minute(&self, minute: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the second to the provided value.
+    /// Sets the second to the provided value. Has to be in range `0..=59`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_second(&self, second: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the millisecond to the provided value.
+    /// Sets the millisecond to the provided value. Has to be in range `0..=100`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_milli(&self, milli: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the microsecond to the provided value.
+    /// Sets the microsecond to the provided value. Has to be in range `0..=100_000`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_micro(&self, micro: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the nanosecond to the provided value.
+    /// Sets the nanosecond to the provided value. Has to be in range `0..=100_000_000`.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value is out of range.
     fn set_nano(&self, nano: u32) -> Result<Self, AstrolabeError>;
 
     /// Adds the provided hours.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_hours(&self, hours: u32) -> Result<Self, AstrolabeError>;
+    fn add_hours(&self, hours: u32) -> Self;
     /// Adds the provided minutes.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError>;
+    fn add_minutes(&self, minutes: u32) -> Self;
     /// Adds the provided seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError>;
+    fn add_seconds(&self, seconds: u32) -> Self;
     /// Adds the provided milliseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_millis(&self, millis: u32) -> Result<Self, AstrolabeError>;
+    fn add_millis(&self, millis: u32) -> Self;
     /// Adds the provided microseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_micros(&self, micros: u32) -> Result<Self, AstrolabeError>;
+    fn add_micros(&self, micros: u32) -> Self;
     /// Adds the provided nanoseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn add_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError>;
+    fn add_nanos(&self, nanos: u32) -> Self;
 
     /// Subtracts the provided hours.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_hours(&self, hours: u32) -> Result<Self, AstrolabeError>;
+    fn sub_hours(&self, hours: u32) -> Self;
     /// Subtracts the provided minutes.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError>;
+    fn sub_minutes(&self, minutes: u32) -> Self;
     /// Subtracts the provided seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError>;
+    fn sub_seconds(&self, seconds: u32) -> Self;
     /// Subtracts the provided milliseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_millis(&self, millis: u32) -> Result<Self, AstrolabeError>;
+    fn sub_millis(&self, millis: u32) -> Self;
     /// Subtracts the provided microseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_micros(&self, micros: u32) -> Result<Self, AstrolabeError>;
+    fn sub_micros(&self, micros: u32) -> Self;
     /// Subtracts the provided nanoseconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided value would result in an out of range time.
-    fn sub_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError>;
+    fn sub_nanos(&self, nanos: u32) -> Self;
 
     /// Clears date/time units until the hour (inclusive).
     fn clear_until_hour(&self) -> Self;
@@ -225,42 +199,20 @@ pub trait TimeUtilities: Sized {
 /// The offset affects all `format`, `get` and `set` functions.
 /// Used by [`DateTime`](crate::DateTime) and [`Time`](crate::Time).
 pub trait OffsetUtilities: Sized {
-    /// Sets the offset from hours, minutes and seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
+    /// Sets the offset
     ///
     /// Examples:
-    /// - `UTC+1` is `offset_from_hms(1, 0, 0)`
-    /// - `UTC-1` is `offset_from_hms(-1, 0, 0)`.
-    fn set_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError>;
-    /// Sets the offset from hours, minutes and seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
-    ///
-    /// Examples:
-    /// - `UTC+1` is `as_offset_hms(1, 0, 0)`
-    /// - `UTC-1` is `as_offset_hms(-1, 0, 0)`.
-    fn as_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError>;
-
-    /// Returns the offset as hours, minutes and seconds.
-    fn get_offset_hms(&self) -> (i32, u32, u32);
-
-    /// Sets the offset from hours, minutes and seconds.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
+    /// - `UTC+1` is `set_offset(Offset::Fixed(3600))`
+    /// - `UTC-1` is `set_offset(Offset::Fixed(-3600))`
+    /// - To set the offset to the local timezone, use `set_offset(Offset::Local)`
+    fn set_offset(&self, offset: Offset) -> Self;
+    /// Sets the offset, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
     ///
     /// Examples:
-    /// - `UTC+1` is `offset_from_seconds(3600)`
-    /// - `UTC-1` is `offset_from_seconds(-3600)`.
-    fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError>;
-    /// Sets the offset from seconds, assuming the current instance has the provided offset applied. The new instance will have the specified offset and the datetime itself will be converted to `UTC`.
-    ///
-    /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided offset is not between `UTC-23:59:59` and `UTC+23:59:59`.
-    ///
-    /// Examples:
-    /// - `UTC+1` is `as_offset(3600)`
-    /// - `UTC-1` is `as_offset(-3600)`.
-    fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError>;
-    /// Returns the offset as seconds.
-    fn get_offset(&self) -> i32;
+    /// - `UTC+1` is `as_offset(Offset::Fixed(3600))`
+    /// - `UTC-1` is `as_offset(Offset::Fixed(-3600))`.
+    /// - To set the offset to the local timezone, use `as_offset(Offset::Local)`
+    fn as_offset(&self, offset: Offset) -> Self;
+    /// Returns the offset
+    fn get_offset(&self) -> Offset;
 }

@@ -1,12 +1,9 @@
 use crate::{
-    errors::{
-        out_of_range::{create_custom_oor, create_simple_oor},
-        AstrolabeError,
-    },
+    errors::{out_of_range::create_simple_oor, AstrolabeError},
     util::{
         constants::{
-            BUG_MSG, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64, SECS_PER_HOUR,
-            SECS_PER_HOUR_U64, SECS_PER_MINUTE, SECS_PER_MINUTE_U64,
+            BUG_MSG, NANOS_PER_DAY, NANOS_PER_SEC, SECS_PER_DAY, SECS_PER_DAY_U64,
+            SECS_PER_HOUR_U64, SECS_PER_MINUTE_U64,
         },
         format::format_time_part,
         offset::{add_offset_to_nanos, remove_offset_from_nanos},
@@ -28,7 +25,7 @@ use crate::{
             },
         },
     },
-    DateTime, OffsetUtilities, TimeUtilities,
+    DateTime, Offset, OffsetUtilities, TimeUtilities,
 };
 use std::{
     cmp,
@@ -43,10 +40,10 @@ use std::{
 /// See the [`TimeUtilities`](#impl-TimeUtilities-for-Time) implementation for get, set and manipulation methods.
 ///
 /// [`OffsetUtilities`](#impl-OffsetUtilities-for-Time) implements methods for setting and getting the offset.
-#[derive(Debug, Default, Copy, Clone, Eq)]
+#[derive(Debug, Default, Clone, Copy, Eq)]
 pub struct Time {
     pub(crate) nanoseconds: u64,
-    pub(crate) offset: i32,
+    pub(crate) offset: Offset,
 }
 
 impl Time {
@@ -65,8 +62,20 @@ impl Time {
             duration.as_secs() % SECS_PER_DAY_U64 * NANOS_PER_SEC + duration.subsec_nanos() as u64;
         Self {
             nanoseconds,
-            offset: 0,
+            offset: Offset::default(),
         }
+    }
+
+    /// Creates a new [`Time`] instance with [`SystemTime::now()`] with the local timezone as the offset.
+    ///
+    /// ```rust
+    /// # use astrolabe::{Time, Offset, OffsetUtilities};
+    /// let time = Time::now_local();
+    /// println!("{}", time);
+    /// assert_eq!(time.get_offset(), Offset::Local);
+    /// ```
+    pub fn now_local() -> Self {
+        Self::now().set_offset(Offset::Local)
     }
 
     /// Creates a new [`Time`] instance from hour, minute and seconds.
@@ -83,7 +92,7 @@ impl Time {
 
         Ok(Self {
             nanoseconds: seconds * NANOS_PER_SEC,
-            offset: 0,
+            offset: Offset::default(),
         })
     }
 
@@ -127,7 +136,7 @@ impl Time {
         }
         Ok(Self {
             nanoseconds: seconds as u64 * NANOS_PER_SEC,
-            offset: 0,
+            offset: Offset::default(),
         })
     }
 
@@ -162,7 +171,7 @@ impl Time {
         }
         Ok(Self {
             nanoseconds: nanos,
-            offset: 0,
+            offset: Offset::default(),
         })
     }
 
@@ -249,7 +258,7 @@ impl Time {
         nanoseconds += time.nanos.unwrap_or(0);
 
         Ok(if let Some(offset) = time.offset {
-            Self::from_nanos(nanoseconds)?.set_offset(offset)?
+            Self::from_nanos(nanoseconds)?.set_offset(Offset::from_seconds(offset)?)
         } else {
             Self::from_nanos(nanoseconds)?
         })
@@ -316,6 +325,8 @@ impl Time {
     /// ```
     ///
     pub fn format(&self, format: &str) -> String {
+        let offset_seconds = self.offset.resolve();
+
         let parts = parse_format_string(format);
         parts
             .iter()
@@ -335,8 +346,8 @@ impl Time {
 
                 format_time_part(
                     part,
-                    add_offset_to_nanos(self.nanoseconds, self.offset),
-                    self.offset,
+                    add_offset_to_nanos(self.nanoseconds, offset_seconds),
+                    offset_seconds,
                 )
                 .chars()
                 .collect::<Vec<char>>()
@@ -360,47 +371,49 @@ impl Time {
 
 impl TimeUtilities for Time {
     fn hour(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_time(nanos).0
     }
 
     fn minute(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_time(nanos).1
     }
 
     fn second(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_time(nanos).2
     }
 
     fn milli(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_subsecond(nanos).0
     }
 
     fn micro(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_subsecond(nanos).1
     }
 
     fn nano(&self) -> u32 {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset.resolve());
 
         nanos_to_subsecond(nanos).2
     }
 
     fn set_hour(&self, hour: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_hour(nanos, hour)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -409,11 +422,13 @@ impl TimeUtilities for Time {
     }
 
     fn set_minute(&self, minute: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_minute(nanos, minute)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -422,11 +437,13 @@ impl TimeUtilities for Time {
     }
 
     fn set_second(&self, second: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_second(nanos, second)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -435,11 +452,13 @@ impl TimeUtilities for Time {
     }
 
     fn set_milli(&self, milli: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_milli(nanos, milli)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -448,11 +467,13 @@ impl TimeUtilities for Time {
     }
 
     fn set_micro(&self, micro: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_micro(nanos, micro)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -461,11 +482,13 @@ impl TimeUtilities for Time {
     }
 
     fn set_nano(&self, nano: u32) -> Result<Self, AstrolabeError> {
-        let nanos = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanos = add_offset_to_nanos(self.nanoseconds, offset_seconds);
 
         let new_nanos = set_nano(nanos, nano)?;
 
-        let new_nanos = remove_offset_from_nanos(new_nanos, self.offset);
+        let new_nanos = remove_offset_from_nanos(new_nanos, offset_seconds);
 
         Ok(Self {
             nanoseconds: new_nanos,
@@ -473,122 +496,108 @@ impl TimeUtilities for Time {
         })
     }
 
-    fn add_hours(&self, hours: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(add_hours(self.nanoseconds, hours))?.set_offset(self.offset)
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_hours(&self, hours: u32) -> Self {
+        Self::from_nanos(add_hours(self.nanoseconds, hours) % (SECS_PER_DAY_U64 * NANOS_PER_SEC))
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
     }
 
-    fn add_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(add_minutes(self.nanoseconds, minutes))?.set_offset(self.offset)
-    }
-
-    fn add_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(add_seconds(self.nanoseconds, seconds))?.set_offset(self.offset)
-    }
-
-    fn add_millis(&self, millis: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(add_millis(self.nanoseconds, millis))?.set_offset(self.offset)
-    }
-
-    fn add_micros(&self, micros: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(add_micros(self.nanoseconds, micros))?.set_offset(self.offset)
-    }
-
-    fn add_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(self.nanoseconds + nanos as u64)?.set_offset(self.offset)
-    }
-
-    fn sub_hours(&self, hours: u32) -> Result<Self, AstrolabeError> {
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_minutes(&self, minutes: u32) -> Self {
         Self::from_nanos(
-            sub_hours(self.nanoseconds as i64, hours)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} hours would result into an out of range time",
-                        hours
-                    ))
-                })?,
+            add_minutes(self.nanoseconds, minutes) % (SECS_PER_DAY_U64 * NANOS_PER_SEC),
         )
         .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
-    fn sub_minutes(&self, minutes: u32) -> Result<Self, AstrolabeError> {
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_seconds(&self, seconds: u32) -> Self {
         Self::from_nanos(
-            sub_minutes(self.nanoseconds as i64, minutes)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} minutes would result into an out of range time",
-                        minutes
-                    ))
-                })?,
+            add_seconds(self.nanoseconds, seconds) % (SECS_PER_DAY_U64 * NANOS_PER_SEC),
         )
         .expect(BUG_MSG)
         .set_offset(self.offset)
     }
 
-    fn sub_seconds(&self, seconds: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(
-            sub_seconds(self.nanoseconds as i64, seconds)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} seconds would result into an out of range time",
-                        seconds
-                    ))
-                })?,
-        )
-        .expect(BUG_MSG)
-        .set_offset(self.offset)
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_millis(&self, millis: u32) -> Self {
+        Self::from_nanos(add_millis(self.nanoseconds, millis) % (SECS_PER_DAY_U64 * NANOS_PER_SEC))
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
     }
 
-    fn sub_millis(&self, millis: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(
-            sub_millis(self.nanoseconds as i64, millis)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} milliseconds would result into an out of range time",
-                        millis
-                    ))
-                })?,
-        )
-        .expect(BUG_MSG)
-        .set_offset(self.offset)
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_micros(&self, micros: u32) -> Self {
+        Self::from_nanos(add_micros(self.nanoseconds, micros) % (SECS_PER_DAY_U64 * NANOS_PER_SEC))
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
     }
 
-    fn sub_micros(&self, micros: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(
-            sub_micros(self.nanoseconds as i64, micros)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} microseconds would result into an out of range time",
-                        micros
-                    ))
-                })?,
-        )
-        .expect(BUG_MSG)
-        .set_offset(self.offset)
+    /// Wraps around from `23:59:59` to `00:00:00`
+    fn add_nanos(&self, nanos: u32) -> Self {
+        Self::from_nanos((self.nanoseconds + nanos as u64) % (SECS_PER_DAY_U64 * NANOS_PER_SEC))
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
     }
 
-    fn sub_nanos(&self, nanos: u32) -> Result<Self, AstrolabeError> {
-        Self::from_nanos(
-            (self.nanoseconds as i64 - nanos as i64)
-                .try_into()
-                .map_err(|_| {
-                    create_custom_oor(format!(
-                        "Subtracting {} nanoseconds would result into an out of range time",
-                        nanos
-                    ))
-                })?,
-        )
-        .expect(BUG_MSG)
-        .set_offset(self.offset)
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_hours(&self, hours: u32) -> Self {
+        let new_nanos = sub_hours(self.nanoseconds as i64, hours);
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
+    }
+
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_minutes(&self, minutes: u32) -> Self {
+        let new_nanos = sub_minutes(self.nanoseconds as i64, minutes);
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
+    }
+
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_seconds(&self, seconds: u32) -> Self {
+        let new_nanos = sub_seconds(self.nanoseconds as i64, seconds);
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
+    }
+
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_millis(&self, millis: u32) -> Self {
+        let new_nanos = sub_millis(self.nanoseconds as i64, millis);
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
+    }
+
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_micros(&self, micros: u32) -> Self {
+        let new_nanos = sub_micros(self.nanoseconds as i64, micros);
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
+    }
+
+    /// Wraps around from `00:00:00` to `23:59:59`
+    fn sub_nanos(&self, nanos: u32) -> Self {
+        let new_nanos = self.nanoseconds as i64 - nanos as i64;
+        let rhs = SECS_PER_DAY_U64 as i64 * NANOS_PER_SEC as i64;
+        Self::from_nanos(new_nanos.rem_euclid(rhs) as u64)
+            .expect(BUG_MSG)
+            .set_offset(self.offset)
     }
 
     fn clear_until_hour(&self) -> Self {
-        let nanoseconds = remove_offset_from_nanos(0, self.offset);
+        let nanoseconds = remove_offset_from_nanos(0, self.offset.resolve());
         Self {
             nanoseconds,
             offset: self.offset,
@@ -596,9 +605,11 @@ impl TimeUtilities for Time {
     }
 
     fn clear_until_minute(&self) -> Self {
-        let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanoseconds = add_offset_to_nanos(self.nanoseconds, offset_seconds);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_minute(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_minute(nanoseconds), offset_seconds);
         Self {
             nanoseconds,
             offset: self.offset,
@@ -606,9 +617,11 @@ impl TimeUtilities for Time {
     }
 
     fn clear_until_second(&self) -> Self {
-        let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanoseconds = add_offset_to_nanos(self.nanoseconds, offset_seconds);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_second(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_second(nanoseconds), offset_seconds);
         Self {
             nanoseconds,
             offset: self.offset,
@@ -616,9 +629,11 @@ impl TimeUtilities for Time {
     }
 
     fn clear_until_milli(&self) -> Self {
-        let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanoseconds = add_offset_to_nanos(self.nanoseconds, offset_seconds);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_milli(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_milli(nanoseconds), offset_seconds);
         Self {
             nanoseconds,
             offset: self.offset,
@@ -626,9 +641,11 @@ impl TimeUtilities for Time {
     }
 
     fn clear_until_micro(&self) -> Self {
-        let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanoseconds = add_offset_to_nanos(self.nanoseconds, offset_seconds);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_micro(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_micro(nanoseconds), offset_seconds);
         Self {
             nanoseconds,
             offset: self.offset,
@@ -636,9 +653,11 @@ impl TimeUtilities for Time {
     }
 
     fn clear_until_nano(&self) -> Self {
-        let nanoseconds = add_offset_to_nanos(self.nanoseconds, self.offset);
+        let offset_seconds = self.offset.resolve();
+
+        let nanoseconds = add_offset_to_nanos(self.nanoseconds, offset_seconds);
         let nanoseconds =
-            remove_offset_from_nanos(clear_nanos_until_nanos(nanoseconds), self.offset);
+            remove_offset_from_nanos(clear_nanos_until_nanos(nanoseconds), offset_seconds);
         Self {
             nanoseconds,
             offset: self.offset,
@@ -740,63 +759,19 @@ impl TimeUtilities for Time {
 // ########################################
 
 impl OffsetUtilities for Time {
-    fn set_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
-        let mut seconds = time_to_day_seconds(hour.unsigned_abs(), minute, second)? as i32;
-        seconds = if hour.is_negative() {
-            -seconds
-        } else {
-            seconds
-        };
-
-        Ok(self.set_offset(seconds).unwrap())
-    }
-
-    fn as_offset_hms(&self, hour: i32, minute: u32, second: u32) -> Result<Self, AstrolabeError> {
-        let mut offset_secs = time_to_day_seconds(hour.unsigned_abs(), minute, second)? as i32;
-        offset_secs = if hour.is_negative() {
-            -offset_secs
-        } else {
-            offset_secs
-        };
-
-        let new_seconds = remove_offset_from_nanos(self.nanoseconds, offset_secs);
-
-        Ok(Self::from_nanos(new_seconds)
-            .unwrap()
-            .set_offset(offset_secs)
-            .unwrap())
-    }
-
-    fn get_offset_hms(&self) -> (i32, u32, u32) {
-        let hour = self.offset / SECS_PER_HOUR as i32;
-        let minute = self.offset % SECS_PER_HOUR as i32 / SECS_PER_MINUTE as i32;
-        let second = self.offset % SECS_PER_MINUTE as i32;
-
-        (hour, minute.unsigned_abs(), second.unsigned_abs())
-    }
-
-    fn set_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
-        if seconds <= -(SECS_PER_DAY as i32) || seconds >= SECS_PER_DAY as i32 {
-            return Err(create_simple_oor(
-                "seconds",
-                -(SECS_PER_DAY as i128) + 1,
-                SECS_PER_DAY as i128 - 1,
-                seconds as i128,
-            ));
-        }
-
-        Ok(Self {
+    fn set_offset(&self, offset: Offset) -> Self {
+        Self {
             nanoseconds: self.nanoseconds,
-            offset: seconds,
-        })
+            offset,
+        }
     }
 
-    fn as_offset(&self, seconds: i32) -> Result<Self, AstrolabeError> {
-        let new_seconds = remove_offset_from_nanos(self.nanoseconds, seconds);
-        Self::from_nanos(new_seconds).unwrap().set_offset(seconds)
+    fn as_offset(&self, offset: Offset) -> Self {
+        let new_seconds = remove_offset_from_nanos(self.nanoseconds, offset.resolve());
+        Self::from_nanos(new_seconds).unwrap().set_offset(offset)
     }
 
-    fn get_offset(&self) -> i32 {
+    fn get_offset(&self) -> Offset {
         self.offset
     }
 }

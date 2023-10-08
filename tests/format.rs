@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod format_tests {
-    use astrolabe::{Date, DateTime, OffsetUtilities, Time};
+    use astrolabe::{Date, DateTime, Offset, OffsetUtilities, Time};
 
     #[test]
     fn era() {
@@ -508,7 +508,9 @@ mod format_tests {
         assert_eq!("00:00:00 +00:00", time.format("HH:mm:ss xxxxx"));
         assert_eq!("00:00:00 +00:00", time.format("HH:mm:ss xxxxxx"));
 
-        let time = Time::from_hms(0, 0, 0).unwrap().set_offset(-3661).unwrap();
+        let time = Time::from_hms(0, 0, 0)
+            .unwrap()
+            .set_offset(Offset::from_seconds(-3661).unwrap());
         assert_eq!("22:58:59 -0101", time.format("HH:mm:ss X"));
         assert_eq!("22:58:59 -0101", time.format("HH:mm:ss XX"));
         assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss XXX"));
@@ -522,7 +524,9 @@ mod format_tests {
         assert_eq!("22:58:59 -01:01:01", time.format("HH:mm:ss xxxxx"));
         assert_eq!("22:58:59 -01:01", time.format("HH:mm:ss xxxxxx"));
 
-        let time = Time::from_hms(0, 0, 0).unwrap().set_offset(3661).unwrap();
+        let time = Time::from_hms(0, 0, 0)
+            .unwrap()
+            .set_offset(Offset::from_seconds(3661).unwrap());
         assert_eq!("01:01:01 +0101", time.format("HH:mm:ss X"));
         assert_eq!("01:01:01 +0101", time.format("HH:mm:ss XX"));
         assert_eq!("01:01:01 +01:01", time.format("HH:mm:ss XXX"));

@@ -25,7 +25,7 @@ pub(crate) fn set_day(days: i32, day: u32) -> Result<i32, AstrolabeError> {
 pub(crate) fn set_day_of_year(days: i32, day_of_year: u32) -> Result<i32, AstrolabeError> {
     let year = days_to_date(days).0;
 
-    year_doy_to_days(year, day_of_year)
+    year_doy_to_days(year, day_of_year, false)
 }
 
 pub(crate) fn add_years(days: i32, years: u32) -> Result<i32, AstrolabeError> {

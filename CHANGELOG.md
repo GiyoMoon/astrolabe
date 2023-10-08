@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2023-10-08
+Astrolabe can now get the local timezone offset on UNIX systems.
+```rust
+use astrolabe::{DateTime, Offset, OffsetUtilities, Precision};
+
+// Equivalent to `DateTime::now().set_offset(Offset::Local)`
+let now = DateTime::now_local();
+// Prints for example:
+// 2023-10-08T08:30:00+02:00
+println!("{}", now.format_rfc3339(Precision::Seconds));
+assert_eq!(Offset::Local, now.get_offset());
+```
+
+Also, we decided to panic in case of a date overflow. This should not happen if the library is used correctly, as the valid date range is between `30. June -5879611`..=`12. July 5879611`. This change makes the API much easier to use, as many functions only returned a `Result` because of this edge case.
+
+### Added
+- Enums
+  - [`Offset`](https://docs.rs/astrolabe/0.5.0/astrolabe/enum.Offset.html) - Represents an offset from UTC. `Fixed` or `Local`
+
+### Changed
+- Updated the [`OffsetUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.OffsetUtilities.html) trait to use the [`Offset`](https://docs.rs/astrolabe/0.5.0/astrolabe/enum.Offset.html) enum
+- The `add_*` and `sub_*` functions from the [`DateUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.DateUtilities.html) and [`TimeUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.TimeUtilities.html) traits now return `Self` instead of `Result`
+- `from_timestamp` from the [`DateUtilities`](https://docs.rs/astrolabe/0.5.0/astrolabe/trait.DateUtilities.html) trait now return `Self` instead of `Result`
+
 ## [0.4.0] - 2023-05-18
 ### Added
 - Structs
