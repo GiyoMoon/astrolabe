@@ -422,7 +422,7 @@ impl DateTime {
         date_time = date_time.set_time(Time::from_nanos(nanoseconds)?);
 
         if let Some(offset) = time.offset {
-            date_time = date_time.set_offset(Offset::from_seconds(offset)?);
+            date_time = date_time.as_offset(Offset::from_seconds(offset)?);
         }
 
         Ok(date_time)
