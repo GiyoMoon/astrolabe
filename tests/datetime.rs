@@ -233,6 +233,36 @@ mod datetime_tests {
             DateTime::from_ymd(-5_879_611, 6, 23).unwrap(),
             DateTime::from_ymd(5_879_611, 7, 12).unwrap(),
         );
+        duration_between_ok(
+            Duration::from_secs(1),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 2, 0, 0, 0).unwrap(),
+        );
+        duration_between_ok(
+            Duration::from_secs(1),
+            DateTime::from_ymdhms(2024, 1, 2, 0, 0, 0).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+        );
+        duration_between_ok(
+            Duration::from_secs(1),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 58).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+        );
+        duration_between_ok(
+            Duration::from_secs(1),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 58).unwrap(),
+        );
+        duration_between_ok(
+            Duration::from_secs(86_401),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 3, 0, 0, 0).unwrap(),
+        );
+        duration_between_ok(
+            Duration::from_secs(86_401),
+            DateTime::from_ymdhms(2024, 1, 3, 0, 0, 0).unwrap(),
+            DateTime::from_ymdhms(2024, 1, 1, 23, 59, 59).unwrap(),
+        );
     }
 
     fn duration_between_ok(expected: Duration, start: DateTime, end: DateTime) {

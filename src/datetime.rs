@@ -551,10 +551,18 @@ impl DateTime {
 
     /// Returns the duration between the provided DateTime.
     pub fn duration_between(&self, compare: &Self) -> Duration {
-        let days = self.days_since(compare).unsigned_abs();
-        let nanos = self.nanoseconds - compare.nanoseconds;
-        let days_duration = Duration::from_secs(days * SECS_PER_DAY_U64);
-        let nanos_duration = Duration::from_nanos(nanos);
+        let lower = cmp::min(self, compare);
+        let upper = cmp::max(self, compare);
+
+        let mut days = upper.days as i64 - lower.days as i64;
+        let mut nanos = upper.nanoseconds as i64 - lower.nanoseconds as i64;
+        if lower.nanoseconds > upper.nanoseconds {
+            days -= 1;
+            nanos += NANOS_PER_DAY as i64;
+        };
+
+        let days_duration = Duration::from_secs(days.unsigned_abs() * SECS_PER_DAY_U64);
+        let nanos_duration = Duration::from_nanos(nanos.unsigned_abs());
         days_duration + nanos_duration
     }
 }
