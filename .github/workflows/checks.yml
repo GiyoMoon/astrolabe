@@ -93,7 +93,8 @@ jobs:
           cargo llvm-cov --no-report --all-features
           cargo llvm-cov report --lcov > lcov.txt
       - name: Upload coverage report
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./lcov.txt
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
