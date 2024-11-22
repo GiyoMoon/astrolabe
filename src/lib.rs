@@ -92,6 +92,9 @@ mod datetime;
 pub mod errors;
 mod local;
 mod offset;
+#[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+mod serde;
 mod shared;
 #[cfg(feature = "sqlx")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sqlx")))]
