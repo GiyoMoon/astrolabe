@@ -20,8 +20,8 @@
     alt="Crates.io version" />
   </a>
   <!-- MSRV -->
-  <a href="https://github.com/rust-lang/rust/releases/tag/1.56.1" target="_blank">
-    <img src="https://img.shields.io/badge/MSRV-1.56-fa6733.svg?style=flat"
+  <a href="https://github.com/rust-lang/rust/releases/tag/1.60.0" target="_blank">
+    <img src="https://img.shields.io/badge/MSRV-1.60-fa6733.svg?style=flat"
     alt="MSRV" />
   </a>
   <!-- Github Actions -->
@@ -75,6 +75,7 @@ Astrolabe is a date and time library for Rust which aims to be feature rich, lig
 - **Local** timezone on UNIX platforms
 - **Zero** dependencies
 - **Serde** serializing and deserializing (With feature flag `serde`)
+- **sqlx** postgres encoding and decoding (With feature flag `sqlx-postgres`)
 
 ## Examples
 ### Basic
@@ -141,7 +142,7 @@ for date in schedule.take(3) {
 See [`CronSchedule`](https://docs.rs/astrolabe/latest/astrolabe/struct.CronSchedule.html)
 
 ## MSRV
-This crate uses the Rust 2021 Edition and requires at least version `1.56`.
+This crate uses the Rust 2021 Edition and requires at least version `1.60`. When using features that require third-party crates (`serde` or `sqlx`), please refer to their MSRV.
 
 ## License
 Licensed under either of

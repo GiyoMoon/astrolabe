@@ -935,7 +935,7 @@ mod serde {
 
     struct TimeVisitor;
 
-    impl<'de> de::Visitor<'de> for TimeVisitor {
+    impl de::Visitor<'_> for TimeVisitor {
         type Value = Time;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

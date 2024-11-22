@@ -1,0 +1,10 @@
+name: astrolabe
+services:
+  db:
+    image: postgres:17.1-alpine3.20
+    restart: always
+    environment:
+      - POSTGRES_USER=astrolabe
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'

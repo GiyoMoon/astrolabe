@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.3] - unreleased
+### Added
+- Impl sqlx `Encode<Postgres>` and `Decode<Postgres>` for `DateTime`, `Date` and `Time`
+
 ## [0.5.0] - 2023-10-08
 Astrolabe can now get the local timezone offset on UNIX systems.
 ```rust

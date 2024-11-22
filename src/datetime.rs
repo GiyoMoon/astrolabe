@@ -1599,7 +1599,7 @@ mod serde {
 
     struct DateTimeVisitor;
 
-    impl<'de> de::Visitor<'de> for DateTimeVisitor {
+    impl de::Visitor<'_> for DateTimeVisitor {
         type Value = DateTime;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

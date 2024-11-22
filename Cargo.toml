@@ -24,10 +24,23 @@ include = [
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+sqlx-postgres = ["sqlx", "sqlx/postgres"]
+
 [dependencies.serde]
 version = "1.0"
 default-features = false
 optional = true
 
+[dependencies.sqlx]
+version = "0.8"
+default-features = false
+optional = true
+
 [dev-dependencies]
 serde_test = "1.0"
+
+[dev-dependencies.sqlx]
+version = "0.8"
+default-features = false
+features = ["runtime-tokio-rustls", "migrate", "macros", "postgres"]

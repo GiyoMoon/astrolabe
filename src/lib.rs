@@ -9,6 +9,7 @@
 //! - **Local** timezone on UNIX platforms
 //! - **Zero** dependencies
 //! - **Serde** serializing and deserializing (With feature flag `serde`)
+//! - **sqlx** postgres encoding and decoding (With feature flag `sqlx-postgres`)
 //!
 //! ## Examples
 //! ### Basic
@@ -92,6 +93,9 @@ pub mod errors;
 mod local;
 mod offset;
 mod shared;
+#[cfg(feature = "sqlx")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sqlx")))]
+mod sqlx;
 mod time;
 mod util;
 
