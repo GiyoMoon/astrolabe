@@ -1,0 +1,3 @@
+[advisories]
+# https://rustsec.org/advisories/RUSTSEC-2023-0071.html
+ignore = ["RUSTSEC-2023-0071"]
