@@ -151,7 +151,7 @@ impl Time {
         (self.nanoseconds / NANOS_PER_SEC) as u32
     }
 
-    /// Creates a new [`Time`] instance from seconds.
+    /// Creates a new [`Time`] instance from nanoseconds.
     ///
     /// Returns an [`OutOfRange`](AstrolabeError::OutOfRange) error if the provided nanoseconds are invalid (over `86_399_999_999_999`)
     ///

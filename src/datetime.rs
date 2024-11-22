@@ -1367,7 +1367,7 @@ impl OffsetUtilities for DateTime {
 
     fn as_offset(&self, offset: Offset) -> Self {
         let new_nanos = self.as_nanos() - offset.resolve() as i128 * NANOS_PER_SEC as i128;
-        Self::from_nanos(new_nanos).unwrap().set_offset(offset)
+        Self::from_nanos(new_nanos).set_offset(offset)
     }
 
     fn get_offset(&self) -> Offset {
@@ -1399,14 +1399,14 @@ impl DateTime {
     }
 
     /// Creates a new [`DateTime`] instance from nanoseconds.
-    pub(crate) fn from_nanos(nanos: i128) -> Result<Self, AstrolabeError> {
-        let (days, nanoseconds) = nanos_to_days_nanos(nanos)?;
+    pub(crate) fn from_nanos(nanos: i128) -> Self {
+        let (days, nanoseconds) = nanos_to_days_nanos(nanos).unwrap();
 
-        Ok(Self {
+        Self {
             days,
             nanoseconds,
             offset: Offset::default(),
-        })
+        }
     }
 
     /// Returns the number of nanoseconds since January 1, 0001 00:00:00 UTC. (Negative if date is before)
