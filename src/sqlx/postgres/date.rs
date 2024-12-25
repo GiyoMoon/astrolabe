@@ -4,19 +4,13 @@ use crate::{util::constants::BUG_MSG, Date, DateUtilities};
 use sqlx::{
     encode::IsNull,
     error::BoxDynError,
-    postgres::{PgArgumentBuffer, PgHasArrayType, PgTypeInfo, PgValueRef},
+    postgres::{PgArgumentBuffer, PgTypeInfo, PgValueRef},
     Decode, Encode, Postgres, Type,
 };
 
 impl Type<Postgres> for Date {
     fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("date")
-    }
-}
-
-impl PgHasArrayType for Date {
-    fn array_type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("date[]")
+        PgTypeInfo::with_name("DATE")
     }
 }
 

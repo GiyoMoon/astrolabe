@@ -1,6 +1,6 @@
 CREATE TABLE astrolabe_tests (
-  timestamp TIMESTAMP,
-  timestamps TIMESTAMP[],
+  timestamp TIMESTAMPTZ,
+  timestamps TIMESTAMPTZ[],
   date DATE,
   dates DATE[],
   time TIME,
