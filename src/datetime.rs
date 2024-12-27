@@ -1471,7 +1471,7 @@ impl From<&Time> for DateTime {
 
 impl Display for DateTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.format("yyyy/MM/dd HH:mm:ss"))
+        write!(f, "{}", self.format_rfc3339(Precision::Seconds))
     }
 }
 

@@ -1226,7 +1226,7 @@ mod datetime_tests {
     #[test]
     fn display() {
         let date_time = DateTime::from_ymdhms(2022, 5, 10, 12, 31, 1).unwrap();
-        assert_eq!("2022/05/10 12:31:01", format!("{}", date_time));
+        assert_eq!("2022-05-10T12:31:01Z", format!("{}", date_time));
     }
 
     #[test]
