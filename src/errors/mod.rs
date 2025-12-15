@@ -3,7 +3,7 @@
 pub(crate) mod invalid_format;
 pub(crate) mod out_of_range;
 pub use self::{invalid_format::InvalidFormat, out_of_range::OutOfRange};
-use std::fmt;
+use std::{error, fmt};
 
 /// Custom error enum for the astrolabe crate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -22,6 +22,8 @@ impl fmt::Display for AstrolabeError {
         }
     }
 }
+
+impl error::Error for AstrolabeError {}
 
 impl From<AstrolabeError> for String {
     fn from(e: AstrolabeError) -> Self {
