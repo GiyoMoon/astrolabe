@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.4] - 2025-12-15
+### Added
+- Impl std `Error` for `AstrolabeError`
+
 ## [0.5.3] - 2024-11-22
 ### Added
 - Impl sqlx `Encode<Postgres>` and `Decode<Postgres>` for `DateTime`, `Date` and `Time`
