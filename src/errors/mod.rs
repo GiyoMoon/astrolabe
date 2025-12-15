@@ -23,7 +23,7 @@ impl fmt::Display for AstrolabeError {
     }
 }
 
-impl error::Error for AstrolabeError{}
+impl error::Error for AstrolabeError {}
 
 impl From<AstrolabeError> for String {
     fn from(e: AstrolabeError) -> Self {
