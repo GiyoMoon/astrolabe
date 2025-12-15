@@ -122,8 +122,8 @@ impl Date {
         }
 
         // Use day of year if present, otherwise use month + day of month
-        Ok(if date.day_of_year.is_some() {
-            let days = year_doy_to_days(date.year.unwrap_or(1), date.day_of_year.unwrap(), false)?;
+        Ok(if let Some(day_of_year) = date.day_of_year {
+            let days = year_doy_to_days(date.year.unwrap_or(1), day_of_year, false)?;
             Self { days }
         } else {
             Self::from_ymd(
