@@ -26,6 +26,22 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
             ${{ runner.os }}-cargo
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features native-tls,postgres,sqlite
+
+      - name: Setup postgres database
+        run: |
+          docker compose -f tests/compose.yml up -d
+          docker exec astrolabe-db-1 bash -c "until pg_isready; do sleep 1; done"
+          cp .env.postgres .env
+          sqlx database reset -y --source migrations-postgres
+
+      - name: Setup sqlite database
+        run: |
+          cp .env.sqlite .env
+          sqlx database create
+          sqlx migrate run --source migrations-sqlite
+
       - name: Check
         run: |
           cargo check --all-features
@@ -35,18 +51,15 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy --all-features -- -D warnings
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
-
-      - name: Setup postgres database
+      - name: Test postgres
         run: |
-          docker compose -f tests/compose.yml up -d
-          docker exec astrolabe-db-1 bash -c "until pg_isready; do sleep 1; done"
-          cp .env.example .env
-          sqlx database reset -y
+          cp .env.postgres .env
+          cargo test --features sqlx-postgres
 
-      - name: Test
-        run: cargo test --all-features
+      - name: Test sqlite
+        run: |
+          cp .env.sqlite .env
+          cargo test --features sqlx-sqlite
 
       - name: Install cargo-llvm-cov
         run: curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
@@ -54,7 +67,10 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov clean --workspace
-          cargo llvm-cov --no-report --all-features
+          cp .env.postgres .env
+          cargo llvm-cov --no-report --features sqlx-postgres
+          cp .env.sqlite .env
+          cargo llvm-cov --no-report --features sqlx-sqlite
           cargo llvm-cov report --lcov > lcov.txt
 
       - name: Upload coverage report

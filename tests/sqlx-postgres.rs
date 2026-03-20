@@ -4,7 +4,7 @@ mod sqlx_postgres_tests {
     use astrolabe::{Date, DateTime, Precision, Time, TimeUtilities};
     use sqlx::PgPool;
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn datetime(db_pool: PgPool) {
         let datetime = DateTime::from_ymdhms(2024, 1, 2, 10, 30, 40)
             .unwrap()
@@ -30,7 +30,7 @@ mod sqlx_postgres_tests {
         );
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn datetime_array(db_pool: PgPool) {
         let datetime_1 = DateTime::from_ymdhms(2024, 1, 2, 10, 30, 40)
             .unwrap()
@@ -64,7 +64,7 @@ mod sqlx_postgres_tests {
         );
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn date(db_pool: PgPool) {
         let date = Date::from_ymd(2024, 1, 2).unwrap();
         let insert_result = sqlx::query!(
@@ -84,7 +84,7 @@ mod sqlx_postgres_tests {
         assert_eq!("2024/01/02", date.format("yyyy/MM/dd"));
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn date_array(db_pool: PgPool) {
         let date_1 = Date::from_ymd(2024, 1, 2).unwrap();
         let date_2 = Date::from_ymd(1980, 1, 2).unwrap();
@@ -106,7 +106,7 @@ mod sqlx_postgres_tests {
         assert_eq!("1980/01/02", dates[1].format("yyyy/MM/dd"));
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn time(db_pool: PgPool) {
         let time = Time::from_hms(10, 30, 40)
             .unwrap()
@@ -129,7 +129,7 @@ mod sqlx_postgres_tests {
         assert_eq!("10:30:40:123456000", time.format("HH:mm:ss:nnnnn"));
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "./migrations-postgres")]
     async fn time_array(db_pool: PgPool) {
         let time_1 = Time::from_hms(10, 30, 40)
             .unwrap()
