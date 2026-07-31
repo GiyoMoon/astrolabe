@@ -34,7 +34,7 @@ default-features = false
 optional = true
 
 [dependencies.sqlx]
-version = "^0.8.1"
+version = "^0.9.0"
 default-features = false
 optional = true
 
@@ -42,6 +42,6 @@ optional = true
 serde_test = "1.0"
 
 [dev-dependencies.sqlx]
-version = "^0.8.1"
+version = "^0.9.0"
 default-features = false
-features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "sqlite"]
+features = ["runtime-tokio", "tls-rustls", "migrate", "macros", "postgres", "sqlite"]

@@ -1,10 +1,8 @@
-use std::borrow::Cow;
-
 use crate::Date;
 use sqlx::{
     encode::IsNull,
     error::BoxDynError,
-    sqlite::{SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
+    sqlite::{SqliteArgumentsBuffer, SqliteTypeInfo, SqliteValueRef},
     Decode, Encode, Sqlite, Type,
 };
 
@@ -15,11 +13,8 @@ impl Type<Sqlite> for Date {
 }
 
 impl Encode<'_, Sqlite> for Date {
-    fn encode_by_ref(&self, buf: &mut Vec<SqliteArgumentValue<'_>>) -> Result<IsNull, BoxDynError> {
-        buf.push(SqliteArgumentValue::Text(Cow::Owned(
-            self.format("yyyy-MM-dd"),
-        )));
-        Ok(IsNull::No)
+    fn encode_by_ref(&self, buf: &mut SqliteArgumentsBuffer) -> Result<IsNull, BoxDynError> {
+        Encode::<Sqlite>::encode(self.format("yyyy-MM-dd"), buf)
     }
 }
 
